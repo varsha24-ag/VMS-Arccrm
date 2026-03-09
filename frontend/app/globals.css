@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --brand-orange: #e9774b;
+  --brand-ink: #101010;
+  --brand-charcoal: #1b1b1b;
+  --brand-cream: #fff4ed;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: #f8fafc;
+  font-family: var(--font-sora), "Avenir Next", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(233, 119, 75, 0.25), transparent 36%),
+    radial-gradient(circle at 92% 88%, rgba(233, 119, 75, 0.16), transparent 30%),
+    linear-gradient(135deg, #090909 0%, #161616 45%, #222222 100%);
+}
