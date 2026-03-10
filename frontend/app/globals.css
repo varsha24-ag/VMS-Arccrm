@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   --brand-orange: #e9774b;
   --brand-ink: #101010;
   --brand-charcoal: #1b1b1b;
