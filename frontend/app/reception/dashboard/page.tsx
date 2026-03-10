@@ -3,12 +3,33 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+import DashboardShell from "@/components/dashboard-shell";
+import { Panel, StatGrid, StatusList, TextList } from "@/components/dashboard/panels";
 import { getAuthUser, getRoleRedirectPath } from "@/lib/auth";
-import { getModulesForRole } from "@/lib/modules";
+
+const stats = [
+  { label: "Check-ins", value: "58", delta: "+9" },
+  { label: "Expected Guests", value: "31", delta: "Today" },
+  { label: "Waiting", value: "6", delta: "Now" },
+  { label: "Escalations", value: "1", delta: "Low" }
+];
+
+const queueItems = [
+  { title: "Nisha Rao", subtitle: "Meeting with HR", status: "Waiting" },
+  { title: "Vikram Singh", subtitle: "Document Verification", status: "Called" },
+  { title: "Vendor Team", subtitle: "Maintenance", status: "Checked-in" },
+  { title: "Girish Patel", subtitle: "Interview", status: "Waiting" }
+];
+
+const checklistItems = [
+  "Verify visitor IDs",
+  "Notify hosts on arrival",
+  "Issue temporary badges",
+  "Capture check-out signatures"
+];
 
 export default function ReceptionDashboard() {
   const router = useRouter();
-  const modules = getModulesForRole("receptionist");
 
   useEffect(() => {
     const user = getAuthUser();
@@ -22,16 +43,29 @@ export default function ReceptionDashboard() {
   }, [router]);
 
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Receptionist Dashboard</h1>
-      <p className="mt-1 text-sm text-slate-600">Loaded modules for role: receptionist</p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {modules.map((module) => (
-          <section key={module} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-medium text-slate-800">{module}</h2>
-          </section>
-        ))}
+    <DashboardShell
+      title="Reception Dashboard"
+      subtitle="Manage check-ins, appointment flow, and visitor desk operations in real time."
+      navItems={[
+        { label: "Dashboard", href: "/reception/dashboard" },
+        { label: "Register", href: "/reception/register" },
+        { label: "Photo", href: "/reception/photo" },
+        { label: "Host", href: "/reception/host" },
+        { label: "QR Check-in", href: "/reception/qr-checkin" },
+        { label: "History", href: "/reception/history" },
+      ]}
+    >
+      <StatGrid items={stats} />
+
+      <div className="mt-6 grid gap-5 xl:grid-cols-[1.6fr_1fr]">
+        <Panel title="Front Desk Queue">
+          <StatusList items={queueItems} />
+        </Panel>
+
+        <Panel title="Today’s Checklist">
+          <TextList items={checklistItems} />
+        </Panel>
       </div>
-    </main>
+    </DashboardShell>
   );
 }

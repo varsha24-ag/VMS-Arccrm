@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Column, DateTime, Integer, String, func, text
 
 from app.core.db import Base
 
@@ -7,10 +7,11 @@ class Visitor(Base):
     __tablename__ = "visitors"
 
     id = Column(Integer, primary_key=True, index=True)
-    full_name = Column(String, nullable=False)
-    email = Column(String, nullable=True)
+    name = Column(String, nullable=False)
     phone = Column(String, nullable=True)
-    host_employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
-    status = Column(String, nullable=False, default="checked_in")
-    check_in_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    check_out_at = Column(DateTime(timezone=True), nullable=True)
+    email = Column(String, nullable=True)
+    company = Column(String, nullable=True)
+    visitor_type = Column(String, nullable=True)
+    status = Column(String, nullable=False, server_default=text("'registered'"))
+    photo_url = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

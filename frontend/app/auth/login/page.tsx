@@ -73,7 +73,11 @@ export default function LoginPage() {
       setAuthSession(response.access_token, user);
       router.push(getRoleRedirectPath(user.role));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError("Login timed out. Check API connectivity.");
+      } else {
+        setError(err instanceof Error ? err.message : "Login failed");
+      }
     } finally {
       setLoading(false);
     }
