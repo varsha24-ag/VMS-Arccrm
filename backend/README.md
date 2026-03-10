@@ -24,7 +24,7 @@ Update `.env` values for your ARC CRM PostgreSQL database and JWT secret.
 ### 4. Run API
 
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8005
 ```
 
 or

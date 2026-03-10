@@ -1,9 +1,10 @@
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from urllib.parse import quote_plus
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str | None = None
+    DATABASE_URL: Optional[str] = None
     DB_HOST: str = "localhost"
     DB_PORT: int = 5432
     DB_NAME: str = "arc_crm"

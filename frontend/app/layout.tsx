@@ -7,7 +7,10 @@ const sora = Sora({ subsets: ["latin"], variable: "--font-sora" });
 
 export const metadata: Metadata = {
   title: "Visitor Management System",
-  description: "ARC CRM Visitor Management Auth"
+  description: "ARC CRM Visitor Management Auth",
+  icons: {
+    icon: "/icon.svg",
+  }
 };
 
 export default function RootLayout({
