@@ -15,7 +15,7 @@ def seed_employees(db: Session) -> int:
         {
             "name": "System Admin",
             "email": "admin@arccrm.local",
-            "phone": "+919900000001",
+            "phone": "9900000001",
             "password": "Admin@123",
             "role": "admin",
             "department": "Administration",
@@ -23,7 +23,7 @@ def seed_employees(db: Session) -> int:
         {
             "name": "Front Desk",
             "email": "reception@arccrm.local",
-            "phone": "+919900000002",
+            "phone": "9900000002",
             "password": "Reception@123",
             "role": "receptionist",
             "department": "Operations",
@@ -31,7 +31,7 @@ def seed_employees(db: Session) -> int:
         {
             "name": "Default Employee",
             "email": "employee@arccrm.local",
-            "phone": "+919900000003",
+            "phone": "9900000003",
             "password": "Employee@123",
             "role": "employee",
             "department": "General",
