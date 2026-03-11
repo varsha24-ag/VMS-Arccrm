@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import validates
 
 from app.core.db import Base
 
@@ -13,3 +14,13 @@ class Employee(Base):
     password_hash = Column(String, nullable=False)
     role = Column(String, nullable=False)
     department = Column(String, nullable=True)
+
+    @validates("phone")
+    def validate_phone(self, key, value):
+        if value is None:
+            return value
+        # Strip any non-digit characters
+        digits = "".join(filter(str.isdigit, value))
+        if len(digits) != 10:
+            raise ValueError("Phone number must be exactly 10 digits")
+        return digits

@@ -9,7 +9,7 @@ from app.models.employee import Employee
 from app.schemas.auth import LoginRequest, LoginResponse, UserOut
 
 EMAIL_REGEX = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
-PHONE_REGEX = re.compile(r"^\+?[0-9]{10,15}$")
+PHONE_REGEX = re.compile(r"^[0-9]{10}$")
 
 
 def find_user_by_identifier(db: Session, identifier: str) -> Optional[Employee]:
@@ -23,15 +23,16 @@ def find_user_by_identifier(db: Session, identifier: str) -> Optional[Employee]:
     if EMAIL_REGEX.match(clean_id):
         return db.query(Employee).filter(func.lower(Employee.email) == clean_id.lower()).first()
     
-    # Try phone lookup if it looks like a phone number
-    if PHONE_REGEX.match(clean_id):
-        return db.query(Employee).filter(Employee.phone == clean_id).first()
+    # Try phone lookup if it looks like a phone number (possibly with formatting)
+    digits = "".join(filter(str.isdigit, clean_id))
+    if len(digits) == 10 and PHONE_REGEX.match(digits):
+        return db.query(Employee).filter(Employee.phone == digits).first()
     
     # Fallback to combined search if format is ambiguous
     return db.query(Employee).filter(
         or_(
             func.lower(Employee.email) == clean_id.lower(),
-            Employee.phone == clean_id
+            Employee.phone == digits if len(digits) == 10 else Employee.phone == clean_id
         )
     ).first()
 
