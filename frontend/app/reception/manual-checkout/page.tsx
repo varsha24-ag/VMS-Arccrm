@@ -29,7 +29,7 @@ export default function ManualCheckoutPage() {
       router.replace("/auth/login");
       return;
     }
-    if (user.role !== "receptionist") {
+    if (user.role !== "receptionist" && user.role !== "admin") {
       router.replace(getRoleRedirectPath(user.role));
     }
     void loadHistory();
@@ -69,6 +69,7 @@ export default function ManualCheckoutPage() {
       subtitle="Check out visitors by visit ID when needed."
       navItems={[
         { label: "Dashboard", href: "/reception/dashboard" },
+        { label: "Visitors", href: "/reception/visitors" },
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },

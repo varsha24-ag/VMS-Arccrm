@@ -14,6 +14,8 @@ export default function ReceptionQrCheckinPage() {
   const router = useRouter();
   const [qrCode, setQrCode] = useState("");
   const [idNumber, setIdNumber] = useState("");
+  const [idCardSelection, setIdCardSelection] = useState("");
+  const [customIdNumber, setCustomIdNumber] = useState("");
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [message, setMessage] = useState<string>("");
   const [visitorStatus, setVisitorStatus] = useState<string>("");
@@ -34,6 +36,8 @@ export default function ReceptionQrCheckinPage() {
     }>
   >([]);
   const [listLoading, setListLoading] = useState(false);
+  const [idCardLoading, setIdCardLoading] = useState(false);
+  const [availableCards, setAvailableCards] = useState<Array<{ id: number; id_number: string }>>([]);
   const [loading, setLoading] = useState(false);
   const pollRef = useRef<number | null>(null);
   const listPollRef = useRef<number | null>(null);
@@ -45,7 +49,7 @@ export default function ReceptionQrCheckinPage() {
       router.replace("/auth/login");
       return;
     }
-    if (user.role !== "receptionist") {
+    if (user.role !== "receptionist" && user.role !== "admin") {
       router.replace(getRoleRedirectPath(user.role));
     }
   }, [router]);
@@ -81,9 +85,38 @@ export default function ReceptionQrCheckinPage() {
     }
   }
 
+  async function fetchAvailableCards(showToast = false) {
+    setIdCardLoading(true);
+    try {
+      const data = await apiFetch<Array<{ id: number; id_number: string }>>("/id-cards/available");
+      setAvailableCards(data ?? []);
+      if (showToast) {
+        pushToast({
+          title: "ID cards updated",
+          description: "Available ID cards refreshed.",
+          variant: "success",
+        });
+      }
+    } catch (err) {
+      if (showToast) {
+        const errorMessage =
+          err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to load ID cards";
+        pushToast({ title: "Failed to refresh", description: errorMessage, variant: "error" });
+      }
+    } finally {
+      setIdCardLoading(false);
+    }
+  }
+
   async function handleQrCheckin(e: FormEvent) {
     e.preventDefault();
     setMessage("");
+    if (!idNumber.trim()) {
+      const msg = "Select an ID card number.";
+      setMessage(msg);
+      pushToast({ title: "ID card required", description: msg, variant: "error" });
+      return;
+    }
     setLoading(true);
     try {
       await apiFetch("/visit/checkin", {
@@ -102,9 +135,12 @@ export default function ReceptionQrCheckinPage() {
       });
       setQrCode("");
       setIdNumber("");
+      setIdCardSelection("");
+      setCustomIdNumber("");
       setVisitorDetail(null);
       setVisitorStatus("");
       setResolvedVisitorId(null);
+      void fetchAvailableCards(false);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "QR check-in failed";
       setMessage(errorMessage);
@@ -161,6 +197,7 @@ export default function ReceptionQrCheckinPage() {
 
   useEffect(() => {
     void fetchVisitList(false);
+    void fetchAvailableCards(false);
     if (!listPollRef.current) {
       listPollRef.current = window.setInterval(() => {
         void fetchVisitList(false);
@@ -202,6 +239,7 @@ export default function ReceptionQrCheckinPage() {
       subtitle="Scan or paste a QR code to complete a check-in."
       navItems={[
         { label: "Dashboard", href: "/reception/dashboard" },
+        { label: "Visitors", href: "/reception/visitors" },
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },
@@ -225,13 +263,47 @@ export default function ReceptionQrCheckinPage() {
               onChange={(e) => setQrCode(e.target.value)}
               required
             />
-            <input
+            <select
               className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
-              placeholder="Enter ID card number"
-              value={idNumber}
-              onChange={(e) => setIdNumber(e.target.value)}
+              value={idCardSelection}
+              onChange={(e) => {
+                const value = e.target.value;
+                setIdCardSelection(value);
+                if (value === "__custom__") {
+                  setIdNumber("");
+                  setCustomIdNumber("");
+                } else {
+                  setCustomIdNumber("");
+                  setIdNumber(value);
+                }
+              }}
               required
-            />
+            >
+              <option value="" className="bg-[#0f1e2f] text-white">
+                {idCardLoading ? "Loading ID cards..." : "Select ID card"}
+              </option>
+              {availableCards.map((card) => (
+                <option key={card.id} value={card.id_number} className="bg-[#0f1e2f] text-white">
+                  {card.id_number}
+                </option>
+              ))}
+              <option value="__custom__" className="bg-[#0f1e2f] text-white">
+                Custom
+              </option>
+            </select>
+            {idCardSelection === "__custom__" ? (
+              <input
+                className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+                placeholder="Enter ID card number"
+                value={customIdNumber}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setCustomIdNumber(value);
+                  setIdNumber(value);
+                }}
+                required
+              />
+            ) : null}
             <button
               type="button"
               onClick={() => handleStatusCheck(true)}
@@ -294,14 +366,24 @@ export default function ReceptionQrCheckinPage() {
         <Panel
           title="Visitor Approval Status"
           action={
-            <button
-              type="button"
-              onClick={() => fetchVisitList(true)}
-              disabled={listLoading}
-              className="rounded-md border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 disabled:opacity-60"
-            >
-              {listLoading ? "Refreshing..." : "Refresh"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fetchAvailableCards(true)}
+                disabled={idCardLoading}
+                className="rounded-md border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 disabled:opacity-60"
+              >
+                {idCardLoading ? "Cards..." : "Refresh Cards"}
+              </button>
+              <button
+                type="button"
+                onClick={() => fetchVisitList(true)}
+                disabled={listLoading}
+                className="rounded-md border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 disabled:opacity-60"
+              >
+                {listLoading ? "Refreshing..." : "Refresh"}
+              </button>
+            </div>
           }
         >
           <div className="overflow-x-auto">

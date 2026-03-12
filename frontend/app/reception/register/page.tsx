@@ -57,6 +57,8 @@ export default function ReceptionRegisterPage() {
   const [step, setStep] = useState(0);
   const [purposeOption, setPurposeOption] = useState("Meeting");
   const [customPurpose, setCustomPurpose] = useState("");
+  const [visitorTypeOption, setVisitorTypeOption] = useState("Guest");
+  const [customVisitorType, setCustomVisitorType] = useState("");
   const [qrCode, setQrCode] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -66,7 +68,7 @@ export default function ReceptionRegisterPage() {
     phone: "",
     email: "",
     company: "",
-    visitor_type: "",
+    visitor_type: "Guest",
     host_employee: null,
     purpose: "Meeting",
     photo_url: "",
@@ -81,7 +83,7 @@ export default function ReceptionRegisterPage() {
       router.replace("/auth/login");
       return;
     }
-    if (user.role !== "receptionist") {
+    if (user.role !== "receptionist" && user.role !== "admin") {
       router.replace(getRoleRedirectPath(user.role));
     }
   }, [router]);
@@ -137,13 +139,15 @@ export default function ReceptionRegisterPage() {
         phone: "",
         email: "",
         company: "",
-        visitor_type: "",
+        visitor_type: "Guest",
         host_employee: null,
         purpose: "Meeting",
         photo_url: "",
       });
       setPurposeOption("Meeting");
       setCustomPurpose("");
+      setVisitorTypeOption("Guest");
+      setCustomVisitorType("");
       setQrCode("");
       setStep(0);
       router.push("/reception/qr-checkin");
@@ -170,6 +174,7 @@ export default function ReceptionRegisterPage() {
       }
       navItems={[
         { label: "Dashboard", href: "/reception/dashboard" },
+        { label: "Visitors", href: "/reception/visitors" },
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },
@@ -237,13 +242,42 @@ export default function ReceptionRegisterPage() {
                 </label>
                 <label className="text-sm text-slate-200">
                   Visitor Type
-                  <input
+                  <select
                     className="mt-2 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
-                    placeholder="Guest / Vendor / Contractor / Interview"
-                    value={register.visitor_type}
-                    onChange={(e) => setRegister((prev) => ({ ...prev, visitor_type: e.target.value }))}
-                  />
+                    value={visitorTypeOption}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setVisitorTypeOption(value);
+                      if (value !== "Custom") {
+                        setCustomVisitorType("");
+                        setRegister((prev) => ({ ...prev, visitor_type: value }));
+                      } else {
+                        setRegister((prev) => ({ ...prev, visitor_type: "" }));
+                      }
+                    }}
+                  >
+                    {["Guest", "Vendor", "Contractor", "Interview", "Delivery", "Custom"].map((option) => (
+                      <option key={option} value={option} className="bg-[#0f1e2f] text-white">
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </label>
+                {visitorTypeOption === "Custom" ? (
+                  <label className="text-sm text-slate-200 md:col-span-2">
+                    Custom Visitor Type
+                    <input
+                      className="mt-2 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+                      value={customVisitorType}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setCustomVisitorType(value);
+                        setRegister((prev) => ({ ...prev, visitor_type: value }));
+                      }}
+                      placeholder="Enter visitor type"
+                    />
+                  </label>
+                ) : null}
                 <label className="text-sm text-slate-200">
                   Purpose
                   <select

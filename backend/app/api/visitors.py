@@ -9,6 +9,7 @@ from app.core.db import get_db
 from app.core.security import get_current_user
 from app.models.employee import Employee
 from app.models.visitor import Visitor
+from app.models.id_card import IdCard
 from app.models.visit import Visit
 from app.schemas.visit import (
     AccessPassCreate,
@@ -22,6 +23,7 @@ from app.schemas.visit import (
     VisitorCreate,
     VisitorOut,
 )
+from app.schemas.id_card import IdCardOut
 from app.schemas.visit_status import VisitStatusOut
 from app.services.visit_service import (
     checkin_visit,
@@ -253,3 +255,17 @@ def history_route(
     current_user: Annotated[Employee, Depends(get_current_user)] = None,
 ):
     return get_visit_history(db)
+
+
+@router.get("/id-cards/available", response_model=List[IdCardOut])
+def available_id_cards(
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    cards = (
+        db.query(IdCard)
+        .filter(IdCard.status == "available")
+        .order_by(IdCard.id_number.asc())
+        .all()
+    )
+    return [IdCardOut(id=card.id, id_number=card.id_number, status=card.status) for card in cards]

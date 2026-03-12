@@ -36,7 +36,7 @@ export default function ReceptionHistoryPage() {
       router.replace("/auth/login");
       return;
     }
-    if (user.role !== "receptionist") {
+    if (user.role !== "receptionist" && user.role !== "admin") {
       router.replace(getRoleRedirectPath(user.role));
     }
     void loadHistory();
@@ -68,6 +68,7 @@ export default function ReceptionHistoryPage() {
       subtitle="Review recent visits with timestamps and photos."
       navItems={[
         { label: "Dashboard", href: "/reception/dashboard" },
+        { label: "Visitors", href: "/reception/visitors" },
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },

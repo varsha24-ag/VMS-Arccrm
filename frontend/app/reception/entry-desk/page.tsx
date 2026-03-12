@@ -60,12 +60,14 @@ export default function EntryDeskPage() {
     phone: "",
     email: "",
     company: "",
-    visitor_type: "",
+    visitor_type: "Guest",
     host_employee: null,
     purpose: "",
     photo_url: "",
   });
   const [purposeOption, setPurposeOption] = useState("Meeting");
+  const [visitorTypeOption, setVisitorTypeOption] = useState("Guest");
+  const [customVisitorType, setCustomVisitorType] = useState("");
   const [autoCheckin, setAutoCheckin] = useState(true);
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [qrCode, setQrCode] = useState("");
@@ -85,7 +87,7 @@ export default function EntryDeskPage() {
       router.replace("/auth/login");
       return;
     }
-    if (user.role !== "receptionist") {
+    if (user.role !== "receptionist" && user.role !== "admin") {
       router.replace(getRoleRedirectPath(user.role));
     }
     void loadHistory();
@@ -151,12 +153,14 @@ export default function EntryDeskPage() {
         phone: "",
         email: "",
         company: "",
-        visitor_type: "",
+        visitor_type: "Guest",
         host_employee: null,
         purpose: "",
         photo_url: "",
       });
       setPurposeOption("Meeting");
+      setVisitorTypeOption("Guest");
+      setCustomVisitorType("");
       setPolicyAccepted(false);
       await loadHistory();
     } catch (err) {
@@ -259,6 +263,7 @@ export default function EntryDeskPage() {
       subtitle="Register visitors, capture photos, and keep arrivals moving with one focused workspace."
       navItems={[
         { label: "Dashboard", href: "/reception/dashboard" },
+        { label: "Visitors", href: "/reception/visitors" },
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },
@@ -314,12 +319,43 @@ export default function EntryDeskPage() {
                 </label>
                 <label className="text-sm text-slate-200">
                   Visitor Type
-                  <input
+                  <select
                     className="mt-1 w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
-                    value={register.visitor_type}
-                    onChange={(e) => setRegister((prev) => ({ ...prev, visitor_type: e.target.value }))}
-                  />
+                    value={visitorTypeOption}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setVisitorTypeOption(value);
+                      if (value !== "Custom") {
+                        setCustomVisitorType("");
+                        setRegister((prev) => ({ ...prev, visitor_type: value }));
+                      } else {
+                        setRegister((prev) => ({ ...prev, visitor_type: "" }));
+                      }
+                    }}
+                  >
+                    {["Guest", "Vendor", "Contractor", "Interview", "Delivery", "Custom"].map((option) => (
+                      <option key={option} value={option} className="bg-[#0f1e2f] text-white">
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </label>
+                {visitorTypeOption === "Custom" ? (
+                  <label className="text-sm text-slate-200 md:col-span-2">
+                    Custom Visitor Type
+                    <input
+                      className="mt-1 w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+                      value={customVisitorType}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setCustomVisitorType(value);
+                        setRegister((prev) => ({ ...prev, visitor_type: value }));
+                      }}
+                      placeholder="Enter visitor type"
+                      required
+                    />
+                  </label>
+                ) : null}
                 <label className="text-sm text-slate-200">
                   Purpose
                   <select

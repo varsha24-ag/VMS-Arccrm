@@ -16,7 +16,7 @@ export default function LogoutButton() {
         clearAuthSession();
         router.replace("/auth/login");
       }}
-      className="rounded-full border border-[#1e3a5f] bg-[#112240] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-200 transition hover:border-[#f97316] hover:text-white"
+      className="w-full rounded-lg border border-[#1e3a5f] bg-[#112240] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-200 transition hover:border-[#f97316] hover:text-white"
     >
       Logout
     </button>

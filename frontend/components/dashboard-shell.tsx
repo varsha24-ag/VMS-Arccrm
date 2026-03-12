@@ -117,7 +117,7 @@ export default function DashboardShell({ title, subtitle, modules, navItems, act
   return (
     <main className="min-h-screen bg-gradient-to-br from-[#0b1f35] via-[#122f4f] to-[#0c2740] text-slate-100">
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
-        <aside className="border-r border-white/10 bg-[#0d2743]/95 px-4 py-6 shadow-[0_0_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <aside className="flex flex-col border-r border-white/10 bg-[#0d2743]/95 px-4 py-6 shadow-[0_0_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
           <div className="flex items-center gap-3 rounded-lg border border-white/15 bg-[#0a2239] px-3 py-3">
             <Image src="/arc-logo.svg" alt="ARC logo" width={32} height={34} className="h-auto w-7" priority />
             <div>
@@ -126,7 +126,7 @@ export default function DashboardShell({ title, subtitle, modules, navItems, act
             </div>
           </div>
 
-          <div className="mt-8 space-y-2">
+          <div className="mt-8 flex-1 space-y-2">
             {items.map((item) => {
               const isRoute = Boolean(item.href);
               const baseHref = item.href.split("#")[0];
@@ -134,9 +134,9 @@ export default function DashboardShell({ title, subtitle, modules, navItems, act
                 (activeLabel && item.label === activeLabel) ||
                 (isRoute && baseHref === pathname && !item.href.includes("#"));
               const baseClasses =
-                "flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition";
+                "flex w-full items-center justify-between rounded-lg border-l-2 border-transparent px-3 py-2.5 text-left text-sm transition";
               const activeClasses = isActive
-                ? "border border-white/20 bg-white/10 text-white shadow-[0_10px_24px_rgba(0,0,0,0.35)]"
+                ? "border border-white/20 border-l-[#f97316] bg-white/10 text-white shadow-[0_10px_24px_rgba(0,0,0,0.35)]"
                 : "text-slate-200 hover:border-white/20 hover:bg-white/10 hover:text-white";
 
               const content = (
@@ -164,6 +164,11 @@ export default function DashboardShell({ title, subtitle, modules, navItems, act
               );
             })}
           </div>
+
+          <div className="mt-6 border-t border-white/10 pt-4">
+            <p className="mb-3 text-[10px] uppercase tracking-[0.2em] text-slate-400">Session</p>
+            <LogoutButton />
+          </div>
         </aside>
 
         <section className="p-4 sm:p-6 lg:p-8">
@@ -178,7 +183,6 @@ export default function DashboardShell({ title, subtitle, modules, navItems, act
                 <div className="rounded-full border border-[#e9774b]/40 bg-[#e9774b]/15 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.15em] text-[#ffc9b2]">
                   Live
                 </div>
-                <LogoutButton />
               </div>
             </div>
           </header>

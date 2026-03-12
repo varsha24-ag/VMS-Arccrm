@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.access_pass import VisitorAccessPass
 from app.models.employee import Employee
+from app.models.id_card import IdCard
 from app.models.visit import Visit
 from app.models.visitor import Visitor
 from app.schemas.visit import (
@@ -106,7 +107,7 @@ def checkin_visit(db: Session, payload: VisitCheckin) -> VisitOut:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="ID card number required")
 
     if payload.id_number:
-        visitor.id_number = payload.id_number
+        assign_id_card(db, visitor, payload.id_number)
 
     if payload.host_employee_id:
         host = db.query(Employee).filter(Employee.id == payload.host_employee_id).first()
@@ -165,6 +166,13 @@ def checkout_visit(db: Session, payload: VisitCheckout) -> VisitOut:
 
     visit.checkout_time = datetime.now(timezone.utc)
     visit.status = "checked_out"
+
+    visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
+    if visitor and visitor.id_number:
+        card = db.query(IdCard).filter(IdCard.id_number == visitor.id_number).first()
+        if card:
+            card.status = "available"
+        visitor.id_number = None
     db.commit()
     db.refresh(visit)
 
@@ -196,6 +204,7 @@ def get_visit_history(db: Session) -> List[VisitHistoryItem]:
                 visit_id=visit.id,
                 visitor_id=visitor.id,
                 visitor_name=visitor.name,
+                id_number=visitor.id_number,
                 visitor_phone=visitor.phone,
                 visitor_email=visitor.email,
                 company=visitor.company,
@@ -210,6 +219,29 @@ def get_visit_history(db: Session) -> List[VisitHistoryItem]:
         )
 
     return history
+
+
+def assign_id_card(db: Session, visitor: Visitor, id_number: str) -> None:
+    clean_number = id_number.strip()
+    if not clean_number:
+        return
+
+    existing_card = db.query(IdCard).filter(IdCard.id_number == clean_number).first()
+    if existing_card and existing_card.status == "in_use" and visitor.id_number != clean_number:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="ID card already in use")
+
+    if visitor.id_number and visitor.id_number != clean_number:
+        previous_card = db.query(IdCard).filter(IdCard.id_number == visitor.id_number).first()
+        if previous_card:
+            previous_card.status = "available"
+
+    if not existing_card:
+        existing_card = IdCard(id_number=clean_number, status="in_use")
+        db.add(existing_card)
+    else:
+        existing_card.status = "in_use"
+
+    visitor.id_number = clean_number
 
 
 def create_access_pass(db: Session, payload: AccessPassCreate) -> AccessPassOut:

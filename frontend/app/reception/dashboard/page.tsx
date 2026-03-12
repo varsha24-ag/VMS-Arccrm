@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import DashboardShell from "@/components/dashboard-shell";
 import { Panel, StatGrid, StatusList, TextList } from "@/components/dashboard/panels";
@@ -36,7 +37,7 @@ export default function ReceptionDashboard() {
       router.replace("/auth/login");
       return;
     }
-    if (user.role !== "receptionist") {
+    if (user.role !== "receptionist" && user.role !== "admin") {
       router.replace(getRoleRedirectPath(user.role));
     }
   }, [router]);
@@ -132,6 +133,7 @@ export default function ReceptionDashboard() {
       subtitle="Manage check-ins, appointment flow, and visitor desk operations in real time."
       navItems={[
         { label: "Dashboard", href: "/reception/dashboard" },
+        { label: "Visitors", href: "/reception/visitors" },
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },
@@ -146,9 +148,17 @@ export default function ReceptionDashboard() {
         <Panel
           title="Front Desk Queue"
           action={
-            <span className="text-xs font-semibold text-slate-300">
-              {loading ? "Updating..." : "Live"}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-slate-300">
+                {loading ? "Updating..." : "Live"}
+              </span>
+              <Link
+                href="/reception/visitors"
+                className="rounded-md border border-white/20 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200"
+              >
+                View all
+              </Link>
+            </div>
           }
         >
           <StatusList items={queueItems} />

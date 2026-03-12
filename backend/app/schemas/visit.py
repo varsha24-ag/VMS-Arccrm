@@ -58,6 +58,7 @@ class VisitHistoryItem(BaseModel):
     visit_id: int
     visitor_id: int
     visitor_name: str
+    id_number: Optional[str] = None
     visitor_phone: Optional[str] = None
     visitor_email: Optional[str] = None
     company: Optional[str] = None

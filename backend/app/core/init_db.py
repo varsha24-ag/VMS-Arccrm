@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import Base, SessionLocal, engine
 from app.core.security import get_password_hash
-from app.models import Employee, Visitor  # noqa: F401 - ensures table metadata is registered
+from app.models import Employee, Visitor, IdCard  # noqa: F401 - ensures table metadata is registered
 
 
 def create_tables() -> None:
@@ -85,6 +85,14 @@ def repair_visit_schema() -> None:
 def seed_employees(db: Session) -> int:
     seed_users = [
         {
+            "name": "System Admin",
+            "email": "admin@arccrm.local",
+            "phone": "9900000001",
+            "password": "Admin@123",
+            "role": "admin",
+            "department": "Administration",
+        },
+        {
             "name": "Front Desk",
             "email": "reception@arccrm.local",
             "phone": "9900000002",
@@ -136,13 +144,27 @@ def seed_employees(db: Session) -> int:
     return created_count
 
 
+def seed_id_cards(db: Session) -> int:
+    existing = db.query(IdCard).count()
+    if existing > 0:
+        return 0
+
+    seed_cards = ["ID-1001", "ID-1002", "ID-1003", "ID-1004", "ID-1005"]
+    for card_number in seed_cards:
+        db.add(IdCard(id_number=card_number, status="available"))
+    db.commit()
+    return len(seed_cards)
+
+
 def bootstrap_database() -> int:
     create_tables()
     repair_visitor_schema()
     repair_visit_schema()
     db = SessionLocal()
     try:
-        return seed_employees(db)
+        created_employees = seed_employees(db)
+        created_cards = seed_id_cards(db)
+        return created_employees + created_cards
     finally:
         db.close()
 
