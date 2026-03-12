@@ -23,6 +23,18 @@ def repair_visitor_schema() -> None:
         if "phone" not in columns:
             connection.execute(text("ALTER TABLE visitors ADD COLUMN phone VARCHAR"))
             columns.add("phone")
+        if "id_number" not in columns:
+            connection.execute(text("ALTER TABLE visitors ADD COLUMN id_number VARCHAR"))
+            columns.add("id_number")
+        if "approval_token" not in columns:
+            connection.execute(text("ALTER TABLE visitors ADD COLUMN approval_token VARCHAR"))
+            columns.add("approval_token")
+        if "approved_at" not in columns:
+            connection.execute(text("ALTER TABLE visitors ADD COLUMN approved_at TIMESTAMPTZ"))
+            columns.add("approved_at")
+        if "rejected_at" not in columns:
+            connection.execute(text("ALTER TABLE visitors ADD COLUMN rejected_at TIMESTAMPTZ"))
+            columns.add("rejected_at")
         if "email" not in columns:
             connection.execute(text("ALTER TABLE visitors ADD COLUMN email VARCHAR"))
             columns.add("email")
@@ -59,6 +71,15 @@ def repair_visit_schema() -> None:
         if "created_at" not in columns:
             connection.execute(text("ALTER TABLE visits ADD COLUMN created_at TIMESTAMPTZ DEFAULT now()"))
             columns.add("created_at")
+        if "approval_token" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN approval_token VARCHAR"))
+            columns.add("approval_token")
+        if "approved_at" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN approved_at TIMESTAMPTZ"))
+            columns.add("approved_at")
+        if "rejected_at" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN rejected_at TIMESTAMPTZ"))
+            columns.add("rejected_at")
 
 
 def seed_employees(db: Session) -> int:
@@ -86,6 +107,14 @@ def seed_employees(db: Session) -> int:
             "password": "Employee@123",
             "role": "employee",
             "department": "General",
+        },
+        {
+            "name": "Varsha Nagda",
+            "email": "varsha.nagda@arcgate.com",
+            "phone": "+919900000004",
+            "password": "Employee@123",
+            "role": "employee",
+            "department": "Admin",
         },
     ]
 

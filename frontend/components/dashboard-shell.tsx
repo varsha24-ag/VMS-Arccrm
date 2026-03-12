@@ -12,6 +12,7 @@ interface DashboardShellProps {
   subtitle: string;
   modules?: string[];
   navItems?: { label: string; href: string }[];
+  activeLabel?: string;
   children: ReactNode;
 }
 
@@ -109,7 +110,7 @@ function getNavIcon(label: string) {
   return <PanelIcon />;
 }
 
-export default function DashboardShell({ title, subtitle, modules, navItems, children }: DashboardShellProps) {
+export default function DashboardShell({ title, subtitle, modules, navItems, activeLabel, children }: DashboardShellProps) {
   const pathname = usePathname();
   const items = navItems ?? modules?.map((label) => ({ label, href: "" })) ?? [];
 
@@ -129,7 +130,9 @@ export default function DashboardShell({ title, subtitle, modules, navItems, chi
             {items.map((item) => {
               const isRoute = Boolean(item.href);
               const baseHref = item.href.split("#")[0];
-              const isActive = isRoute && baseHref === pathname && !item.href.includes("#");
+              const isActive =
+                (activeLabel && item.label === activeLabel) ||
+                (isRoute && baseHref === pathname && !item.href.includes("#"));
               const baseClasses =
                 "flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition";
               const activeClasses = isActive

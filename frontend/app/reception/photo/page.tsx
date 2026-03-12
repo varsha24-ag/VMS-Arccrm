@@ -35,6 +35,7 @@ export default function ReceptionPhotoPage() {
         { label: "Host", href: "/reception/host" },
         { label: "QR Check-in", href: "/reception/qr-checkin" },
         { label: "History", href: "/reception/history" },
+        { label: "Manual Check-out", href: "/reception/manual-checkout" },
       ]}
     >
       <div className="space-y-6">

@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import { apiFetch } from "@/lib/api";
 
 interface HostEmployee {
   id: number;
   name: string;
   department: string;
+  email?: string | null;
 }
 
 interface HostSearchProps {
@@ -13,24 +16,41 @@ interface HostSearchProps {
   onChange: (value: number | null) => void;
 }
 
-const DEFAULT_HOSTS: HostEmployee[] = [
-  { id: 1, name: "Aman Verma", department: "Admin" },
-  { id: 2, name: "Riya Sharma", department: "HR" },
-  { id: 3, name: "Arjun Patel", department: "IT" },
-  { id: 4, name: "Neha Rao", department: "Finance" },
-];
-
 export default function HostSearch({ value, onChange }: HostSearchProps) {
   const [query, setQuery] = useState("");
+  const [hosts, setHosts] = useState<HostEmployee[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadHosts() {
+      setLoading(true);
+      setError("");
+      try {
+        const data = await apiFetch<HostEmployee[]>("/employees/hosts");
+        if (mounted) setHosts(data);
+      } catch (err) {
+        if (mounted) setError(err instanceof Error ? err.message : "Failed to load hosts");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    void loadHosts();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const filtered = useMemo(() => {
     const lower = query.trim().toLowerCase();
-    if (!lower) return DEFAULT_HOSTS;
-    return DEFAULT_HOSTS.filter(
+    if (!lower) return hosts;
+    return hosts.filter(
       (host) => host.name.toLowerCase().includes(lower) || host.department.toLowerCase().includes(lower)
     );
-  }, [query]);
+  }, [query, hosts]);
 
-  const selected = DEFAULT_HOSTS.find((host) => host.id === value);
+  const selected = hosts.find((host) => host.id === value);
 
   return (
     <div className="space-y-2">
@@ -42,6 +62,8 @@ export default function HostSearch({ value, onChange }: HostSearchProps) {
         onChange={(e) => setQuery(e.target.value)}
       />
       <div className="max-h-36 space-y-2 overflow-y-auto rounded-md border border-white/10 bg-black/20 p-2">
+        {loading ? <div className="px-2 py-1 text-xs text-slate-400">Loading hosts...</div> : null}
+        {error ? <div className="px-2 py-1 text-xs text-red-300">{error}</div> : null}
         {filtered.map((host) => (
           <button
             key={host.id}

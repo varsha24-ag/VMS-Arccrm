@@ -70,6 +70,7 @@ export default function EntryDeskPage() {
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [qrCode, setQrCode] = useState("");
   const [checkinVisitorId, setCheckinVisitorId] = useState("");
+  const [checkinIdNumber, setCheckinIdNumber] = useState("");
   const [checkoutVisitId, setCheckoutVisitId] = useState("");
   const [history, setHistory] = useState<VisitHistoryItem[]>([]);
   const [message, setMessage] = useState<string>("");
@@ -165,17 +166,21 @@ export default function EntryDeskPage() {
     }
   }
 
-  async function handleCheckin(visitorId?: number) {
+  async function handleCheckin(visitorId?: number, idNumber?: string) {
     setMessage("");
     setLoading(true);
     try {
       const id = visitorId ?? Number(checkinVisitorId);
       await apiFetch("/visit/checkin", {
         method: "POST",
-        body: JSON.stringify({ visitor_id: id }),
+        body: JSON.stringify({
+          visitor_id: id,
+          id_number: (idNumber ?? checkinIdNumber) || null,
+        }),
       });
       setMessage("Check-in completed.");
       setCheckinVisitorId("");
+      setCheckinIdNumber("");
       await loadHistory();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Check-in failed");
@@ -259,6 +264,7 @@ export default function EntryDeskPage() {
         { label: "Host", href: "/reception/host" },
         { label: "QR Check-in", href: "/reception/qr-checkin" },
         { label: "History", href: "/reception/history" },
+        { label: "Manual Check-out", href: "/reception/manual-checkout" },
       ]}
     >
       <div className="space-y-6">
@@ -501,7 +507,74 @@ export default function EntryDeskPage() {
         </div>
 
         <div id="history">
-          <Panel title="Visit History (Photo)">
+        <Panel title="Manual Check-in / Check-out">
+          <div className="grid gap-4 md:grid-cols-2">
+            <form
+              className="flex flex-col gap-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleCheckin();
+              }}
+            >
+              <label className="text-sm text-slate-200">
+                Visitor ID
+                <input
+                  className="mt-2 w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+                  placeholder="Enter visitor ID"
+                  value={checkinVisitorId}
+                  onChange={(e) => setCheckinVisitorId(e.target.value)}
+                  required
+                />
+              </label>
+              <label className="text-sm text-slate-200">
+                ID Card Number
+                <input
+                  className="mt-2 w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+                  placeholder="Enter ID card number"
+                  value={checkinIdNumber}
+                  onChange={(e) => setCheckinIdNumber(e.target.value)}
+                  required
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={loading}
+                className="rounded-md bg-[#ff7a45] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                Check-in Visitor
+              </button>
+            </form>
+
+            <form
+              className="flex flex-col gap-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleCheckout();
+              }}
+            >
+              <label className="text-sm text-slate-200">
+                Visit ID
+                <input
+                  className="mt-2 w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+                  placeholder="Enter visit ID"
+                  value={checkoutVisitId}
+                  onChange={(e) => setCheckoutVisitId(e.target.value)}
+                  required
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={loading}
+                className="rounded-md border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 disabled:opacity-60"
+              >
+                Check-out Visitor
+              </button>
+            </form>
+          </div>
+          {message ? <p className="mt-3 text-sm text-[#ffc5aa]">{message}</p> : null}
+        </Panel>
+
+        <Panel title="Visit History (Photo)">
           <SectionHeader title="History" subtitle="Latest visits with photos and timestamps." />
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
@@ -513,6 +586,7 @@ export default function EntryDeskPage() {
                   <th className="pb-3 pr-3">Status</th>
                   <th className="pb-3 pr-3">Check-in</th>
                   <th className="pb-3">Check-out</th>
+                  <th className="pb-3">Action</th>
                 </tr>
               </thead>
               <tbody className="text-slate-100">
@@ -531,12 +605,26 @@ export default function EntryDeskPage() {
                     <td className="py-3 pr-3">{item.status}</td>
                     <td className="py-3 pr-3">{item.checkin_time ? new Date(item.checkin_time).toLocaleString() : "-"}</td>
                     <td className="py-3">{item.checkout_time ? new Date(item.checkout_time).toLocaleString() : "-"}</td>
+                    <td className="py-3">
+                      {item.status === "checked_in" ? (
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={() => handleCheckout(item.visit_id)}
+                          className="rounded-md border border-white/20 bg-white/5 px-3 py-1 text-xs text-slate-200 hover:bg-white/10 disabled:opacity-60"
+                        >
+                          Check-out
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400">Completed</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          </Panel>
+        </Panel>
         </div>
       </div>
     </DashboardShell>

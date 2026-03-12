@@ -18,12 +18,14 @@ class VisitorCreate(BaseModel):
 class VisitorOut(BaseModel):
     id: int
     name: str
+    id_number: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
     company: Optional[str] = None
     visitor_type: Optional[str] = None
     photo_url: Optional[str] = None
     created_at: datetime
+    status: Optional[str] = None
 
 
 class VisitCheckin(BaseModel):
@@ -32,6 +34,7 @@ class VisitCheckin(BaseModel):
     purpose: Optional[str] = None
     policy_accepted: Optional[bool] = False
     qr_code: Optional[str] = None
+    id_number: Optional[str] = None
 
 
 class VisitCheckout(BaseModel):

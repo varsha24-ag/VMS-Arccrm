@@ -21,6 +21,7 @@ interface StatGridProps {
 interface PanelProps {
   title: string;
   children: ReactNode;
+  action?: ReactNode;
 }
 
 interface SimpleTableProps {
@@ -57,12 +58,12 @@ export function StatGrid({ items }: StatGridProps) {
   );
 }
 
-export function Panel({ title, children }: PanelProps) {
+export function Panel({ title, children, action }: PanelProps) {
   return (
     <section className="rounded-2xl border border-[#1e3a5f] bg-[#112240] p-5 shadow-[0_18px_45px_rgba(0,0,0,0.35)]">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-white">{title}</h2>
-        <span className="h-2 w-2 rounded-full bg-[#f97316]" />
+        {action ?? <span className="h-2 w-2 rounded-full bg-[#f97316]" />}
       </div>
       <div className="mt-4">{children}</div>
     </section>

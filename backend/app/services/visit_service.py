@@ -21,6 +21,7 @@ from app.schemas.visit import (
     VisitorCreate,
     VisitorOut,
 )
+from app.services.notification_service import send_host_notification
 
 
 def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
@@ -30,21 +31,57 @@ def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
         email=payload.email,
         company=payload.company,
         visitor_type=payload.visitor_type,
-        status="registered",
+        status="pending",
+        approval_token=uuid4().hex,
         photo_url=payload.photo_url,
     )
     db.add(visitor)
     db.commit()
     db.refresh(visitor)
+
+    visit = Visit(
+        visitor_id=visitor.id,
+        host_employee_id=payload.host_employee,
+        purpose=payload.purpose,
+        status="pending",
+        approval_token=uuid4().hex,
+    )
+    db.add(visit)
+    db.commit()
+    db.refresh(visit)
+
+    if payload.host_employee:
+        host = db.query(Employee).filter(Employee.id == payload.host_employee).first()
+        if host and host.email:
+            try:
+                send_host_notification(
+                    host.email,
+                    host.name,
+                    visitor.name,
+                    payload.purpose,
+                    payload.phone,
+                    payload.company,
+                    visitor.photo_url,
+                    visit.approval_token,
+                    visit.id,
+                )
+            except Exception:
+                pass
+        else:
+            # Host email missing or host not found; skip notification.
+            pass
+
     return VisitorOut(
         id=visitor.id,
         name=visitor.name,
+        id_number=visitor.id_number,
         phone=visitor.phone,
         email=visitor.email,
         company=visitor.company,
         visitor_type=visitor.visitor_type,
         photo_url=visitor.photo_url,
         created_at=visitor.created_at,
+        status=visitor.status,
     )
 
 
@@ -53,23 +90,50 @@ def checkin_visit(db: Session, payload: VisitCheckin) -> VisitOut:
     if not visitor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visitor not found")
 
+    existing_visit = (
+        db.query(Visit)
+        .filter(Visit.visitor_id == payload.visitor_id)
+        .order_by(desc(Visit.id))
+        .first()
+    )
+
+    if existing_visit and existing_visit.status in {"pending", "approved", "rejected"}:
+        if existing_visit.status == "pending":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Visitor pending approval")
+        if existing_visit.status == "rejected":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Visitor request rejected")
+        if existing_visit.status == "approved" and not (payload.id_number or visitor.id_number):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="ID card number required")
+
+    if payload.id_number:
+        visitor.id_number = payload.id_number
+
     if payload.host_employee_id:
         host = db.query(Employee).filter(Employee.id == payload.host_employee_id).first()
         if not host:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Host employee not found")
 
-    visit = Visit(
-        visitor_id=payload.visitor_id,
-        host_employee_id=payload.host_employee_id,
-        purpose=payload.purpose,
-        checkin_time=datetime.now(timezone.utc),
-        status="checked_in",
-        policy_accepted=bool(payload.policy_accepted),
-        qr_code=payload.qr_code,
-    )
-    db.add(visit)
-    db.commit()
-    db.refresh(visit)
+    if existing_visit and existing_visit.status == "approved":
+        existing_visit.checkin_time = datetime.now(timezone.utc)
+        existing_visit.status = "checked_in"
+        existing_visit.policy_accepted = bool(payload.policy_accepted)
+        existing_visit.qr_code = payload.qr_code
+        db.commit()
+        db.refresh(existing_visit)
+        visit = existing_visit
+    else:
+        visit = Visit(
+            visitor_id=payload.visitor_id,
+            host_employee_id=payload.host_employee_id,
+            purpose=payload.purpose,
+            checkin_time=datetime.now(timezone.utc),
+            status="checked_in",
+            policy_accepted=bool(payload.policy_accepted),
+            qr_code=payload.qr_code,
+        )
+        db.add(visit)
+        db.commit()
+        db.refresh(visit)
 
     return VisitOut(
         id=visit.id,

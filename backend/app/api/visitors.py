@@ -2,12 +2,14 @@ from pathlib import Path
 from typing import Annotated, List
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.security import get_current_user
 from app.models.employee import Employee
+from app.models.visitor import Visitor
+from app.models.visit import Visit
 from app.schemas.visit import (
     AccessPassCreate,
     AccessPassOut,
@@ -20,6 +22,7 @@ from app.schemas.visit import (
     VisitorCreate,
     VisitorOut,
 )
+from app.schemas.visit_status import VisitStatusOut
 from app.services.visit_service import (
     checkin_visit,
     checkout_visit,
@@ -41,6 +44,155 @@ def create_visitor_route(
     current_user: Annotated[Employee, Depends(get_current_user)] = None,
 ):
     return create_visitor(db, payload)
+
+
+@router.get("/visitor/{visitor_id}", response_model=VisitorOut)
+def get_visitor_route(
+    visitor_id: int,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    visitor = db.query(Visitor).filter(Visitor.id == visitor_id).first()
+    if not visitor:
+        raise HTTPException(status_code=404, detail="Visitor not found")
+    return VisitorOut(
+        id=visitor.id,
+        name=visitor.name,
+        id_number=visitor.id_number,
+        phone=visitor.phone,
+        email=visitor.email,
+        company=visitor.company,
+        visitor_type=visitor.visitor_type,
+        photo_url=visitor.photo_url,
+        created_at=visitor.created_at,
+        status=visitor.status,
+    )
+
+
+@router.get("/visits/status", response_model=VisitStatusOut)
+def get_visit_status_by_code(
+    code: str,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    visit = None
+    if code.isdigit():
+        visit = (
+            db.query(Visit)
+            .filter(Visit.visitor_id == int(code))
+            .order_by(Visit.id.desc())
+            .first()
+        )
+        if not visit:
+            visit = db.query(Visit).filter(Visit.id == int(code)).first()
+    if not visit:
+        visit = db.query(Visit).filter(Visit.qr_code == code).first()
+    if not visit and not code.isdigit():
+        visitor = None
+        if "@" in code:
+            visitor = (
+                db.query(Visitor)
+                .filter(Visitor.email.ilike(code))
+                .order_by(Visitor.id.desc())
+                .first()
+            )
+        if not visitor:
+            visitor = (
+                db.query(Visitor)
+                .filter(Visitor.phone == code)
+                .order_by(Visitor.id.desc())
+                .first()
+            )
+        if not visitor:
+            visitor = (
+                db.query(Visitor)
+                .filter(Visitor.name.ilike(code))
+                .order_by(Visitor.id.desc())
+                .first()
+            )
+        if visitor:
+            visit = (
+                db.query(Visit)
+                .filter(Visit.visitor_id == visitor.id)
+                .order_by(Visit.id.desc())
+                .first()
+            )
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    host_name = None
+    if visit.host_employee_id:
+        host = db.query(Employee).filter(Employee.id == visit.host_employee_id).first()
+        host_name = host.name if host else None
+
+    visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
+    visitor_name = visitor.name if visitor else "Unknown"
+
+    return VisitStatusOut(
+        visit_id=visit.id,
+        visitor_id=visit.visitor_id,
+        visitor_name=visitor_name,
+        host_name=host_name,
+        status=visit.status,
+    )
+
+
+@router.get("/visits/list", response_model=List[VisitStatusOut])
+def list_visit_status(
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    visits = db.query(Visit).order_by(Visit.id.desc()).all()
+    results: List[VisitStatusOut] = []
+    for visit in visits:
+        host_name = None
+        if visit.host_employee_id:
+            host = db.query(Employee).filter(Employee.id == visit.host_employee_id).first()
+            host_name = host.name if host else None
+        visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
+        visitor_name = visitor.name if visitor else "Unknown"
+        results.append(
+            VisitStatusOut(
+                visit_id=visit.id,
+                visitor_id=visit.visitor_id,
+                visitor_name=visitor_name,
+                host_name=host_name,
+                status=visit.status,
+            )
+        )
+    return results
+
+
+@router.get("/visits/{visitor_id}", response_model=VisitStatusOut)
+def get_visit_status(
+    visitor_id: int,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    visit = (
+        db.query(Visit)
+        .filter(Visit.visitor_id == visitor_id)
+        .order_by(Visit.id.desc())
+        .first()
+    )
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    host_name = None
+    if visit.host_employee_id:
+        host = db.query(Employee).filter(Employee.id == visit.host_employee_id).first()
+        host_name = host.name if host else None
+
+    visitor = db.query(Visitor).filter(Visitor.id == visitor_id).first()
+    visitor_name = visitor.name if visitor else "Unknown"
+
+    return VisitStatusOut(
+        visit_id=visit.id,
+        visitor_id=visitor_id,
+        visitor_name=visitor_name,
+        host_name=host_name,
+        status=visit.status,
+    )
 
 
 @router.post("/visit/checkin", response_model=VisitOut)
@@ -73,6 +225,8 @@ def upload_photo(
     with file_path.open("wb") as buffer:
         buffer.write(file.file.read())
     return PhotoUploadOut(photo_url=f"/uploads/visitors/{file_name}")
+
+
 
 
 @router.post("/access-pass/create", response_model=AccessPassOut)

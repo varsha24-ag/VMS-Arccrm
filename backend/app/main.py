@@ -4,6 +4,8 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 from app.api.auth import router as auth_router
+from app.api.employees import router as employees_router
+from app.api.visitor_approval import router as visitor_approval_router
 from app.api.visitors import router as visitors_router
 from app.core.config import settings
 from app.core.init_db import bootstrap_database
@@ -20,6 +22,8 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(employees_router)
+app.include_router(visitor_approval_router)
 app.include_router(visitors_router)
 
 uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
