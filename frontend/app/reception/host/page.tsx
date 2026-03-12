@@ -34,9 +34,9 @@ export default function ReceptionHostPage() {
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },
-        { label: "QR Check-in", href: "/reception/qr-checkin" },
+        { label: "Check-in", href: "/reception/qr-checkin" },
         { label: "History", href: "/reception/history" },
-        { label: "Manual Check-out", href: "/reception/manual-checkout" },
+        { label: "Checkout", href: "/reception/manual-checkout" },
       ]}
     >
       <div className="space-y-6">

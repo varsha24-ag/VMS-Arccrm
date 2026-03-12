@@ -51,29 +51,32 @@ def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
     db.commit()
     db.refresh(visit)
 
+    email_sent = None
+    email_error = None
     if payload.host_employee:
         host = db.query(Employee).filter(Employee.id == payload.host_employee).first()
         if host and host.email:
-            try:
-                send_host_notification(
-                    host.email,
-                    host.name,
-                    visitor.name,
-                    payload.purpose,
-                    payload.phone,
-                    payload.company,
-                    visitor.photo_url,
-                    visit.approval_token,
-                    visit.id,
-                )
-            except Exception:
-                pass
+            sent = send_host_notification(
+                host.email,
+                host.name,
+                visitor.name,
+                payload.purpose,
+                payload.phone,
+                payload.company,
+                visitor.photo_url,
+                visit.approval_token,
+                visit.id,
+            )
+            email_sent = sent
+            if not sent:
+                email_error = "Email send failed. Please resend."
         else:
             # Host email missing or host not found; skip notification.
-            pass
+            email_sent = None
 
     return VisitorOut(
         id=visitor.id,
+        visit_id=visit.id,
         name=visitor.name,
         id_number=visitor.id_number,
         phone=visitor.phone,
@@ -83,7 +86,41 @@ def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
         photo_url=visitor.photo_url,
         created_at=visitor.created_at,
         status=visitor.status,
+        email_sent=email_sent,
+        email_error=email_error,
     )
+
+
+def resend_host_notification(db: Session, visit_id: int) -> bool:
+    visit = db.query(Visit).filter(Visit.id == visit_id).first()
+    if not visit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
+
+    visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
+    if not visitor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visitor not found")
+
+    if not visit.host_employee_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Host employee not set")
+
+    host = db.query(Employee).filter(Employee.id == visit.host_employee_id).first()
+    if not host or not host.email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Host email missing")
+
+    sent = send_host_notification(
+        host.email,
+        host.name,
+        visitor.name,
+        visit.purpose,
+        visitor.phone,
+        visitor.company,
+        visitor.photo_url,
+        visit.approval_token,
+        visit.id,
+    )
+    if not sent:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Email send failed")
+    return True
 
 
 def checkin_visit(db: Session, payload: VisitCheckin) -> VisitOut:

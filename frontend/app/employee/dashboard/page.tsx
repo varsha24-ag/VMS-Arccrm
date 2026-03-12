@@ -1,10 +1,12 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import DashboardShell from "@/components/dashboard-shell";
 import { Panel, SimpleTable, StatGrid, TextList } from "@/components/dashboard/panels";
+import FilterBar from "@/components/ui/filter-bar";
+import Pagination from "@/components/ui/pagination";
 import { apiFetch } from "@/lib/api";
 import { getAuthUser, getRoleRedirectPath } from "@/lib/auth";
 
@@ -46,6 +48,9 @@ export default function EmployeeDashboard() {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [approvalQuery, setApprovalQuery] = useState("");
+  const [approvalPage, setApprovalPage] = useState(1);
+  const [approvalPageSize, setApprovalPageSize] = useState(5);
   const [passPayload, setPassPayload] = useState<AccessPassPayload>({
     visitor_name: "",
     phone: "",
@@ -67,6 +72,34 @@ export default function EmployeeDashboard() {
       router.replace(getRoleRedirectPath(user.role));
     }
   }, [router]);
+
+  const filteredApprovalRows = useMemo(() => {
+    const query = approvalQuery.trim().toLowerCase();
+    if (!query) return approvalTable.rows;
+    return approvalTable.rows.filter((row) =>
+      row
+        .filter(Boolean)
+        .map((value) => String(value).toLowerCase())
+        .join(" ")
+        .includes(query)
+    );
+  }, [approvalQuery]);
+
+  const approvalTotalPages = Math.max(1, Math.ceil(filteredApprovalRows.length / approvalPageSize));
+  const pagedApprovalRows = useMemo(() => {
+    const start = (approvalPage - 1) * approvalPageSize;
+    return filteredApprovalRows.slice(start, start + approvalPageSize);
+  }, [filteredApprovalRows, approvalPage, approvalPageSize]);
+
+  useEffect(() => {
+    setApprovalPage(1);
+  }, [approvalQuery, approvalPageSize]);
+
+  useEffect(() => {
+    if (approvalPage > approvalTotalPages) {
+      setApprovalPage(approvalTotalPages);
+    }
+  }, [approvalPage, approvalTotalPages]);
 
   async function handleCreatePass(e: FormEvent) {
     e.preventDefault();
@@ -109,7 +142,24 @@ export default function EmployeeDashboard() {
 
       <div className="mt-6 grid gap-5 xl:grid-cols-[1.4fr_1fr]">
         <Panel title="Pending Visitor Approvals">
-          <SimpleTable headers={approvalTable.headers} rows={approvalTable.rows} />
+          <div className="mb-4">
+            <FilterBar
+              searchValue={approvalQuery}
+              onSearchChange={setApprovalQuery}
+              searchPlaceholder="Search visitor or purpose..."
+            />
+          </div>
+          <SimpleTable headers={approvalTable.headers} rows={pagedApprovalRows} />
+          <div className="mt-4">
+            <Pagination
+              page={approvalPage}
+              totalItems={filteredApprovalRows.length}
+              pageSize={approvalPageSize}
+              onPageChange={setApprovalPage}
+              onPageSizeChange={setApprovalPageSize}
+              pageSizeOptions={[5, 10, 20, 50, 100]}
+            />
+          </div>
         </Panel>
 
         <Panel title="Generate Visitor Access Pass">

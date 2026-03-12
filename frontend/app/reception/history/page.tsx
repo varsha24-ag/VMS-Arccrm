@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import DashboardShell from "@/components/dashboard-shell";
 import { Panel } from "@/components/dashboard/panels";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
+import FilterBar from "@/components/ui/filter-bar";
+import Pagination from "@/components/ui/pagination";
 import { apiFetch } from "@/lib/api";
 import { getAuthUser, getRoleRedirectPath } from "@/lib/auth";
 
@@ -28,6 +30,9 @@ export default function ReceptionHistoryPage() {
   const router = useRouter();
   const [history, setHistory] = useState<VisitHistoryItem[]>([]);
   const [message, setMessage] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
   useEffect(() => {
@@ -62,6 +67,43 @@ export default function ReceptionHistoryPage() {
     }));
   }, [history, baseUrl]);
 
+  const filteredHistory = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return historyWithPhotos;
+    return historyWithPhotos.filter((item) => {
+      const haystack = [
+        item.visitor_name,
+        item.visitor_id,
+        item.visit_id,
+        item.visitor_email,
+        item.visitor_phone,
+        item.company,
+        item.purpose,
+        item.status,
+      ]
+        .filter(Boolean)
+        .map((value) => String(value).toLowerCase())
+        .join(" ");
+      return haystack.includes(query);
+    });
+  }, [historyWithPhotos, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredHistory.length / pageSize));
+  const pagedHistory = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredHistory.slice(start, start + pageSize);
+  }, [filteredHistory, page, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, pageSize]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
   return (
     <DashboardShell
       title="Visit History"
@@ -72,9 +114,9 @@ export default function ReceptionHistoryPage() {
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },
-        { label: "QR Check-in", href: "/reception/qr-checkin" },
+        { label: "Check-in", href: "/reception/qr-checkin" },
         { label: "History", href: "/reception/history" },
-        { label: "Manual Check-out", href: "/reception/manual-checkout" },
+        { label: "Checkout", href: "/reception/manual-checkout" },
       ]}
     >
       <div className="space-y-6">
@@ -84,6 +126,13 @@ export default function ReceptionHistoryPage() {
         />
 
         <Panel title="History (Photo)">
+          <div className="mb-4">
+            <FilterBar
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              searchPlaceholder="Search visitor, purpose, status..."
+            />
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead>
@@ -97,27 +146,47 @@ export default function ReceptionHistoryPage() {
                 </tr>
               </thead>
               <tbody className="text-slate-100">
-                {historyWithPhotos.map((item) => (
-                  <tr key={item.visit_id} className="border-t border-white/10">
-                    <td className="py-3 pr-3">
-                      {item.photo ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={item.photo} alt={item.visitor_name} className="h-10 w-10 rounded-lg object-cover" />
-                      ) : (
-                        <div className="h-10 w-10 rounded-lg border border-white/15 bg-white/5" />
-                      )}
+                {pagedHistory.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-3 text-slate-400">
+                      {message ? message : "No visit history found."}
                     </td>
-                    <td className="py-3 pr-3">{item.visitor_name}</td>
-                    <td className="py-3 pr-3">{item.purpose ?? "-"}</td>
-                    <td className="py-3 pr-3">{item.status}</td>
-                    <td className="py-3 pr-3">{item.checkin_time ? new Date(item.checkin_time).toLocaleString() : "-"}</td>
-                    <td className="py-3">{item.checkout_time ? new Date(item.checkout_time).toLocaleString() : "-"}</td>
                   </tr>
-                ))}
+                ) : (
+                  pagedHistory.map((item) => (
+                    <tr key={item.visit_id} className="border-t border-white/10">
+                      <td className="py-3 pr-3">
+                        {item.photo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={item.photo} alt={item.visitor_name} className="h-10 w-10 rounded-lg object-cover" />
+                        ) : (
+                          <div className="h-10 w-10 rounded-lg border border-white/15 bg-white/5" />
+                        )}
+                      </td>
+                      <td className="py-3 pr-3">{item.visitor_name}</td>
+                      <td className="py-3 pr-3">{item.purpose ?? "-"}</td>
+                      <td className="py-3 pr-3">{item.status}</td>
+                      <td className="py-3 pr-3">
+                        {item.checkin_time ? new Date(item.checkin_time).toLocaleString() : "-"}
+                      </td>
+                      <td className="py-3">
+                        {item.checkout_time ? new Date(item.checkout_time).toLocaleString() : "-"}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-          {message ? <p className="mt-3 text-sm text-[#ffc5aa]">{message}</p> : null}
+          <div className="mt-4">
+            <Pagination
+              page={page}
+              totalItems={filteredHistory.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
         </Panel>
       </div>
     </DashboardShell>

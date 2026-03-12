@@ -14,6 +14,8 @@ from app.models.visit import Visit
 from app.schemas.visit import (
     AccessPassCreate,
     AccessPassOut,
+    EmailResendOut,
+    EmailResendRequest,
     PhotoUploadOut,
     QRCheckin,
     VisitCheckin,
@@ -32,6 +34,7 @@ from app.services.visit_service import (
     create_visitor,
     get_visit_history,
     qr_checkin,
+    resend_host_notification,
 )
 
 router = APIRouter(tags=["visits"])
@@ -238,6 +241,21 @@ def access_pass_route(
     current_user: Annotated[Employee, Depends(get_current_user)] = None,
 ):
     return create_access_pass(db, payload)
+
+
+@router.post("/visitor/resend-approval", response_model=EmailResendOut)
+def resend_approval_email(
+    payload: EmailResendRequest,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    try:
+        sent = resend_host_notification(db, payload.visit_id)
+        return EmailResendOut(sent=sent)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to resend approval email")
 
 
 @router.post("/visit/qr-checkin", response_model=VisitOut)

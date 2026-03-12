@@ -267,9 +267,9 @@ export default function EntryDeskPage() {
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },
-        { label: "QR Check-in", href: "/reception/qr-checkin" },
+        { label: "Check-in", href: "/reception/qr-checkin" },
         { label: "History", href: "/reception/history" },
-        { label: "Manual Check-out", href: "/reception/manual-checkout" },
+        { label: "Checkout", href: "/reception/manual-checkout" },
       ]}
     >
       <div className="space-y-6">
@@ -466,7 +466,7 @@ export default function EntryDeskPage() {
 
             <div id="qr-checkin">
               <Panel title="QR Fast Check-in">
-              <SectionHeader title="QR Check-in" subtitle="Scan a QR code for instant check-in." />
+              <SectionHeader title="Check-in" subtitle="Scan a QR code for instant check-in." />
               <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleQrCheckin}>
                 <input
                   className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
@@ -512,8 +512,8 @@ export default function EntryDeskPage() {
               </form>
             </Panel>
 
-            <Panel title="Manual Check-out">
-              <SectionHeader title="Manual Check-out" subtitle="Enter a visit ID." />
+            <Panel title="Checkout">
+              <SectionHeader title="Checkout" subtitle="Enter a visit ID." />
               <form
                 className="flex flex-col gap-3 sm:flex-row"
                 onSubmit={(e) => {
