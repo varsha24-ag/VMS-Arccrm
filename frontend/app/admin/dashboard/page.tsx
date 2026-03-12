@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import DashboardShell from "@/components/dashboard-shell";
@@ -33,17 +33,22 @@ const quickActions = [
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const [user, setUser] = useState<{ name?: string; role: string } | null>(null);
 
   useEffect(() => {
-    const user = getAuthUser();
-    if (!user) {
+    const authUser = getAuthUser();
+    if (!authUser) {
       router.replace("/auth/login");
       return;
     }
-    if (user.role !== "admin") {
-      router.replace(getRoleRedirectPath(user.role));
+    if (authUser.role !== "admin") {
+      router.replace(getRoleRedirectPath(authUser.role));
+      return;
     }
+    setUser(authUser);
   }, [router]);
+
+  if (!user) return null;
 
   return (
     <DashboardShell

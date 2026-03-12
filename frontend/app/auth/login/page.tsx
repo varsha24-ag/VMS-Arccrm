@@ -19,6 +19,12 @@ interface FormState {
   staySignedIn: boolean;
 }
 
+interface FormErrors {
+  identifier?: string;
+  password?: string;
+  general?: string;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [form, setForm] = useState<FormState>({
@@ -26,28 +32,40 @@ export default function LoginPage() {
     password: "",
     staySignedIn: false
   });
-  const [error, setError] = useState<string>("");
+  const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
 
-  function validateForm(values: FormState): string | null {
-    if (!values.identifier.trim()) return "Email or phone number is required";
-    if (!emailRegex.test(values.identifier.trim()) && !phoneRegex.test(values.identifier.trim())) {
-      return "Enter a valid email or phone number";
+  function validate(): boolean {
+    const newErrors: FormErrors = {};
+    const cleanId = form.identifier.trim();
+
+    if (!cleanId) {
+      newErrors.identifier = "Email or phone number is required";
+    } else {
+      const isEmail = emailRegex.test(cleanId);
+      const digitsOnly = cleanId.replace(/\D/g, "");
+      const isPhone = digitsOnly.length === 10;
+
+      if (!isEmail && !isPhone) {
+        newErrors.identifier = "Enter a valid email or 10-digit phone number";
+      }
     }
-    if (!values.password) return "Password is required";
-    if (values.password.length < 8) return "Password must be at least 8 characters";
-    return null;
+
+    if (!form.password) {
+      newErrors.password = "Password is required";
+    } else if (form.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError("");
+    setErrors({});
 
-    const validationError = validateForm(form);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+    if (!validate()) return;
 
     setLoading(true);
 
@@ -66,11 +84,9 @@ export default function LoginPage() {
       setAuthSession(response.access_token, user);
       router.push(getRoleRedirectPath(user.role));
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        setError("Login timed out. Check API connectivity.");
-      } else {
-        setError(err instanceof Error ? err.message : "Login failed");
-      }
+      setErrors({
+        general: err instanceof Error ? err.message : "Login failed"
+      });
     } finally {
       setLoading(false);
     }
@@ -166,6 +182,7 @@ export default function LoginPage() {
                 value={form.identifier}
                 onChange={(e) => setForm((prev) => ({ ...prev, identifier: e.target.value }))}
                 placeholder="name@company.com"
+                error={errors.identifier}
                 required
               />
 
@@ -176,13 +193,14 @@ export default function LoginPage() {
                 value={form.password}
                 onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
                 placeholder="••••••••"
+                error={errors.password}
                 required
                 minLength={8}
               />
 
-              {error ? (
+              {errors.general ? (
                 <div className="rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-600 animate-in fade-in slide-in-from-top-1">
-                  {error}
+                  {errors.general}
                 </div>
               ) : null}
 

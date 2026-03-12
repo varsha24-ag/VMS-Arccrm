@@ -1,4 +1,5 @@
 from sqlalchemy import Column, DateTime, Integer, String, func, text
+from sqlalchemy.orm import validates
 
 from app.core.db import Base
 
@@ -19,3 +20,12 @@ class Visitor(Base):
     rejected_at = Column(DateTime(timezone=True), nullable=True)
     photo_url = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    @validates("phone")
+    def validate_phone(self, key, value):
+        if value is None:
+            return value
+        digits = "".join(filter(str.isdigit, value))
+        if len(digits) != 10:
+            raise ValueError("Phone number must be exactly 10 digits")
+        return digits
