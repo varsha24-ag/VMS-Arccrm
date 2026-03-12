@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "receptionist" | "employee";
+export type UserRole = "receptionist" | "employee";
 
 export interface AuthUser {
   id: number;
@@ -35,14 +35,12 @@ export function clearAuthSession() {
 
 export function getRoleRedirectPath(role: string) {
   const normalized = role.toLowerCase();
-  if (normalized === "admin") return "/admin/dashboard";
   if (normalized === "receptionist" || normalized === "reception") return "/reception/entry-desk";
   return "/employee/dashboard";
 }
 
 export function normalizeRole(role: string): UserRole | null {
   const normalized = role.trim().toLowerCase();
-  if (normalized === "admin") return "admin";
   if (normalized === "receptionist" || normalized === "reception") return "receptionist";
   if (normalized === "employee") return "employee";
   return null;

@@ -61,6 +61,5 @@ python -m app.core.init_db
 - Token validity is 24 hours by default.
 - Protected endpoints require `Authorization: Bearer <token>`.
 - Seed login users:
-  - `admin@arccrm.local` / `Admin@123` (role: admin)
   - `reception@arccrm.local` / `Reception@123` (role: receptionist)
   - `employee@arccrm.local` / `Employee@123` (role: employee)

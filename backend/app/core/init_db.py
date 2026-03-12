@@ -85,14 +85,6 @@ def repair_visit_schema() -> None:
 def seed_employees(db: Session) -> int:
     seed_users = [
         {
-            "name": "System Admin",
-            "email": "admin@arccrm.local",
-            "phone": "9900000001",
-            "password": "Admin@123",
-            "role": "admin",
-            "department": "Administration",
-        },
-        {
             "name": "Front Desk",
             "email": "reception@arccrm.local",
             "phone": "9900000002",
