@@ -148,6 +148,9 @@ def seed_employees(db: Session) -> int:
 
 
 def create_admin_user(db: Session) -> bool:
+    """
+    Ensures a default admin user exists in the database.
+    """
     admin_email = "admin@arccrm.local"
     admin_user = db.query(Employee).filter(Employee.email == admin_email).first()
 
@@ -196,4 +199,4 @@ def bootstrap_database() -> int:
 
 if __name__ == "__main__":
     created = bootstrap_database()
-    print(f"Database bootstrapped. Seeded employees: {created}")
+    print(f"Database bootstrapped. Seeded records: {created}")
