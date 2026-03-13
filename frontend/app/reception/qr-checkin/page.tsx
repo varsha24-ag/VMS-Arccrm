@@ -1,11 +1,12 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import DashboardShell from "@/components/dashboard-shell";
 import { Panel } from "@/components/dashboard/panels";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
+import Pagination from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/api";
 import { getAuthUser, getRoleRedirectPath } from "@/lib/auth";
@@ -35,12 +36,16 @@ export default function ReceptionQrCheckinPage() {
       status: string;
     }>
   >([]);
+  const [approvalPage, setApprovalPage] = useState(1);
+  const [approvalPageSize, setApprovalPageSize] = useState(5);
   const [listLoading, setListLoading] = useState(false);
   const [idCardLoading, setIdCardLoading] = useState(false);
   const [availableCards, setAvailableCards] = useState<Array<{ id: number; id_number: string }>>([]);
   const [loading, setLoading] = useState(false);
   const pollRef = useRef<number | null>(null);
   const listPollRef = useRef<number | null>(null);
+  const lastStatusRef = useRef<string>("");
+  const listStatusRef = useRef<Record<number, string>>({});
   const { pushToast } = useToast();
 
   useEffect(() => {
@@ -66,7 +71,32 @@ export default function ReceptionQrCheckinPage() {
           status: string;
         }>
       >("/visits/list");
-      setVisitList(data ?? []);
+      const nextList = data ?? [];
+      setVisitList(nextList);
+      if (!showToast) {
+        const previous = listStatusRef.current;
+        const nextMap: Record<number, string> = {};
+        nextList.forEach((visit) => {
+          nextMap[visit.visit_id] = visit.status;
+          const prevStatus = previous[visit.visit_id];
+          if (prevStatus && prevStatus !== visit.status) {
+            if (visit.status === "approved") {
+              pushToast({
+                title: "Host approved",
+                description: `${visit.visitor_name} is approved.`,
+                variant: "success",
+              });
+            } else if (visit.status === "rejected") {
+              pushToast({
+                title: "Host rejected",
+                description: `${visit.visitor_name} was rejected.`,
+                variant: "error",
+              });
+            }
+          }
+        });
+        listStatusRef.current = nextMap;
+      }
       if (showToast) {
         pushToast({
           title: "Status refreshed",
@@ -172,7 +202,18 @@ export default function ReceptionQrCheckinPage() {
         company: data.host_name,
         status: data.status,
       });
-      setVisitorStatus(data.status ?? "");
+      const nextStatus = data.status ?? "";
+      if (!showToast && lastStatusRef.current && lastStatusRef.current !== nextStatus) {
+        if (nextStatus === "approved") {
+          pushToast({ title: "Approved by host", description: "You can check-in this visitor.", variant: "success" });
+        } else if (nextStatus === "rejected") {
+          pushToast({ title: "Rejected by host", description: "Do not proceed with check-in.", variant: "error" });
+        } else {
+          pushToast({ title: "Pending approval", description: "Wait for host response.", variant: "info" });
+        }
+      }
+      lastStatusRef.current = nextStatus;
+      setVisitorStatus(nextStatus);
       setResolvedVisitorId(data.visitor_id);
       if (showToast) {
         if (data.status === "approved") {
@@ -211,8 +252,25 @@ export default function ReceptionQrCheckinPage() {
     };
   }, []);
 
+  const approvalTotalPages = Math.max(1, Math.ceil(visitList.length / approvalPageSize));
+  const pagedVisitList = useMemo(() => {
+    const start = (approvalPage - 1) * approvalPageSize;
+    return visitList.slice(start, start + approvalPageSize);
+  }, [visitList, approvalPage, approvalPageSize]);
+
+  useEffect(() => {
+    setApprovalPage(1);
+  }, [approvalPageSize]);
+
+  useEffect(() => {
+    if (approvalPage > approvalTotalPages) {
+      setApprovalPage(approvalTotalPages);
+    }
+  }, [approvalPage, approvalTotalPages]);
+
   useEffect(() => {
     if (!qrCode) {
+      lastStatusRef.current = "";
       if (pollRef.current) {
         window.clearInterval(pollRef.current);
         pollRef.current = null;
@@ -235,7 +293,7 @@ export default function ReceptionQrCheckinPage() {
 
   return (
     <DashboardShell
-      title="QR Check-in"
+      title="Check-in"
       subtitle="Scan or paste a QR code to complete a check-in."
       navItems={[
         { label: "Dashboard", href: "/reception/dashboard" },
@@ -243,9 +301,9 @@ export default function ReceptionQrCheckinPage() {
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },
-        { label: "QR Check-in", href: "/reception/qr-checkin" },
+        { label: "Check-in", href: "/reception/qr-checkin" },
         { label: "History", href: "/reception/history" },
-        { label: "Manual Check-out", href: "/reception/manual-checkout" },
+        { label: "Checkout", href: "/reception/manual-checkout" },
       ]}
     >
       <div className="space-y-6">
@@ -404,11 +462,10 @@ export default function ReceptionQrCheckinPage() {
                     </td>
                   </tr>
                 ) : (
-                  visitList.map((visit) => (
+                  pagedVisitList.map((visit) => (
                     <tr key={visit.visit_id} className="text-slate-200">
                       <td className="px-3 py-3">
                         <p className="font-semibold text-white">{visit.visitor_name}</p>
-                        <p className="text-xs text-slate-400">Visitor ID: {visit.visitor_id}</p>
                       </td>
                       <td className="px-3 py-3 text-sm">{visit.host_name ?? "Unknown"}</td>
                       <td className="px-3 py-3">
@@ -437,7 +494,7 @@ export default function ReceptionQrCheckinPage() {
                           }}
                           className="rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200"
                         >
-                          Load
+                          Prep Check-in
                         </button>
                       </td>
                     </tr>
@@ -445,6 +502,15 @@ export default function ReceptionQrCheckinPage() {
                 )}
               </tbody>
             </table>
+          </div>
+          <div className="mt-4">
+            <Pagination
+              page={approvalPage}
+              totalItems={visitList.length}
+              pageSize={approvalPageSize}
+              onPageChange={setApprovalPage}
+              onPageSizeChange={setApprovalPageSize}
+            />
           </div>
           <p className="mt-3 text-xs text-slate-400">
             Check-in is enabled only when status is approved.

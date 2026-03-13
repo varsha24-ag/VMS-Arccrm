@@ -25,9 +25,12 @@ interface VisitorCreatePayload {
 
 interface VisitorOut {
   id: number;
+  visit_id?: number;
+  email_sent?: boolean | null;
+  email_error?: string | null;
 }
 
-const steps = ["Visitor Info", "Photo", "Host", "QR Check-in"];
+const steps = ["Visitor Info", "Photo", "Host"];
 
 function StepIndicator({ stepIndex, current }: { stepIndex: number; current: number }) {
   if (stepIndex < current) {
@@ -59,7 +62,6 @@ export default function ReceptionRegisterPage() {
   const [customPurpose, setCustomPurpose] = useState("");
   const [visitorTypeOption, setVisitorTypeOption] = useState("Guest");
   const [customVisitorType, setCustomVisitorType] = useState("");
-  const [qrCode, setQrCode] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
@@ -117,14 +119,14 @@ export default function ReceptionRegisterPage() {
   }
 
   async function handleRegister() {
-    if (!validateStep(3)) return;
+    if (!validateStep(2)) return;
     setLoading(true);
     try {
       const payload = {
         ...register,
         host_employee: register.host_employee ? Number(register.host_employee) : null,
       };
-      await apiFetch<VisitorOut>("/visitor/create", {
+      const created = await apiFetch<VisitorOut>("/visitor/create", {
         method: "POST",
         body: JSON.stringify(payload),
       });
@@ -134,6 +136,34 @@ export default function ReceptionRegisterPage() {
         description: "Awaiting host approval.",
         variant: "success",
       });
+      if (created.email_sent === false && created.visit_id) {
+        pushToast({
+          title: "Email not sent",
+          description: created.email_error ?? "Host approval email failed.",
+          variant: "error",
+          actionLabel: "Resend email",
+          onAction: async () => {
+            try {
+              await apiFetch("/visitor/resend-approval", {
+                method: "POST",
+                body: JSON.stringify({ visit_id: created.visit_id }),
+              });
+              pushToast({
+                title: "Email resent",
+                description: "Approval email sent to host.",
+                variant: "success",
+              });
+            } catch (err) {
+              const errorMessage = err instanceof Error ? err.message : "Resend failed";
+              pushToast({
+                title: "Resend failed",
+                description: errorMessage,
+                variant: "error",
+              });
+            }
+          },
+        });
+      }
       setRegister({
         name: "",
         phone: "",
@@ -148,7 +178,6 @@ export default function ReceptionRegisterPage() {
       setCustomPurpose("");
       setVisitorTypeOption("Guest");
       setCustomVisitorType("");
-      setQrCode("");
       setStep(0);
       router.push("/reception/qr-checkin");
     } catch (err) {
@@ -169,18 +198,16 @@ export default function ReceptionRegisterPage() {
     <DashboardShell
       title="Register Visitor"
       subtitle="Multi-step registration for reception."
-      activeLabel={
-        step === 0 ? "Register" : step === 1 ? "Photo" : step === 2 ? "Host" : "QR Check-in"
-      }
+      activeLabel={step === 0 ? "Register" : step === 1 ? "Photo" : "Host"}
       navItems={[
         { label: "Dashboard", href: "/reception/dashboard" },
         { label: "Visitors", href: "/reception/visitors" },
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },
-        { label: "QR Check-in", href: "/reception/qr-checkin" },
+        { label: "Check-in", href: "/reception/qr-checkin" },
         { label: "History", href: "/reception/history" },
-        { label: "Manual Check-out", href: "/reception/manual-checkout" },
+        { label: "Checkout", href: "/reception/manual-checkout" },
       ]}
     >
       <div className="space-y-6">
@@ -338,7 +365,11 @@ export default function ReceptionRegisterPage() {
                 />
                 {formErrors.photo_url ? <p className="text-sm text-red-400">{formErrors.photo_url}</p> : null}
                 <div className="flex items-center justify-between">
-                  <button type="button" onClick={goBack} className="text-sm text-slate-300 hover:text-white">
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    className="rounded-lg bg-[#ff7a45] px-6 py-2 text-sm font-semibold text-white"
+                  >
                     ← Back
                   </button>
                   <button
@@ -359,50 +390,35 @@ export default function ReceptionRegisterPage() {
                   onChange={(value) => setRegister((prev) => ({ ...prev, host_employee: value }))}
                 />
                 {formErrors.host_employee ? <p className="text-sm text-red-400">{formErrors.host_employee}</p> : null}
-                <div className="flex items-center justify-between">
-                  <button type="button" onClick={goBack} className="text-sm text-slate-300 hover:text-white">
-                    ← Back
-                  </button>
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <button
                     type="button"
-                    onClick={goNext}
+                    onClick={goBack}
                     className="rounded-lg bg-[#ff7a45] px-6 py-2 text-sm font-semibold text-white"
                   >
-                    Next →
+                    ← Back
                   </button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={goNext}
+                      className="rounded-lg bg-[#ff7a45] px-6 py-2 text-sm font-semibold text-white"
+                    >
+                      Next →
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRegister}
+                      disabled={loading}
+                      className="rounded-lg bg-[#ff7a45] px-6 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                    >
+                      {loading ? "Registering..." : "Register Visitor"}
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : null}
 
-            {step === 3 ? (
-              <div className="space-y-4">
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm text-slate-300">QR Check-in (optional)</p>
-                  <input
-                    className="mt-2 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
-                    placeholder="Enter QR code if available"
-                    value={qrCode}
-                    onChange={(e) => setQrCode(e.target.value)}
-                  />
-                  <p className="mt-2 text-xs text-slate-400">
-                    Check-in will be available after host approval and ID card assignment.
-                  </p>
-                </div>
-                <div className="flex items-center justify-between">
-                  <button type="button" onClick={goBack} className="text-sm text-slate-300 hover:text-white">
-                    ← Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleRegister}
-                    disabled={loading}
-                    className="rounded-lg bg-[#ff7a45] px-6 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                  >
-                    {loading ? "Registering..." : "Register Visitor"}
-                  </button>
-                </div>
-              </div>
-            ) : null}
           </div>
         </Panel>
       </div>

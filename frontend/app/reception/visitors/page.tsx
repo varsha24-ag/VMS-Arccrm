@@ -6,6 +6,8 @@ import Link from "next/link";
 
 import DashboardShell from "@/components/dashboard-shell";
 import { Panel } from "@/components/dashboard/panels";
+import FilterBar from "@/components/ui/filter-bar";
+import Pagination from "@/components/ui/pagination";
 import { apiFetch } from "@/lib/api";
 import { getAuthUser, getRoleRedirectPath } from "@/lib/auth";
 
@@ -23,7 +25,6 @@ type VisitHistoryItem = {
   checkin_time?: string | null;
   checkout_time?: string | null;
   status: string;
-  qr_code?: string | null;
 };
 
 export default function ReceptionVisitorListPage() {
@@ -33,9 +34,9 @@ export default function ReceptionVisitorListPage() {
   const [selected, setSelected] = useState<VisitHistoryItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const pageSize = 10;
 
   useEffect(() => {
     const user = getAuthUser();
@@ -129,11 +130,11 @@ export default function ReceptionVisitorListPage() {
   const pagedRows = useMemo(() => {
     const start = (page - 1) * pageSize;
     return filteredHistoryRows.slice(start, start + pageSize);
-  }, [filteredHistoryRows, page]);
+  }, [filteredHistoryRows, page, pageSize]);
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, statusFilter]);
+  }, [searchQuery, statusFilter, pageSize]);
 
   useEffect(() => {
     if (page > totalPages) {
@@ -156,9 +157,8 @@ export default function ReceptionVisitorListPage() {
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },
-        { label: "QR Check-in", href: "/reception/qr-checkin" },
         { label: "History", href: "/reception/history" },
-        { label: "Manual Check-out", href: "/reception/manual-checkout" },
+        { label: "Checkout", href: "/reception/manual-checkout" },
       ]}
     >
       <div className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
@@ -213,33 +213,24 @@ export default function ReceptionVisitorListPage() {
           </Panel>
 
           <Panel title="Visitor List">
-            <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
-              <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                <span className="text-xs uppercase tracking-[0.2em] text-slate-400">Filter</span>
-                <input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search visitor, ID, company, host..."
-                  className="w-full bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
-                />
-              </div>
-              <select
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 focus:outline-none"
-              >
-                {statusOptions.map((status) => (
-                  <option key={status} value={status} className="bg-slate-900 text-slate-100">
-                    {status === "all" ? "All statuses" : status}
-                  </option>
-                ))}
-              </select>
+            <div className="mb-4">
+              <FilterBar
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
+                searchPlaceholder="Search visitor, ID, company, host..."
+                selectValue={statusFilter}
+                onSelectChange={setStatusFilter}
+                selectOptions={statusOptions.map((status) => ({
+                  value: status,
+                  label: status === "all" ? "All statuses" : status,
+                }))}
+              />
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
                 <thead className="text-slate-300">
                   <tr>
-                    <th className="pb-3 pr-3">Visit ID</th>
+                    <th className="pb-3 pr-3">Sr. No.</th>
                     <th className="pb-3 pr-3">Visitor</th>
                     <th className="pb-3 pr-3">ID Card</th>
                     <th className="pb-3 pr-3">Status</th>
@@ -254,13 +245,13 @@ export default function ReceptionVisitorListPage() {
                       </td>
                     </tr>
                   ) : (
-                    pagedRows.map((item) => (
+                    pagedRows.map((item, idx) => (
                       <tr
                         key={item.visit_id}
                         className="cursor-pointer border-t border-white/10 transition hover:bg-white/5"
                         onClick={() => setSelected(item)}
                       >
-                        <td className="py-3 pr-3">{item.visit_id}</td>
+                        <td className="py-3 pr-3">{(page - 1) * pageSize + idx + 1}</td>
                         <td className="py-3 pr-3 font-semibold text-white">{item.visitor_name}</td>
                         <td className="py-3 pr-3">{item.id_number ?? "-"}</td>
                         <td className="py-3 pr-3">{item.status}</td>
@@ -273,46 +264,14 @@ export default function ReceptionVisitorListPage() {
                 </tbody>
               </table>
             </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300">
-              <span>
-                Page {page} of {totalPages} · Showing{" "}
-                {filteredHistoryRows.length === 0 ? 0 : (page - 1) * pageSize + 1}-
-                {Math.min(page * pageSize, filteredHistoryRows.length)} of {filteredHistoryRows.length}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPage(1)}
-                  disabled={page === 1}
-                  className="rounded-md border border-white/20 bg-white/5 px-2 py-1 text-xs font-semibold text-slate-200 disabled:opacity-50"
-                >
-                  First
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                  disabled={page === 1}
-                  className="rounded-md border border-white/20 bg-white/5 px-2 py-1 text-xs font-semibold text-slate-200 disabled:opacity-50"
-                >
-                  Prev
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                  disabled={page === totalPages}
-                  className="rounded-md border border-white/20 bg-white/5 px-2 py-1 text-xs font-semibold text-slate-200 disabled:opacity-50"
-                >
-                  Next
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPage(totalPages)}
-                  disabled={page === totalPages}
-                  className="rounded-md border border-white/20 bg-white/5 px-2 py-1 text-xs font-semibold text-slate-200 disabled:opacity-50"
-                >
-                  Last
-                </button>
-              </div>
+            <div className="mt-4">
+              <Pagination
+                page={page}
+                totalItems={filteredHistoryRows.length}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
             </div>
           </Panel>
         </div>
@@ -323,7 +282,6 @@ export default function ReceptionVisitorListPage() {
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Visitor</p>
                 <p className="text-lg font-semibold text-white">{detail.visitor_name}</p>
-                <p className="text-xs text-slate-400">Visitor ID: {detail.visitor_id}</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Contact</p>
@@ -354,10 +312,6 @@ export default function ReceptionVisitorListPage() {
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-400">ID Card</p>
                   <p>{detail.id_number ?? "-"}</p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Visit ID</p>
-                  <p>{detail.visit_id}</p>
                 </div>
               </div>
               <div className="grid gap-2 md:grid-cols-2">
