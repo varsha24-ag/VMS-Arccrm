@@ -44,37 +44,40 @@ export default function ReceptionDashboard() {
   useEffect(() => {
     let mounted = true;
 
-    async function loadData() {
-      setLoading(true);
+    async function loadData(isInitial = false) {
+      if (isInitial && mounted) setLoading(true);
       try {
         const [historyData, hostData] = await Promise.all([
           apiFetch<VisitHistoryItem[]>("/visit/history"),
           apiFetch<Array<{ id: number; name: string }>>("/employees/hosts"),
         ]);
         if (!mounted) return;
-        setHistory(historyData ?? []);
+
+        setHistory((prev) => {
+          const next = historyData ?? [];
+          return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
+        });
+
         const map: Record<number, string> = {};
         (hostData ?? []).forEach((host) => {
           map[host.id] = host.name;
         });
-        setHostMap(map);
+        setHostMap((prev) => {
+          return JSON.stringify(prev) === JSON.stringify(map) ? prev : map;
+        });
+
       } catch (err) {
         if (!mounted) return;
-        setHistory([]);
-        setHostMap({});
+        // Keep old data on transient network error, no need to wipe out the screen
       } finally {
-        if (mounted) setLoading(false);
+        if (isInitial && mounted) setLoading(false);
       }
     }
 
-    void loadData();
-    const interval = window.setInterval(() => {
-      void loadData();
-    }, 10000);
+    void loadData(true);
 
     return () => {
       mounted = false;
-      window.clearInterval(interval);
     };
   }, []);
 
@@ -101,15 +104,14 @@ export default function ReceptionDashboard() {
       .slice(0, 6)
       .map((item) => ({
         title: item.visitor_name,
-        subtitle: `${item.purpose ?? "Visit"} · Host: ${
-          item.host_employee_id ? hostMap[item.host_employee_id] ?? "Unknown" : "Unassigned"
-        }`,
+        subtitle: `${item.purpose ?? "Visit"} · Host: ${item.host_employee_id ? hostMap[item.host_employee_id] ?? "Unknown" : "Unassigned"
+          }`,
         status:
           item.status === "approved"
             ? "Approved"
             : item.status === "pending"
-            ? "Pending"
-            : item.status,
+              ? "Pending"
+              : item.status,
       }));
   }, [history, hostMap]);
 

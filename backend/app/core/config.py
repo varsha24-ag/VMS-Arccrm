@@ -28,14 +28,14 @@ class Settings(BaseSettings):
         ]
     )
     CORS_ORIGIN_REGEX: str = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
-    SMTP_HOST: str | None = None
+    SMTP_HOST: Optional[str] = None
     SMTP_PORT: int = 587
-    SMTP_USER: str | None = None
-    SMTP_PASSWORD: str | None = None
-    SMTP_FROM: str | None = None
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_FROM: Optional[str] = None
     SMTP_USE_TLS: bool = True
-    APP_BASE_URL: str | None = None
-    RECEPTION_EMAIL: str | None = None
+    APP_BASE_URL: Optional[str] = None
+    RECEPTION_EMAIL: Optional[str] = None
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
