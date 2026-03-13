@@ -35,7 +35,7 @@ export function clearAuthSession() {
 
 export function getRoleRedirectPath(role: string) {
   const normalized = role.toLowerCase();
-  if (normalized === "admin") return "/reception/dashboard";
+  if (normalized === "admin") return "/admin/dashboard";
   if (normalized === "receptionist" || normalized === "reception") return "/reception/dashboard";
   return "/employee/dashboard";
 }

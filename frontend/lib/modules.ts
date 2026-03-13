@@ -8,6 +8,13 @@ export interface ModuleConfig {
 }
 
 export const MODULES: ModuleConfig[] = [
+  // Admin Modules
+  { id: "analytics", label: "Analytics", path: "/admin/dashboard", role: ["admin"] },
+  { id: "reports", label: "Reports", path: "/admin/reports", role: ["admin"] },
+  { id: "users", label: "User Management", path: "/admin/users", role: ["admin"] },
+  { id: "settings", label: "System Settings", path: "/admin/settings", role: ["admin"] },
+  { id: "audit", label: "Audit Logs", path: "/admin/audit", role: ["admin"] },
+
   // Receptionist Modules
   { id: "checkin", label: "Visitor Check-in", path: "/reception/checkin", role: ["receptionist", "admin"] },
   { id: "checkout", label: "Visitor Check-out", path: "/reception/checkout", role: ["receptionist", "admin"] },

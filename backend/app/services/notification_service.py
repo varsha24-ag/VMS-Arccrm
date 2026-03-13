@@ -3,6 +3,7 @@ import smtplib
 from pathlib import Path
 from email.utils import make_msgid
 from email.message import EmailMessage
+from typing import Optional
 
 from app.core.config import settings
 
@@ -13,18 +14,18 @@ def send_host_notification(
     host_email: str,
     host_name: str,
     visitor_name: str,
-    purpose: str | None,
-    phone: str | None,
-    company: str | None,
-    photo_url: str | None,
-    approval_token: str | None,
+    purpose: Optional[str],
+    phone: Optional[str],
+    company: Optional[str],
+    photo_url: Optional[str],
+    approval_token: Optional[str],
     visit_id: int,
 ) -> bool:
     if not settings.SMTP_HOST or not settings.SMTP_FROM:
         logger.warning("SMTP not configured. Email not sent.")
         return False
 
-    base_url = settings.APP_BASE_URL or "http://localhost:8000"
+    base_url = settings.APP_BASE_URL or "http://localhost:8005"
     approve_link = f"{base_url}/visits/{visit_id}/approve?token={approval_token}"
     reject_link = f"{base_url}/visits/{visit_id}/reject?token={approval_token}"
 

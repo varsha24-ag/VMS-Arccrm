@@ -9,6 +9,7 @@ from app.models import Employee, Visitor, IdCard  # noqa: F401 - ensures table m
 def create_tables() -> None:
     Base.metadata.create_all(bind=engine)
 
+
 def repair_visitor_schema() -> None:
     inspector = inspect(engine)
     if "visitors" not in inspector.get_table_names():
@@ -51,6 +52,7 @@ def repair_visitor_schema() -> None:
             connection.execute(text("ALTER TABLE visitors ADD COLUMN created_at TIMESTAMPTZ DEFAULT now()"))
             columns.add("created_at")
 
+
 def repair_visit_schema() -> None:
     inspector = inspect(engine)
     if "visits" not in inspector.get_table_names():
@@ -80,6 +82,15 @@ def repair_visit_schema() -> None:
         if "rejected_at" not in columns:
             connection.execute(text("ALTER TABLE visits ADD COLUMN rejected_at TIMESTAMPTZ"))
             columns.add("rejected_at")
+        if "approval_email_sent" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN approval_email_sent BOOLEAN"))
+            columns.add("approval_email_sent")
+        if "approval_email_error" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN approval_email_error VARCHAR"))
+            columns.add("approval_email_error")
+        if "approval_email_last_attempt_at" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN approval_email_last_attempt_at TIMESTAMPTZ"))
+            columns.add("approval_email_last_attempt_at")
 
 
 def seed_employees(db: Session) -> int:
@@ -111,7 +122,7 @@ def seed_employees(db: Session) -> int:
         {
             "name": "Varsha Nagda",
             "email": "varsha.nagda@arcgate.com",
-            "phone": "+919900000004",
+            "phone": "9900000004",
             "password": "Employee@123",
             "role": "employee",
             "department": "Admin",
@@ -144,6 +155,27 @@ def seed_employees(db: Session) -> int:
     return created_count
 
 
+def create_admin_user(db: Session) -> bool:
+    admin_email = "admin@arccrm.local"
+    admin_user = db.query(Employee).filter(Employee.email == admin_email).first()
+
+    if admin_user:
+        return False
+
+    db.add(
+        Employee(
+            name="System Admin",
+            email=admin_email,
+            phone="9900000001",
+            password_hash=get_password_hash("Admin@123"),
+            role="admin",
+            department="IT",
+        )
+    )
+    db.commit()
+    return True
+
+
 def seed_id_cards(db: Session) -> int:
     existing = db.query(IdCard).count()
     if existing > 0:
@@ -162,6 +194,7 @@ def bootstrap_database() -> int:
     repair_visit_schema()
     db = SessionLocal()
     try:
+        create_admin_user(db)
         created_employees = seed_employees(db)
         created_cards = seed_id_cards(db)
         return created_employees + created_cards
