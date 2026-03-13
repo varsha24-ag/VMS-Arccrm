@@ -1,6 +1,7 @@
 from datetime import datetime
 from base64 import b64encode
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse
@@ -18,10 +19,10 @@ router = APIRouter(tags=["visits-public"])
 def build_approval_page(
     status: str,
     visitor_name: str,
-    phone: str | None,
-    company: str | None,
-    purpose: str | None,
-    photo_url: str | None,
+    phone: Optional[str],
+    company: Optional[str],
+    purpose: Optional[str],
+    photo_url: Optional[str],
     approve_link: str,
     reject_link: str,
     action_taken: bool,

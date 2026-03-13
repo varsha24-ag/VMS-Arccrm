@@ -1,26 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getAuthUser, getRoleRedirectPath, AuthUser } from "@/lib/auth";
+import { useAuthGuard } from "@/lib/use-auth-guard";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
 export default function AdminDashboard() {
-  const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
-
-  useEffect(() => {
-    const authUser = getAuthUser();
-    if (!authUser) {
-      router.replace("/auth/login");
-      return;
-    }
-    if (authUser.role !== "admin") {
-      router.replace(getRoleRedirectPath(authUser.role));
-      return;
-    }
-    setUser(authUser);
-  }, [router]);
+  const user = useAuthGuard({ allowedRoles: ["admin"] });
 
   if (!user) return null;
 
@@ -29,7 +13,7 @@ export default function AdminDashboard() {
       <header className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dashboard Overview</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Welcome back, {user.name}. Here's what's happening today.
+          Welcome back, {user.name}. Here&apos;s what&apos;s happening today.
         </p>
       </header>
 

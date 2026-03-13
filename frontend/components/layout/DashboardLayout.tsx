@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { AuthUser, clearAuthSession } from "@/lib/auth";
-import { getModulesForRole, MODULES } from "@/lib/modules";
+import { getModulesForRole } from "@/lib/modules";
 
 interface DashboardLayoutProps {
     children: ReactNode;

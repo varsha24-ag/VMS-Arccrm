@@ -5,13 +5,19 @@ import { useMemo } from "react";
 type PageItem = number | "ellipsis";
 
 function buildPageItems(totalPages: number, currentPage: number): PageItem[] {
-  if (totalPages <= 3) {
+  if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, idx) => idx + 1);
   }
-  if (totalPages === 4) {
-    return [1, 2, 3, 4];
-  }
-  return [1, 2, 3, "ellipsis", totalPages];
+
+  const windowStart = Math.max(2, currentPage - 1);
+  const windowEnd = Math.min(totalPages - 1, currentPage + 1);
+
+  const items: PageItem[] = [1];
+  if (windowStart > 2) items.push("ellipsis");
+  for (let page = windowStart; page <= windowEnd; page++) items.push(page);
+  if (windowEnd < totalPages - 1) items.push("ellipsis");
+  items.push(totalPages);
+  return items;
 }
 
 interface PaginationProps {

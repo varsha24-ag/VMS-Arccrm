@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import DashboardShell from "@/components/dashboard-shell";
 import { Panel, StatGrid, StatusList, TextList } from "@/components/dashboard/panels";
 import { apiFetch } from "@/lib/api";
-import { getAuthUser, getRoleRedirectPath } from "@/lib/auth";
+import { useAuthGuard } from "@/lib/use-auth-guard";
 
 type VisitHistoryItem = {
   visit_id: number;
@@ -26,21 +25,10 @@ type VisitHistoryItem = {
 };
 
 export default function ReceptionDashboard() {
-  const router = useRouter();
+  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
   const [history, setHistory] = useState<VisitHistoryItem[]>([]);
   const [hostMap, setHostMap] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const user = getAuthUser();
-    if (!user) {
-      router.replace("/auth/login");
-      return;
-    }
-    if (user.role !== "receptionist" && user.role !== "admin") {
-      router.replace(getRoleRedirectPath(user.role));
-    }
-  }, [router]);
 
   useEffect(() => {
     let mounted = true;
@@ -67,7 +55,7 @@ export default function ReceptionDashboard() {
           return JSON.stringify(prev) === JSON.stringify(map) ? prev : map;
         });
 
-      } catch (err) {
+      } catch {
         if (!mounted) return;
         // Keep old data on transient network error, no need to wipe out the screen
       } finally {
@@ -128,6 +116,8 @@ export default function ReceptionDashboard() {
       `Checked-out today: ${checkedOut}`,
     ];
   }, [history]);
+
+  if (!user) return null;
 
   return (
     <DashboardShell

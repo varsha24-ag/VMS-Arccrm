@@ -42,7 +42,7 @@ def send_host_notification(
         "</svg>"
     )
     uploads_dir = Path(__file__).resolve().parents[2] / "uploads" / "visitors"
-    photo_bytes: bytes | None = None
+    photo_bytes: Optional[bytes] = None
     photo_mime = "image/jpeg"
     if photo_url and photo_url.startswith("/uploads/visitors/"):
         local_path = uploads_dir / Path(photo_url).name
