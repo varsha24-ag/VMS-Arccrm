@@ -19,8 +19,9 @@ class Employee(Base):
     def validate_phone(self, key, value):
         if value is None:
             return value
-        # Strip any non-digit characters
+        # Strip any non-digit characters for length check
         digits = "".join(filter(str.isdigit, value))
-        if len(digits) != 10:
-            raise ValueError("Phone number must be exactly 10 digits")
-        return digits
+        if not (10 <= len(digits) <= 15):
+            raise ValueError("Phone number must be between 10 and 15 digits")
+        # Store the original value (preserving + prefix if present)
+        return value

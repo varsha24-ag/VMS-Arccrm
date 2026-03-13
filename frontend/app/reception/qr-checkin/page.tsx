@@ -35,9 +35,16 @@ export default function ReceptionQrCheckinPage() {
   >([]);
   const [listLoading, setListLoading] = useState(false);
   const [loading, setLoading] = useState(false);
-  const pollRef = useRef<number | null>(null);
-  const listPollRef = useRef<number | null>(null);
   const { pushToast } = useToast();
+
+  const [debouncedQrCode, setDebouncedQrCode] = useState("");
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQrCode(qrCode);
+    }, 600);
+    return () => clearTimeout(handler);
+  }, [qrCode]);
 
   useEffect(() => {
     const user = getAuthUser();
@@ -51,7 +58,7 @@ export default function ReceptionQrCheckinPage() {
   }, [router]);
 
   async function fetchVisitList(showToast = false) {
-    setListLoading(true);
+    if (showToast) setListLoading(true);
     try {
       const data = await apiFetch<
         Array<{
@@ -62,7 +69,12 @@ export default function ReceptionQrCheckinPage() {
           status: string;
         }>
       >("/visits/list");
-      setVisitList(data ?? []);
+
+      setVisitList((prev) => {
+        const next = data ?? [];
+        return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
+      });
+
       if (showToast) {
         pushToast({
           title: "Status refreshed",
@@ -77,7 +89,7 @@ export default function ReceptionQrCheckinPage() {
         pushToast({ title: "Failed to refresh", description: errorMessage, variant: "error" });
       }
     } finally {
-      setListLoading(false);
+      if (showToast) setListLoading(false);
     }
   }
 
@@ -118,10 +130,12 @@ export default function ReceptionQrCheckinPage() {
     }
   }
 
-  async function handleStatusCheck(showToast = true) {
-    if (!qrCode) return;
-    setMessage("");
-    setLoading(true);
+  async function handleStatusCheck(showToast = true, codeToCheck = qrCode) {
+    if (!codeToCheck) return;
+    if (showToast) {
+      setMessage("");
+      setLoading(true);
+    }
     try {
       const data = await apiFetch<{
         visit_id: number;
@@ -129,15 +143,21 @@ export default function ReceptionQrCheckinPage() {
         visitor_name: string;
         host_name?: string;
         status: string;
-      }>(`/visits/status?code=${encodeURIComponent(qrCode)}`);
-      setVisitorDetail({
-        name: data.visitor_name,
-        phone: undefined,
-        company: data.host_name,
-        status: data.status,
+      }>(`/visits/status?code=${encodeURIComponent(codeToCheck)}`);
+
+      setVisitorDetail((prev) => {
+        const next = {
+          name: data.visitor_name,
+          phone: undefined,
+          company: data.host_name,
+          status: data.status,
+        };
+        return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
       });
+
       setVisitorStatus(data.status ?? "");
       setResolvedVisitorId(data.visitor_id);
+
       if (showToast) {
         if (data.status === "approved") {
           pushToast({ title: "Approved by host", description: "You can check-in this visitor.", variant: "success" });
@@ -148,53 +168,29 @@ export default function ReceptionQrCheckinPage() {
         }
       }
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to fetch status";
-      setMessage(errorMessage);
+      if (showToast) {
+        const errorMessage =
+          err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to fetch status";
+        setMessage(errorMessage);
+        pushToast({ title: "Status check failed", description: errorMessage, variant: "error" });
+      }
       setVisitorDetail(null);
       setVisitorStatus("");
-      pushToast({ title: "Status check failed", description: errorMessage, variant: "error" });
     } finally {
-      setLoading(false);
+      if (showToast) setLoading(false);
     }
   }
 
   useEffect(() => {
     void fetchVisitList(false);
-    if (!listPollRef.current) {
-      listPollRef.current = window.setInterval(() => {
-        void fetchVisitList(false);
-      }, 10000);
-    }
-    return () => {
-      if (listPollRef.current) {
-        window.clearInterval(listPollRef.current);
-        listPollRef.current = null;
-      }
-    };
   }, []);
 
   useEffect(() => {
-    if (!qrCode) {
-      if (pollRef.current) {
-        window.clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
+    if (!debouncedQrCode) {
       return;
     }
-    void handleStatusCheck(false);
-    if (!pollRef.current) {
-      pollRef.current = window.setInterval(() => {
-        void handleStatusCheck(false);
-      }, 5000);
-    }
-    return () => {
-      if (pollRef.current) {
-        window.clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
-    };
-  }, [qrCode]);
+    void handleStatusCheck(false, debouncedQrCode);
+  }, [debouncedQrCode]);
 
   return (
     <DashboardShell
@@ -266,19 +262,18 @@ export default function ReceptionQrCheckinPage() {
                   <p className="text-xs text-slate-400">Host: {visitorDetail.company ?? "Unknown"}</p>
                 </div>
                 <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    visitorStatus === "approved"
-                      ? "bg-emerald-500/20 text-emerald-200"
-                      : visitorStatus === "rejected"
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${visitorStatus === "approved"
+                    ? "bg-emerald-500/20 text-emerald-200"
+                    : visitorStatus === "rejected"
                       ? "bg-red-500/20 text-red-200"
                       : "bg-yellow-500/20 text-yellow-200"
-                  }`}
+                    }`}
                 >
                   {visitorStatus === "approved"
                     ? "Approved by Host"
                     : visitorStatus === "rejected"
-                    ? "Rejected by Host"
-                    : "Pending Host Response"}
+                      ? "Rejected by Host"
+                      : "Pending Host Response"}
                 </span>
               </div>
               {visitorStatus === "rejected" ? (
@@ -331,19 +326,18 @@ export default function ReceptionQrCheckinPage() {
                       <td className="px-3 py-3 text-sm">{visit.host_name ?? "Unknown"}</td>
                       <td className="px-3 py-3">
                         <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            visit.status === "approved"
-                              ? "bg-emerald-500/20 text-emerald-200"
-                              : visit.status === "rejected"
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${visit.status === "approved"
+                            ? "bg-emerald-500/20 text-emerald-200"
+                            : visit.status === "rejected"
                               ? "bg-red-500/20 text-red-200"
                               : "bg-yellow-500/20 text-yellow-200"
-                          }`}
+                            }`}
                         >
                           {visit.status === "approved"
                             ? "Approved"
                             : visit.status === "rejected"
-                            ? "Rejected"
-                            : "Pending"}
+                              ? "Rejected"
+                              : "Pending"}
                         </span>
                       </td>
                       <td className="px-3 py-3">
@@ -352,6 +346,7 @@ export default function ReceptionQrCheckinPage() {
                           onClick={() => {
                             setQrCode(String(visit.visitor_id));
                             setMessage("");
+                            void handleStatusCheck(true, String(visit.visitor_id));
                           }}
                           className="rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200"
                         >

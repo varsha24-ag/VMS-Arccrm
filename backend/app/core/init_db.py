@@ -103,7 +103,7 @@ def seed_employees(db: Session) -> int:
         {
             "name": "Varsha Nagda",
             "email": "varsha.nagda@arcgate.com",
-            "phone": "+919900000004",
+            "phone": "9900000004",
             "password": "Employee@123",
             "role": "employee",
             "department": "Admin",
@@ -136,12 +136,36 @@ def seed_employees(db: Session) -> int:
     return created_count
 
 
+def create_admin_user(db: Session) -> bool:
+    """
+    Ensures a default admin user exists in the database.
+    """
+    admin_email = "admin@arccrm.local"
+    admin_user = db.query(Employee).filter(Employee.email == admin_email).first()
+    
+    if not admin_user:
+        db.add(
+            Employee(
+                name="System Admin",
+                email=admin_email,
+                phone="9900000001",
+                password_hash=get_password_hash("Admin@123"),
+                role="admin",
+                department="IT",
+            )
+        )
+        db.commit()
+        return True
+    return False
+
+
 def bootstrap_database() -> int:
     create_tables()
     repair_visitor_schema()
     repair_visit_schema()
     db = SessionLocal()
     try:
+        create_admin_user(db)
         return seed_employees(db)
     finally:
         db.close()
