@@ -3,11 +3,12 @@ from sqlalchemy.orm import Session
 
 from app.core.db import Base, SessionLocal, engine
 from app.core.security import get_password_hash
-from app.models import Employee, Visitor  # noqa: F401 - ensures table metadata is registered
+from app.models import Employee, Visitor, IdCard  # noqa: F401 - ensures table metadata is registered
 
 
 def create_tables() -> None:
     Base.metadata.create_all(bind=engine)
+
 
 def repair_visitor_schema() -> None:
     inspector = inspect(engine)
@@ -51,6 +52,7 @@ def repair_visitor_schema() -> None:
             connection.execute(text("ALTER TABLE visitors ADD COLUMN created_at TIMESTAMPTZ DEFAULT now()"))
             columns.add("created_at")
 
+
 def repair_visit_schema() -> None:
     inspector = inspect(engine)
     if "visits" not in inspector.get_table_names():
@@ -80,6 +82,15 @@ def repair_visit_schema() -> None:
         if "rejected_at" not in columns:
             connection.execute(text("ALTER TABLE visits ADD COLUMN rejected_at TIMESTAMPTZ"))
             columns.add("rejected_at")
+        if "approval_email_sent" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN approval_email_sent BOOLEAN"))
+            columns.add("approval_email_sent")
+        if "approval_email_error" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN approval_email_error VARCHAR"))
+            columns.add("approval_email_error")
+        if "approval_email_last_attempt_at" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN approval_email_last_attempt_at TIMESTAMPTZ"))
+            columns.add("approval_email_last_attempt_at")
 
 
 def seed_employees(db: Session) -> int:
@@ -142,21 +153,34 @@ def create_admin_user(db: Session) -> bool:
     """
     admin_email = "admin@arccrm.local"
     admin_user = db.query(Employee).filter(Employee.email == admin_email).first()
-    
-    if not admin_user:
-        db.add(
-            Employee(
-                name="System Admin",
-                email=admin_email,
-                phone="9900000001",
-                password_hash=get_password_hash("Admin@123"),
-                role="admin",
-                department="IT",
-            )
+
+    if admin_user:
+        return False
+
+    db.add(
+        Employee(
+            name="System Admin",
+            email=admin_email,
+            phone="9900000001",
+            password_hash=get_password_hash("Admin@123"),
+            role="admin",
+            department="IT",
         )
-        db.commit()
-        return True
-    return False
+    )
+    db.commit()
+    return True
+
+
+def seed_id_cards(db: Session) -> int:
+    existing = db.query(IdCard).count()
+    if existing > 0:
+        return 0
+
+    seed_cards = ["ID-1001", "ID-1002", "ID-1003", "ID-1004", "ID-1005"]
+    for card_number in seed_cards:
+        db.add(IdCard(id_number=card_number, status="available"))
+    db.commit()
+    return len(seed_cards)
 
 
 def bootstrap_database() -> int:
@@ -166,11 +190,13 @@ def bootstrap_database() -> int:
     db = SessionLocal()
     try:
         create_admin_user(db)
-        return seed_employees(db)
+        created_employees = seed_employees(db)
+        created_cards = seed_id_cards(db)
+        return created_employees + created_cards
     finally:
         db.close()
 
 
 if __name__ == "__main__":
     created = bootstrap_database()
-    print(f"Database bootstrapped. Seeded employees: {created}")
+    print(f"Database bootstrapped. Seeded records: {created}")

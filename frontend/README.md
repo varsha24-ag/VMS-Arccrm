@@ -26,6 +26,7 @@ Open `http://localhost:3000`.
 
 - Login page: `/auth/login`
 - Role redirects:
+  - Admin -> `/reception/dashboard`
   - Receptionist -> `/reception/dashboard`
   - Employee -> `/employee/dashboard`
 - Token is stored in `localStorage` and attached as `Authorization: Bearer <token>`.

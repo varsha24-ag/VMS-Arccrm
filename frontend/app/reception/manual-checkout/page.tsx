@@ -1,11 +1,13 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import DashboardShell from "@/components/dashboard-shell";
 import { Panel } from "@/components/dashboard/panels";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
+import FilterBar from "@/components/ui/filter-bar";
+import Pagination from "@/components/ui/pagination";
 import { apiFetch } from "@/lib/api";
 import { getAuthUser, getRoleRedirectPath } from "@/lib/auth";
 
@@ -22,6 +24,9 @@ export default function ManualCheckoutPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<VisitHistoryItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   useEffect(() => {
     const user = getAuthUser();
@@ -29,7 +34,7 @@ export default function ManualCheckoutPage() {
       router.replace("/auth/login");
       return;
     }
-    if (user.role !== "receptionist") {
+    if (user.role !== "receptionist" && user.role !== "admin") {
       router.replace(getRoleRedirectPath(user.role));
     }
     void loadHistory();
@@ -63,23 +68,60 @@ export default function ManualCheckoutPage() {
     }
   }
 
+  const checkedInRows = useMemo(
+    () =>
+      history
+        .filter((item) => item.status === "checked_in")
+        .sort((a, b) => b.visit_id - a.visit_id),
+    [history]
+  );
+
+  const filteredRows = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return checkedInRows;
+    return checkedInRows.filter((item) => {
+      const haystack = [item.visitor_name, item.visit_id, item.checkin_time]
+        .filter(Boolean)
+        .map((value) => String(value).toLowerCase())
+        .join(" ");
+      return haystack.includes(query);
+    });
+  }, [checkedInRows, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const pagedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, page, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, pageSize]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
   return (
     <DashboardShell
-      title="Manual Check-out"
+      title="Checkout"
       subtitle="Check out visitors by visit ID when needed."
       navItems={[
         { label: "Dashboard", href: "/reception/dashboard" },
+        { label: "Visitors", href: "/reception/visitors" },
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },
-        { label: "QR Check-in", href: "/reception/qr-checkin" },
+        { label: "Check-in", href: "/reception/qr-checkin" },
         { label: "History", href: "/reception/history" },
-        { label: "Manual Check-out", href: "/reception/manual-checkout" },
+        { label: "Checkout", href: "/reception/manual-checkout" },
       ]}
     >
       <div className="space-y-6">
         <EntryDeskHeader
-          title="Manual Check-out"
+          title="Checkout"
           subtitle="Use visit ID to complete check-out quickly."
         />
 
@@ -104,22 +146,34 @@ export default function ManualCheckoutPage() {
         </Panel>
 
         <Panel title="Currently Checked In">
+          <div className="mb-4">
+            <FilterBar
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              searchPlaceholder="Search visitor or visit ID..."
+            />
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead>
                 <tr className="text-slate-300">
-                  <th className="pb-3 pr-3">Visit ID</th>
+                  <th className="pb-3 pr-3">Sr. No.</th>
                   <th className="pb-3 pr-3">Visitor</th>
                   <th className="pb-3 pr-3">Check-in</th>
                   <th className="pb-3">Action</th>
                 </tr>
               </thead>
               <tbody className="text-slate-100">
-                {history
-                  .filter((item) => item.status === "checked_in")
-                  .map((item) => (
+                {pagedRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-3 text-slate-400">
+                      {loading ? "Loading checked-in visitors..." : "No checked-in visitors found."}
+                    </td>
+                  </tr>
+                ) : (
+                  pagedRows.map((item, idx) => (
                     <tr key={item.visit_id} className="border-t border-white/10">
-                      <td className="py-3 pr-3">{item.visit_id}</td>
+                      <td className="py-3 pr-3">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="py-3 pr-3">{item.visitor_name}</td>
                       <td className="py-3 pr-3">
                         {item.checkin_time ? new Date(item.checkin_time).toLocaleString() : "-"}
@@ -135,9 +189,19 @@ export default function ManualCheckoutPage() {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                  ))
+                )}
               </tbody>
             </table>
+          </div>
+          <div className="mt-4">
+            <Pagination
+              page={page}
+              totalItems={filteredRows.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           </div>
         </Panel>
       </div>

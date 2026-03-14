@@ -43,6 +43,19 @@ You can also run it manually:
 python -m app.core.init_db
 ```
 
+### 4.2 Run migrations (Alembic)
+
+```bash
+# Apply all migrations
+alembic upgrade head
+
+# Create a new migration from model changes
+alembic revision --autogenerate -m "describe-change"
+
+# Roll back the last migration
+alembic downgrade -1
+```
+
 ### 5. Test login endpoint
 
 `POST /auth/login`
@@ -61,5 +74,6 @@ python -m app.core.init_db
 - Token validity is 24 hours by default.
 - Protected endpoints require `Authorization: Bearer <token>`.
 - Seed login users:
+  - `admin@arccrm.local` / `Admin@123` (role: admin)
   - `reception@arccrm.local` / `Reception@123` (role: receptionist)
   - `employee@arccrm.local` / `Employee@123` (role: employee)

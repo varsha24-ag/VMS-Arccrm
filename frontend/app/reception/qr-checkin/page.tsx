@@ -1,20 +1,70 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import DashboardShell from "@/components/dashboard-shell";
 import { Panel } from "@/components/dashboard/panels";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/api";
-import { getAuthUser, getRoleRedirectPath } from "@/lib/auth";
+import { useAuthGuard } from "@/lib/use-auth-guard";
+
+type VisitStatusRow = {
+  visit_id: number;
+  visitor_id: number;
+  visitor_name: string;
+  host_name?: string;
+  status: string;
+  approval_email_sent?: boolean | null;
+  approval_email_error?: string | null;
+};
+
+type VisitStatusResult = VisitStatusRow;
+
+type AvailableIdCard = { id: number; id_number: string };
+
+function areVisitStatusListsEqual(a: VisitStatusRow[], b: VisitStatusRow[]) {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const left = a[i];
+    const right = b[i];
+    if (
+      left.visit_id !== right.visit_id ||
+      left.visitor_id !== right.visitor_id ||
+      left.visitor_name !== right.visitor_name ||
+      left.host_name !== right.host_name ||
+      left.status !== right.status ||
+      left.approval_email_sent !== right.approval_email_sent ||
+      left.approval_email_error !== right.approval_email_error
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function areAvailableCardsEqual(a: AvailableIdCard[], b: AvailableIdCard[]) {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const left = a[i];
+    const right = b[i];
+    if (left.id !== right.id || left.id_number !== right.id_number) return false;
+  }
+  return true;
+}
 
 export default function ReceptionQrCheckinPage() {
-  const router = useRouter();
+  const { pushToast } = useToast();
+  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
+
   const [qrCode, setQrCode] = useState("");
   const [idNumber, setIdNumber] = useState("");
+  const [idCardSelection, setIdCardSelection] = useState("");
+  const [customIdNumber, setCustomIdNumber] = useState("");
   const [policyAccepted, setPolicyAccepted] = useState(false);
+
   const [message, setMessage] = useState<string>("");
   const [visitorStatus, setVisitorStatus] = useState<string>("");
   const [resolvedVisitorId, setResolvedVisitorId] = useState<number | null>(null);
@@ -24,78 +74,155 @@ export default function ReceptionQrCheckinPage() {
     company?: string;
     status?: string;
   } | null>(null);
-  const [visitList, setVisitList] = useState<
-    Array<{
-      visit_id: number;
-      visitor_id: number;
-      visitor_name: string;
-      host_name?: string;
-      status: string;
-    }>
-  >([]);
+
+  const [visitList, setVisitList] = useState<VisitStatusRow[]>([]);
   const [listLoading, setListLoading] = useState(false);
+  const [idCardLoading, setIdCardLoading] = useState(false);
+  const [availableCards, setAvailableCards] = useState<AvailableIdCard[]>([]);
+  const [resendLoading, setResendLoading] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(false);
-  const { pushToast } = useToast();
 
-  const [debouncedQrCode, setDebouncedQrCode] = useState("");
+  const cardFetchInFlightRef = useRef(false);
+  const cardsLoadedRef = useRef(false);
+  const skipStatusResetRef = useRef(false);
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedQrCode(qrCode);
-    }, 600);
-    return () => clearTimeout(handler);
-  }, [qrCode]);
-
-  useEffect(() => {
-    const user = getAuthUser();
-    if (!user) {
-      router.replace("/auth/login");
-      return;
-    }
-    if (user.role !== "receptionist") {
-      router.replace(getRoleRedirectPath(user.role));
-    }
-  }, [router]);
-
-  async function fetchVisitList(showToast = false) {
-    if (showToast) setListLoading(true);
-    try {
-      const data = await apiFetch<
-        Array<{
-          visit_id: number;
-          visitor_id: number;
-          visitor_name: string;
-          host_name?: string;
-          status: string;
-        }>
-      >("/visits/list");
-
-      setVisitList((prev) => {
+  const fetchVisitList = useCallback(
+    async (options: { showToast?: boolean; showLoading?: boolean } = {}) => {
+      const showToast = options.showToast ?? false;
+      const showLoading = options.showLoading ?? false;
+      if (showLoading) setListLoading(true);
+      try {
+        const data = await apiFetch<VisitStatusRow[]>("/visits/list");
         const next = data ?? [];
-        return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
-      });
+        setVisitList((prev) => (areVisitStatusListsEqual(prev, next) ? prev : next));
+        if (showToast) {
+          pushToast({
+            title: "Status refreshed",
+            description: "Visitor approval statuses updated.",
+            variant: "success",
+          });
+        }
+      } catch (err) {
+        if (showToast) {
+          const errorMessage =
+            err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to load visitors";
+          pushToast({ title: "Failed to refresh", description: errorMessage, variant: "error" });
+        }
+      } finally {
+        if (showLoading) setListLoading(false);
+      }
+    },
+    [pushToast]
+  );
 
-      if (showToast) {
+  const fetchAvailableCards = useCallback(
+    async (options: { showToast?: boolean; showLoading?: boolean; force?: boolean } = {}) => {
+      const showToast = options.showToast ?? false;
+      const showLoading = options.showLoading ?? showToast;
+      const force = options.force ?? false;
+
+      if (cardFetchInFlightRef.current) return;
+      if (!force && cardsLoadedRef.current && !showToast && !showLoading) return;
+
+      cardFetchInFlightRef.current = true;
+      if (showLoading) setIdCardLoading(true);
+      try {
+        const data = await apiFetch<AvailableIdCard[]>("/id-cards/available");
+        const next = data ?? [];
+        setAvailableCards((prev) => (areAvailableCardsEqual(prev, next) ? prev : next));
+        cardsLoadedRef.current = true;
+
+        if (showToast) {
+          pushToast({
+            title: "ID cards updated",
+            description: "Available ID cards refreshed.",
+            variant: "success",
+          });
+        }
+      } catch (err) {
+        if (showToast) {
+          const errorMessage =
+            err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to load ID cards";
+          pushToast({ title: "Failed to refresh", description: errorMessage, variant: "error" });
+        }
+      } finally {
+        cardFetchInFlightRef.current = false;
+        if (showLoading) setIdCardLoading(false);
+      }
+    },
+    [pushToast]
+  );
+
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([
+      fetchVisitList({ showToast: true, showLoading: true }),
+      fetchAvailableCards({ showLoading: true, force: true }),
+    ]);
+  }, [fetchAvailableCards, fetchVisitList]);
+
+  const handleResendApprovalEmail = useCallback(
+    async (visitId: number) => {
+      setResendLoading((prev) => (prev[visitId] ? prev : { ...prev, [visitId]: true }));
+      try {
+        const result = await apiFetch<{ sent: boolean }>("/visitor/resend-approval", {
+          method: "POST",
+          body: JSON.stringify({ visit_id: visitId }),
+        });
+
+        if (result?.sent) {
+          pushToast({
+            title: "Email sent",
+            description: "Approval email resent to the host.",
+            variant: "success",
+          });
+          await fetchVisitList();
+          return;
+        }
+
         pushToast({
-          title: "Status refreshed",
-          description: "Visitor approval statuses updated.",
-          variant: "success",
+          title: "Email not sent",
+          description: "Approval email could not be resent.",
+          variant: "error",
+        });
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to resend approval email";
+        pushToast({ title: "Email not sent", description: errorMessage, variant: "error" });
+      } finally {
+        setResendLoading((prev) => {
+          if (!prev[visitId]) return prev;
+          const next = { ...prev };
+          delete next[visitId];
+          return next;
         });
       }
-    } catch (err) {
-      if (showToast) {
-        const errorMessage =
-          err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to load visitors";
-        pushToast({ title: "Failed to refresh", description: errorMessage, variant: "error" });
-      }
-    } finally {
-      if (showToast) setListLoading(false);
-    }
-  }
+    },
+    [fetchVisitList, pushToast]
+  );
+
+  const handleLoadVisit = useCallback((visit: VisitStatusRow) => {
+    skipStatusResetRef.current = true;
+    setQrCode(String(visit.visitor_id));
+    setMessage("");
+    setResolvedVisitorId(visit.visitor_id);
+    setVisitorStatus(visit.status ?? "");
+    setVisitorDetail({
+      name: visit.visitor_name,
+      phone: undefined,
+      company: visit.host_name,
+      status: visit.status,
+    });
+  }, []);
 
   async function handleQrCheckin(e: FormEvent) {
     e.preventDefault();
     setMessage("");
+    if (!idNumber.trim()) {
+      const msg = "Select an ID card number.";
+      setMessage(msg);
+      pushToast({ title: "ID card required", description: msg, variant: "error" });
+      return;
+    }
     setLoading(true);
     try {
       await apiFetch("/visit/checkin", {
@@ -114,9 +241,14 @@ export default function ReceptionQrCheckinPage() {
       });
       setQrCode("");
       setIdNumber("");
+      setIdCardSelection("");
+      setCustomIdNumber("");
       setVisitorDetail(null);
       setVisitorStatus("");
       setResolvedVisitorId(null);
+
+      void fetchAvailableCards();
+      void fetchVisitList();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "QR check-in failed";
       setMessage(errorMessage);
@@ -130,87 +262,87 @@ export default function ReceptionQrCheckinPage() {
     }
   }
 
-  async function handleStatusCheck(showToast = true, codeToCheck = qrCode) {
-    if (!codeToCheck) return;
-    if (showToast) {
-      setMessage("");
-      setLoading(true);
-    }
-    try {
-      const data = await apiFetch<{
-        visit_id: number;
-        visitor_id: number;
-        visitor_name: string;
-        host_name?: string;
-        status: string;
-      }>(`/visits/status?code=${encodeURIComponent(codeToCheck)}`);
-
-      setVisitorDetail((prev) => {
-        const next = {
-          name: data.visitor_name,
-          phone: undefined,
-          company: data.host_name,
-          status: data.status,
-        };
-        return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
-      });
-
-      setVisitorStatus(data.status ?? "");
-      setResolvedVisitorId(data.visitor_id);
-
-      if (showToast) {
-        if (data.status === "approved") {
-          pushToast({ title: "Approved by host", description: "You can check-in this visitor.", variant: "success" });
-        } else if (data.status === "rejected") {
-          pushToast({ title: "Rejected by host", description: "Do not proceed with check-in.", variant: "error" });
-        } else {
-          pushToast({ title: "Pending approval", description: "Wait for host response.", variant: "info" });
+  const handleStatusCheck = useCallback(
+    async (options: { showToast?: boolean; showLoading?: boolean } = {}) => {
+      const showToast = options.showToast ?? true;
+      const showLoading = options.showLoading ?? showToast;
+      if (!qrCode) return;
+      if (showToast) setMessage("");
+      if (showLoading) setLoading(true);
+      try {
+        const data = await apiFetch<VisitStatusResult>(`/visits/status?code=${encodeURIComponent(qrCode)}`);
+        setVisitorDetail((prev) => {
+          const next = {
+            name: data.visitor_name,
+            phone: undefined,
+            company: data.host_name,
+            status: data.status,
+          };
+          if (!prev) return next;
+          return prev.name === next.name && prev.company === next.company && prev.status === next.status ? prev : next;
+        });
+        setVisitorStatus((prev) => (prev === (data.status ?? "") ? prev : data.status ?? ""));
+        setResolvedVisitorId((prev) => (prev === data.visitor_id ? prev : data.visitor_id));
+        if (showToast) {
+          if (data.status === "approved") {
+            pushToast({ title: "Approved by host", description: "You can check-in this visitor.", variant: "success" });
+          } else if (data.status === "rejected") {
+            pushToast({ title: "Rejected by host", description: "Do not proceed with check-in.", variant: "error" });
+          } else {
+            pushToast({ title: "Pending approval", description: "Wait for host response.", variant: "info" });
+          }
         }
-      }
-    } catch (err) {
-      if (showToast) {
+      } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to fetch status";
-        setMessage(errorMessage);
-        pushToast({ title: "Status check failed", description: errorMessage, variant: "error" });
+        if (showToast) {
+          setMessage(errorMessage);
+          setVisitorDetail(null);
+          setVisitorStatus("");
+          pushToast({ title: "Status check failed", description: errorMessage, variant: "error" });
+        }
+      } finally {
+        if (showLoading) setLoading(false);
       }
-      setVisitorDetail(null);
-      setVisitorStatus("");
-    } finally {
-      if (showToast) setLoading(false);
-    }
-  }
+    },
+    [pushToast, qrCode]
+  );
 
   useEffect(() => {
-    void fetchVisitList(false);
-  }, []);
+    void fetchVisitList({ showLoading: true });
+    void fetchAvailableCards({ showLoading: true });
+  }, [fetchAvailableCards, fetchVisitList]);
 
   useEffect(() => {
-    if (!debouncedQrCode) {
+    if (!qrCode) return;
+    if (skipStatusResetRef.current) {
+      skipStatusResetRef.current = false;
       return;
     }
-    void handleStatusCheck(false, debouncedQrCode);
-  }, [debouncedQrCode]);
+    setVisitorDetail(null);
+    setVisitorStatus("");
+    setResolvedVisitorId(null);
+  }, [qrCode]);
+
+  if (!user) return null;
 
   return (
     <DashboardShell
-      title="QR Check-in"
+      title="Check-in"
       subtitle="Scan or paste a QR code to complete a check-in."
       navItems={[
         { label: "Dashboard", href: "/reception/dashboard" },
+        { label: "Visitors", href: "/reception/visitors" },
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },
-        { label: "QR Check-in", href: "/reception/qr-checkin" },
+        { label: "Check-in", href: "/reception/qr-checkin" },
         { label: "History", href: "/reception/history" },
-        { label: "Manual Check-out", href: "/reception/manual-checkout" },
+        { label: "Checkout", href: "/reception/manual-checkout" },
       ]}
     >
       <div className="space-y-6">
-        <EntryDeskHeader
-          title="QR Fast Check-in"
-          subtitle="Use QR codes for returning visitors and access passes."
-        />
+        <EntryDeskHeader title="QR Fast Check-in" subtitle="Use QR codes for returning visitors and access passes." />
 
         <Panel title="QR Code">
           <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleQrCheckin}>
@@ -221,16 +353,50 @@ export default function ReceptionQrCheckinPage() {
               onChange={(e) => setQrCode(e.target.value)}
               required
             />
-            <input
+            <select
               className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
-              placeholder="Enter ID card number"
-              value={idNumber}
-              onChange={(e) => setIdNumber(e.target.value)}
+              value={idCardSelection}
+              onChange={(e) => {
+                const value = e.target.value;
+                setIdCardSelection(value);
+                if (value === "__custom__") {
+                  setIdNumber("");
+                  setCustomIdNumber("");
+                } else {
+                  setCustomIdNumber("");
+                  setIdNumber(value);
+                }
+              }}
               required
-            />
+            >
+              <option value="" className="bg-[#0f1e2f] text-white">
+                {idCardLoading ? "Loading ID cards..." : "Select ID card"}
+              </option>
+              {availableCards.map((card) => (
+                <option key={card.id} value={card.id_number} className="bg-[#0f1e2f] text-white">
+                  {card.id_number}
+                </option>
+              ))}
+              <option value="__custom__" className="bg-[#0f1e2f] text-white">
+                Custom
+              </option>
+            </select>
+            {idCardSelection === "__custom__" ? (
+              <input
+                className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+                placeholder="Enter ID card number"
+                value={customIdNumber}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setCustomIdNumber(value);
+                  setIdNumber(value);
+                }}
+                required
+              />
+            ) : null}
             <button
               type="button"
-              onClick={() => handleStatusCheck(true)}
+              onClick={() => handleStatusCheck({ showToast: true, showLoading: true })}
               disabled={loading}
               className="rounded-md border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 disabled:opacity-60"
             >
@@ -244,6 +410,7 @@ export default function ReceptionQrCheckinPage() {
               {loading ? "Checking in..." : "Check-in"}
             </button>
           </form>
+
           <label className="mt-3 flex items-center gap-2 text-sm text-slate-200">
             <input
               type="checkbox"
@@ -253,6 +420,7 @@ export default function ReceptionQrCheckinPage() {
             />
             Policy agreement accepted
           </label>
+
           {visitorDetail ? (
             <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -262,25 +430,22 @@ export default function ReceptionQrCheckinPage() {
                   <p className="text-xs text-slate-400">Host: {visitorDetail.company ?? "Unknown"}</p>
                 </div>
                 <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${visitorStatus === "approved"
-                    ? "bg-emerald-500/20 text-emerald-200"
-                    : visitorStatus === "rejected"
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    visitorStatus === "approved"
+                      ? "bg-emerald-500/20 text-emerald-200"
+                      : visitorStatus === "rejected"
                       ? "bg-red-500/20 text-red-200"
                       : "bg-yellow-500/20 text-yellow-200"
-                    }`}
+                  }`}
                 >
                   {visitorStatus === "approved"
                     ? "Approved by Host"
                     : visitorStatus === "rejected"
-                      ? "Rejected by Host"
-                      : "Pending Host Response"}
+                    ? "Rejected by Host"
+                    : "Pending Host Response"}
                 </span>
               </div>
-              {visitorStatus === "rejected" ? (
-                <p className="mt-3 text-xs text-red-300">
-                  This visit has been rejected by the host.
-                </p>
-              ) : null}
+              {visitorStatus === "rejected" ? <p className="mt-3 text-xs text-red-300">This visit has been rejected by the host.</p> : null}
             </div>
           ) : null}
           {message ? <p className="mt-3 text-sm text-[#ffc5aa]">{message}</p> : null}
@@ -289,14 +454,16 @@ export default function ReceptionQrCheckinPage() {
         <Panel
           title="Visitor Approval Status"
           action={
-            <button
-              type="button"
-              onClick={() => fetchVisitList(true)}
-              disabled={listLoading}
-              className="rounded-md border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 disabled:opacity-60"
-            >
-              {listLoading ? "Refreshing..." : "Refresh"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={listLoading || idCardLoading}
+                className="rounded-md border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 disabled:opacity-60"
+              >
+                {listLoading || idCardLoading ? "Refreshing..." : "Refresh"}
+              </button>
+            </div>
           }
         >
           <div className="overflow-x-auto">
@@ -306,7 +473,7 @@ export default function ReceptionQrCheckinPage() {
                   <th className="px-3 py-2">Visitor</th>
                   <th className="px-3 py-2">Host</th>
                   <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2">Use</th>
+                  <th className="px-3 py-2">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
@@ -317,51 +484,88 @@ export default function ReceptionQrCheckinPage() {
                     </td>
                   </tr>
                 ) : (
-                  visitList.map((visit) => (
-                    <tr key={visit.visit_id} className="text-slate-200">
-                      <td className="px-3 py-3">
-                        <p className="font-semibold text-white">{visit.visitor_name}</p>
-                        <p className="text-xs text-slate-400">Visitor ID: {visit.visitor_id}</p>
-                      </td>
-                      <td className="px-3 py-3 text-sm">{visit.host_name ?? "Unknown"}</td>
-                      <td className="px-3 py-3">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${visit.status === "approved"
-                            ? "bg-emerald-500/20 text-emerald-200"
-                            : visit.status === "rejected"
-                              ? "bg-red-500/20 text-red-200"
-                              : "bg-yellow-500/20 text-yellow-200"
+                  visitList.map((visit) => {
+                    const emailSent = visit.approval_email_sent === true;
+                    const emailNotSent = visit.approval_email_sent === false || Boolean(visit.approval_email_error);
+                    const canResend = visit.status === "pending" && !emailSent;
+                    const resendBusy = Boolean(resendLoading[visit.visit_id]);
+                    const statusLabel =
+                      visit.status === "approved"
+                        ? "Approved"
+                        : visit.status === "rejected"
+                        ? "Rejected"
+                        : visit.status === "pending"
+                        ? "Pending"
+                        : visit.status === "checked_in"
+                        ? "Checked in"
+                        : visit.status === "checked_out"
+                        ? "Checked out"
+                        : visit.status;
+
+                    return (
+                      <tr key={visit.visit_id} className="text-slate-200">
+                        <td className="px-3 py-3">
+                          <p className="font-semibold text-white">{visit.visitor_name}</p>
+                          <p className="text-xs text-slate-400">Visitor ID: {visit.visitor_id}</p>
+                        </td>
+                        <td className="px-3 py-3 text-sm">{visit.host_name ?? "Unknown"}</td>
+                        <td className="px-3 py-3">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                              visit.status === "approved"
+                                ? "bg-emerald-500/20 text-emerald-200"
+                                : visit.status === "rejected"
+                                ? "bg-red-500/20 text-red-200"
+                                : visit.status === "checked_in"
+                                ? "bg-sky-500/20 text-sky-200"
+                                : visit.status === "checked_out"
+                                ? "bg-slate-500/20 text-slate-200"
+                                : "bg-yellow-500/20 text-yellow-200"
                             }`}
-                        >
-                          {visit.status === "approved"
-                            ? "Approved"
-                            : visit.status === "rejected"
-                              ? "Rejected"
-                              : "Pending"}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setQrCode(String(visit.visitor_id));
-                            setMessage("");
-                            void handleStatusCheck(true, String(visit.visitor_id));
-                          }}
-                          className="rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200"
-                        >
-                          Load
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                          >
+                            {statusLabel}
+                          </span>
+                          {visit.status === "checked_in" || visit.status === "checked_out" ? null : (
+                            <p className="mt-2 text-xs text-slate-400">
+                              {emailSent ? (
+                                "Email sent"
+                              ) : emailNotSent ? (
+                                <>Email not sent{visit.approval_email_error ? `: ${visit.approval_email_error}` : ""}</>
+                              ) : (
+                                "Email pending"
+                              )}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleLoadVisit(visit)}
+                              className="rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200"
+                            >
+                              Load
+                            </button>
+                            {canResend ? (
+                              <button
+                                type="button"
+                                onClick={() => handleResendApprovalEmail(visit.visit_id)}
+                                disabled={resendBusy}
+                                className="rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 disabled:opacity-60"
+                              >
+                                {resendBusy ? "Sending..." : "Resend Email"}
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
-          <p className="mt-3 text-xs text-slate-400">
-            Check-in is enabled only when status is approved.
-          </p>
+          <p className="mt-3 text-xs text-slate-400">Check-in is enabled only when status is approved.</p>
         </Panel>
       </div>
     </DashboardShell>

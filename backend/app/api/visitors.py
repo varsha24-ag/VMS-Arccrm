@@ -9,10 +9,13 @@ from app.core.db import get_db
 from app.core.security import get_current_user
 from app.models.employee import Employee
 from app.models.visitor import Visitor
+from app.models.id_card import IdCard
 from app.models.visit import Visit
 from app.schemas.visit import (
     AccessPassCreate,
     AccessPassOut,
+    EmailResendOut,
+    EmailResendRequest,
     PhotoUploadOut,
     QRCheckin,
     VisitCheckin,
@@ -22,6 +25,7 @@ from app.schemas.visit import (
     VisitorCreate,
     VisitorOut,
 )
+from app.schemas.id_card import IdCardOut
 from app.schemas.visit_status import VisitStatusOut
 from app.services.visit_service import (
     checkin_visit,
@@ -30,6 +34,7 @@ from app.services.visit_service import (
     create_visitor,
     get_visit_history,
     qr_checkin,
+    resend_host_notification,
 )
 
 router = APIRouter(tags=["visits"])
@@ -238,6 +243,21 @@ def access_pass_route(
     return create_access_pass(db, payload)
 
 
+@router.post("/visitor/resend-approval", response_model=EmailResendOut)
+def resend_approval_email(
+    payload: EmailResendRequest,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    try:
+        sent = resend_host_notification(db, payload.visit_id)
+        return EmailResendOut(sent=sent)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to resend approval email")
+
+
 @router.post("/visit/qr-checkin", response_model=VisitOut)
 def qr_checkin_route(
     payload: QRCheckin,
@@ -253,3 +273,17 @@ def history_route(
     current_user: Annotated[Employee, Depends(get_current_user)] = None,
 ):
     return get_visit_history(db)
+
+
+@router.get("/id-cards/available", response_model=List[IdCardOut])
+def available_id_cards(
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    cards = (
+        db.query(IdCard)
+        .filter(IdCard.status == "available")
+        .order_by(IdCard.id_number.asc())
+        .all()
+    )
+    return [IdCardOut(id=card.id, id_number=card.id_number, status=card.status) for card in cards]

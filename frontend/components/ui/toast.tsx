@@ -9,6 +9,9 @@ interface ToastItem {
   title: string;
   description?: string;
   variant: ToastVariant;
+  actionLabel?: string;
+  onAction?: () => void;
+  durationMs?: number;
 }
 
 interface ToastContextValue {
@@ -52,9 +55,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const pushToast = useCallback((toast: Omit<ToastItem, "id">) => {
     const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     setToasts((prev) => [...prev, { ...toast, id }]);
+    const duration = toast.durationMs ?? (toast.actionLabel ? 8000 : 3500);
     window.setTimeout(() => {
       setToasts((prev) => prev.filter((item) => item.id !== id));
-    }, 3500);
+    }, duration);
   }, []);
 
   const value = useMemo(() => ({ pushToast }), [pushToast]);
@@ -66,12 +70,23 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className="pointer-events-auto flex w-[320px] gap-3 rounded-2xl border border-white/15 bg-[#0b2239]/90 px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.45)] backdrop-blur"
+            className="pointer-events-auto flex w-[340px] gap-3 rounded-2xl border border-white/15 bg-[#0b2239]/90 px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.45)] backdrop-blur"
           >
             <ToastIcon variant={toast.variant} />
-            <div className="text-sm text-slate-200">
+            <div className="text-[15px] text-slate-200">
               <p className="font-semibold text-white">{toast.title}</p>
-              {toast.description ? <p className="mt-1 text-xs text-slate-300">{toast.description}</p> : null}
+              {toast.description ? <p className="mt-1 text-sm text-slate-300">{toast.description}</p> : null}
+              {toast.actionLabel && toast.onAction ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast.onAction?.();
+                  }}
+                  className="mt-2 rounded-md border border-white/20 bg-white/5 px-2 py-1 text-xs font-semibold text-slate-100 hover:bg-white/10"
+                >
+                  {toast.actionLabel}
+                </button>
+              ) : null}
             </div>
           </div>
         ))}

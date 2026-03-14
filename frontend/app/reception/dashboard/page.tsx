@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import DashboardShell from "@/components/dashboard-shell";
 import { Panel, StatGrid, StatusList, TextList } from "@/components/dashboard/panels";
 import { apiFetch } from "@/lib/api";
-import { getAuthUser, getRoleRedirectPath } from "@/lib/auth";
+import { useAuthGuard } from "@/lib/use-auth-guard";
 
 type VisitHistoryItem = {
   visit_id: number;
@@ -25,21 +25,10 @@ type VisitHistoryItem = {
 };
 
 export default function ReceptionDashboard() {
-  const router = useRouter();
+  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
   const [history, setHistory] = useState<VisitHistoryItem[]>([]);
   const [hostMap, setHostMap] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const user = getAuthUser();
-    if (!user) {
-      router.replace("/auth/login");
-      return;
-    }
-    if (user.role !== "receptionist") {
-      router.replace(getRoleRedirectPath(user.role));
-    }
-  }, [router]);
 
   useEffect(() => {
     let mounted = true;
@@ -66,7 +55,7 @@ export default function ReceptionDashboard() {
           return JSON.stringify(prev) === JSON.stringify(map) ? prev : map;
         });
 
-      } catch (err) {
+      } catch {
         if (!mounted) return;
         // Keep old data on transient network error, no need to wipe out the screen
       } finally {
@@ -128,18 +117,21 @@ export default function ReceptionDashboard() {
     ];
   }, [history]);
 
+  if (!user) return null;
+
   return (
     <DashboardShell
       title="Reception Dashboard"
       subtitle="Manage check-ins, appointment flow, and visitor desk operations in real time."
       navItems={[
         { label: "Dashboard", href: "/reception/dashboard" },
+        { label: "Visitors", href: "/reception/visitors" },
         { label: "Register", href: "/reception/register" },
         { label: "Photo", href: "/reception/photo" },
         { label: "Host", href: "/reception/host" },
-        { label: "QR Check-in", href: "/reception/qr-checkin" },
+        { label: "Check-in", href: "/reception/qr-checkin" },
         { label: "History", href: "/reception/history" },
-        { label: "Manual Check-out", href: "/reception/manual-checkout" },
+        { label: "Checkout", href: "/reception/manual-checkout" },
       ]}
     >
       <StatGrid items={stats} />
@@ -148,9 +140,17 @@ export default function ReceptionDashboard() {
         <Panel
           title="Front Desk Queue"
           action={
-            <span className="text-xs font-semibold text-slate-300">
-              {loading ? "Updating..." : "Live"}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-slate-300">
+                {loading ? "Updating..." : "Live"}
+              </span>
+              <Link
+                href="/reception/visitors"
+                className="rounded-md border border-white/20 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200"
+              >
+                View all
+              </Link>
+            </div>
           }
         >
           <StatusList items={queueItems} />

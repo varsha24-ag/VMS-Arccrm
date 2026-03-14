@@ -17,6 +17,7 @@ class VisitorCreate(BaseModel):
 
 class VisitorOut(BaseModel):
     id: int
+    visit_id: Optional[int] = None
     name: str
     id_number: Optional[str] = None
     phone: Optional[str] = None
@@ -26,6 +27,8 @@ class VisitorOut(BaseModel):
     photo_url: Optional[str] = None
     created_at: datetime
     status: Optional[str] = None
+    email_sent: Optional[bool] = None
+    email_error: Optional[str] = None
 
 
 class VisitCheckin(BaseModel):
@@ -58,6 +61,7 @@ class VisitHistoryItem(BaseModel):
     visit_id: int
     visitor_id: int
     visitor_name: str
+    id_number: Optional[str] = None
     visitor_phone: Optional[str] = None
     visitor_email: Optional[str] = None
     company: Optional[str] = None
@@ -99,3 +103,11 @@ class QRCheckin(BaseModel):
 
 class PhotoUploadOut(BaseModel):
     photo_url: str
+
+
+class EmailResendRequest(BaseModel):
+    visit_id: int
+
+
+class EmailResendOut(BaseModel):
+    sent: bool
