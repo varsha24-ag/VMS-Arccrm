@@ -63,7 +63,7 @@ export default function AuditLogsPage() {
                 </div>
 
                 <div className="p-4 bg-slate-50/50 border-t border-slate-100 text-center">
-                    <button className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors">Load older logs</button>
+                    <button className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-all">Load older logs</button>
                 </div>
             </div>
         </DashboardLayout>

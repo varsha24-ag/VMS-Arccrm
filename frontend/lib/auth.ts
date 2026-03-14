@@ -36,14 +36,14 @@ export function clearAuthSession() {
 export function getRoleRedirectPath(role: string) {
   const normalized = role.toLowerCase();
   if (normalized === "admin") return "/admin/dashboard";
-  if (normalized === "receptionist") return "/reception/dashboard";
+  if (normalized === "receptionist" || normalized === "reception") return "/reception/dashboard";
   return "/employee/dashboard";
 }
 
 export function normalizeRole(role: string): UserRole | null {
   const normalized = role.trim().toLowerCase();
   if (normalized === "admin") return "admin";
-  if (normalized === "receptionist") return "receptionist";
+  if (normalized === "receptionist" || normalized === "reception") return "receptionist";
   if (normalized === "employee") return "employee";
   return null;
 }

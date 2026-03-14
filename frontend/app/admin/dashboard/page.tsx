@@ -1,29 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-
-import { getAuthUser, getRoleRedirectPath, AuthUser } from "@/lib/auth";
-import { getModulesForRole } from "@/lib/modules";
+import { useAuthGuard } from "@/lib/use-auth-guard";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
 export default function AdminDashboard() {
-  const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const modules = getModulesForRole("admin");
-
-  useEffect(() => {
-    const authUser = getAuthUser();
-    if (!authUser) {
-      router.replace("/auth/login");
-      return;
-    }
-    if (authUser.role !== "admin") {
-      router.replace(getRoleRedirectPath(authUser.role));
-      return;
-    }
-    setUser(authUser);
-  }, [router]);
+  const user = useAuthGuard({ allowedRoles: ["admin"] });
 
   if (!user) return null;
 
@@ -32,11 +13,11 @@ export default function AdminDashboard() {
       <header className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dashboard Overview</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Welcome back, {user.name}. Here's what's happening today.
+          Welcome back, {user.name}. Here&apos;s what&apos;s happening today.
         </p>
       </header>
 
-      {/* KPI Cards Placeholder */}
+      {/* KPI Cards */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         {[
           { label: "Visitors Today", value: "24", change: "+12%", color: "text-blue-600", bg: "bg-blue-50" },
@@ -57,6 +38,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
+        {/* Recent Visitors */}
         <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 overflow-hidden">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-bold text-slate-900">Recent Visitors</h3>
@@ -80,6 +62,7 @@ export default function AdminDashboard() {
           </div>
         </section>
 
+        {/* System Health */}
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
           <h3 className="font-bold text-slate-900 mb-6">System Health</h3>
           <div className="space-y-6">

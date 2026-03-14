@@ -43,6 +43,19 @@ You can also run it manually:
 python -m app.core.init_db
 ```
 
+### 4.2 Run migrations (Alembic)
+
+```bash
+# Apply all migrations
+alembic upgrade head
+
+# Create a new migration from model changes
+alembic revision --autogenerate -m "describe-change"
+
+# Roll back the last migration
+alembic downgrade -1
+```
+
 ### 5. Test login endpoint
 
 `POST /auth/login`

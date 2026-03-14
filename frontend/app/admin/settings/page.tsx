@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAuthUser, AuthUser } from "@/lib/auth";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Button } from "@/components/ui/Button";
 
 export default function SettingsPage() {
     const router = useRouter();
@@ -78,8 +77,8 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="pt-6 border-t border-slate-100 flex justify-end gap-3">
-                            <Button variant="outline">Cancel</Button>
-                            <Button className="bg-[#e9774b] hover:bg-[#d6663b]">Save Changes</Button>
+                            <button className="px-5 py-2 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all border border-transparent">Cancel</button>
+                            <button className="px-5 py-2 bg-[#e9774b] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#e9774b]/20 hover:bg-[#d6663b] transition-all">Save Changes</button>
                         </div>
                     </div>
 

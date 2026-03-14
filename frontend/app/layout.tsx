@@ -1,9 +1,7 @@
 import "./globals.css";
 
 import type { Metadata } from "next";
-import { Sora } from "next/font/google";
-
-const sora = Sora({ subsets: ["latin"], variable: "--font-sora" });
+import { ToastProvider } from "@/components/ui/toast";
 
 export const metadata: Metadata = {
   title: "Visitor Management System",
@@ -20,7 +18,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={sora.variable}>{children}</body>
+      <body>
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   );
 }
