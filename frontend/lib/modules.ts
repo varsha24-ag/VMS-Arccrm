@@ -9,21 +9,24 @@ export interface ModuleConfig {
 
 export const MODULES: ModuleConfig[] = [
   // Admin Modules
-  { id: "analytics", label: "Analytics", path: "/admin/dashboard", role: ["admin"] },
+  { id: "admin-dashboard", label: "Dashboard", path: "/admin/dashboard", role: ["admin"] },
   { id: "reports", label: "Reports", path: "/admin/reports", role: ["admin"] },
   { id: "users", label: "User Management", path: "/admin/users", role: ["admin"] },
   { id: "settings", label: "System Settings", path: "/admin/settings", role: ["admin"] },
   { id: "audit", label: "Audit Logs", path: "/admin/audit", role: ["admin"] },
 
   // Receptionist Modules
-  { id: "checkin", label: "Visitor Check-in", path: "/reception/checkin", role: ["receptionist", "admin"] },
-  { id: "checkout", label: "Visitor Check-out", path: "/reception/checkout", role: ["receptionist", "admin"] },
-  { id: "queue", label: "Appointment Queue", path: "/reception/queue", role: ["receptionist", "admin"] },
+  { id: "reception-dashboard", label: "Dashboard", path: "/reception/dashboard", role: ["receptionist", "admin"] },
+  { id: "reception-visitors", label: "Visitors", path: "/reception/visitors", role: ["receptionist", "admin"] },
+  { id: "reception-register", label: "Register", path: "/reception/register", role: ["receptionist", "admin"] },
+  { id: "reception-photo", label: "Photo", path: "/reception/photo", role: ["receptionist", "admin"] },
+  { id: "reception-host", label: "Host", path: "/reception/host", role: ["receptionist", "admin"] },
+  { id: "reception-checkin", label: "Check-in", path: "/reception/qr-checkin", role: ["receptionist", "admin"] },
+  { id: "reception-history", label: "History", path: "/reception/history", role: ["receptionist", "admin"] },
+  { id: "reception-checkout", label: "Checkout", path: "/reception/manual-checkout", role: ["receptionist", "admin"] },
 
   // Employee Modules
-  { id: "my-visitors", label: "My Visitors", path: "/employee/visitors", role: ["employee", "admin"] },
-  { id: "approvals", label: "Host Approvals", path: "/employee/approvals", role: ["employee", "admin"] },
-  { id: "history", label: "Visit History", path: "/employee/history", role: ["employee", "admin"] },
+  { id: "employee-dashboard", label: "Dashboard", path: "/employee/dashboard", role: ["employee", "admin"] },
 ];
 
 export function getModulesForRole(role: UserRole): ModuleConfig[] {

@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-import DashboardShell from "@/components/dashboard-shell";
 import { Panel } from "@/components/dashboard/panels";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import FilterBar from "@/components/ui/filter-bar";
 import Pagination from "@/components/ui/pagination";
 import { apiFetch } from "@/lib/api";
-import { getAuthUser, getRoleRedirectPath } from "@/lib/auth";
+import { useAuthGuard } from "@/lib/use-auth-guard";
 
 type VisitHistoryItem = {
   visit_id: number;
@@ -28,7 +28,7 @@ type VisitHistoryItem = {
 };
 
 export default function ReceptionVisitorListPage() {
-  const router = useRouter();
+  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
   const [history, setHistory] = useState<VisitHistoryItem[]>([]);
   const [hostMap, setHostMap] = useState<Record<number, string>>({});
   const [selected, setSelected] = useState<VisitHistoryItem | null>(null);
@@ -39,17 +39,7 @@ export default function ReceptionVisitorListPage() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
-    const user = getAuthUser();
-    if (!user) {
-      router.replace("/auth/login");
-      return;
-    }
-    if (user.role !== "receptionist" && user.role !== "admin") {
-      router.replace(getRoleRedirectPath(user.role));
-    }
-  }, [router]);
-
-  useEffect(() => {
+    if (!user) return;
     let mounted = true;
     async function loadData() {
       setLoading(true);
@@ -82,7 +72,7 @@ export default function ReceptionVisitorListPage() {
       mounted = false;
       window.clearInterval(interval);
     };
-  }, []);
+  }, [user]);
 
   const queueRows = useMemo(() => {
     return history
@@ -147,20 +137,11 @@ export default function ReceptionVisitorListPage() {
     filteredHistoryRows[0] ??
     null;
 
+  if (!user) return null;
+
   return (
-    <DashboardShell
-      title="Visitor List"
-      subtitle="Front desk queue and full visitor history."
-      navItems={[
-        { label: "Dashboard", href: "/reception/dashboard" },
-        { label: "Visitors", href: "/reception/visitors" },
-        { label: "Register", href: "/reception/register" },
-        { label: "Photo", href: "/reception/photo" },
-        { label: "Host", href: "/reception/host" },
-        { label: "History", href: "/reception/history" },
-        { label: "Checkout", href: "/reception/manual-checkout" },
-      ]}
-    >
+    <DashboardLayout user={user}>
+      <DashboardPageHeader title="Visitor List" subtitle="Front desk queue and full visitor history." />
       <div className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
         <div className="space-y-6">
           <Panel
@@ -168,7 +149,7 @@ export default function ReceptionVisitorListPage() {
             action={
               <Link
                 href="/reception/register"
-                className="rounded-md border border-white/20 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200"
+                className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)]"
               >
                 Add
               </Link>
@@ -176,7 +157,7 @@ export default function ReceptionVisitorListPage() {
           >
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
-                <thead className="text-slate-300">
+                <thead className="text-[var(--text-3)]">
                   <tr>
                     <th className="pb-3 pr-3">Visitor</th>
                     <th className="pb-3 pr-3">Purpose</th>
@@ -184,10 +165,10 @@ export default function ReceptionVisitorListPage() {
                     <th className="pb-3">Status</th>
                   </tr>
                 </thead>
-                <tbody className="text-slate-100">
+                <tbody className="text-[var(--text-1)]">
                   {queueRows.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-3 text-slate-400">
+                      <td colSpan={4} className="py-3 text-[var(--text-3)]">
                         {loading ? "Loading queue..." : "No visitors in queue."}
                       </td>
                     </tr>
@@ -195,10 +176,10 @@ export default function ReceptionVisitorListPage() {
                     queueRows.map((item) => (
                       <tr
                         key={item.visit_id}
-                        className="cursor-pointer border-t border-white/10 transition hover:bg-white/5"
+                        className="cursor-pointer border-t border-[var(--border-1)] transition hover:bg-[var(--surface-2)]"
                         onClick={() => setSelected(item)}
                       >
-                        <td className="py-3 pr-3 font-semibold text-white">{item.visitor_name}</td>
+                        <td className="py-3 pr-3 font-semibold text-[var(--text-1)]">{item.visitor_name}</td>
                         <td className="py-3 pr-3">{item.purpose ?? "-"}</td>
                         <td className="py-3 pr-3">
                           {item.host_employee_id ? hostMap[item.host_employee_id] ?? "Unknown" : "Unassigned"}
@@ -228,7 +209,7 @@ export default function ReceptionVisitorListPage() {
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
-                <thead className="text-slate-300">
+                <thead className="text-[var(--text-3)]">
                   <tr>
                     <th className="pb-3 pr-3">Sr. No.</th>
                     <th className="pb-3 pr-3">Visitor</th>
@@ -237,10 +218,10 @@ export default function ReceptionVisitorListPage() {
                     <th className="pb-3">Check-in</th>
                   </tr>
                 </thead>
-                <tbody className="text-slate-100">
+                <tbody className="text-[var(--text-1)]">
                   {filteredHistoryRows.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-3 text-slate-400">
+                      <td colSpan={5} className="py-3 text-[var(--text-3)]">
                         {loading ? "Loading visitors..." : "No visitors found for the current filter."}
                       </td>
                     </tr>
@@ -248,11 +229,11 @@ export default function ReceptionVisitorListPage() {
                     pagedRows.map((item, idx) => (
                       <tr
                         key={item.visit_id}
-                        className="cursor-pointer border-t border-white/10 transition hover:bg-white/5"
+                        className="cursor-pointer border-t border-[var(--border-1)] transition hover:bg-[var(--surface-2)]"
                         onClick={() => setSelected(item)}
                       >
                         <td className="py-3 pr-3">{(page - 1) * pageSize + idx + 1}</td>
-                        <td className="py-3 pr-3 font-semibold text-white">{item.visitor_name}</td>
+                        <td className="py-3 pr-3 font-semibold text-[var(--text-1)]">{item.visitor_name}</td>
                         <td className="py-3 pr-3">{item.id_number ?? "-"}</td>
                         <td className="py-3 pr-3">{item.status}</td>
                         <td className="py-3">
@@ -278,22 +259,22 @@ export default function ReceptionVisitorListPage() {
 
         <Panel title="Visitor Details">
           {detail ? (
-            <div className="space-y-3 text-sm text-slate-200">
+            <div className="space-y-3 text-sm text-[var(--text-2)]">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Visitor</p>
-                <p className="text-lg font-semibold text-white">{detail.visitor_name}</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Visitor</p>
+                <p className="text-lg font-semibold text-[var(--text-1)]">{detail.visitor_name}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Contact</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Contact</p>
                 <p>{detail.visitor_phone ?? "-"}</p>
                 <p>{detail.visitor_email ?? "-"}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Company</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Company</p>
                 <p>{detail.company ?? "-"}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Host</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Host</p>
                 <p>
                   {detail.host_employee_id
                     ? hostMap[detail.host_employee_id] ?? "Unknown"
@@ -302,34 +283,34 @@ export default function ReceptionVisitorListPage() {
               </div>
               <div className="grid gap-2 md:grid-cols-2">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Purpose</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Purpose</p>
                   <p>{detail.purpose ?? "-"}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Status</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Status</p>
                   <p className="capitalize">{detail.status}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">ID Card</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">ID Card</p>
                   <p>{detail.id_number ?? "-"}</p>
                 </div>
               </div>
               <div className="grid gap-2 md:grid-cols-2">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Check-in</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Check-in</p>
                   <p>{detail.checkin_time ? new Date(detail.checkin_time).toLocaleString() : "-"}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Check-out</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Check-out</p>
                   <p>{detail.checkout_time ? new Date(detail.checkout_time).toLocaleString() : "-"}</p>
                 </div>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-slate-400">Select a visitor to view details.</p>
+            <p className="text-sm text-[var(--text-3)]">Select a visitor to view details.</p>
           )}
         </Panel>
       </div>
-    </DashboardShell>
+    </DashboardLayout>
   );
 }

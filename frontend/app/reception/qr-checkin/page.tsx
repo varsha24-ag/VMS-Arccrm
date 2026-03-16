@@ -2,8 +2,9 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
-import DashboardShell from "@/components/dashboard-shell";
 import { Panel } from "@/components/dashboard/panels";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/api";
@@ -327,34 +328,22 @@ export default function ReceptionQrCheckinPage() {
   if (!user) return null;
 
   return (
-    <DashboardShell
-      title="Check-in"
-      subtitle="Scan or paste a QR code to complete a check-in."
-      navItems={[
-        { label: "Dashboard", href: "/reception/dashboard" },
-        { label: "Visitors", href: "/reception/visitors" },
-        { label: "Register", href: "/reception/register" },
-        { label: "Photo", href: "/reception/photo" },
-        { label: "Host", href: "/reception/host" },
-        { label: "Check-in", href: "/reception/qr-checkin" },
-        { label: "History", href: "/reception/history" },
-        { label: "Checkout", href: "/reception/manual-checkout" },
-      ]}
-    >
+    <DashboardLayout user={user}>
+      <DashboardPageHeader title="Check-in" subtitle="Scan or paste a QR code to complete a check-in." />
       <div className="space-y-6">
         <EntryDeskHeader title="QR Fast Check-in" subtitle="Use QR codes for returning visitors and access passes." />
 
         <Panel title="QR Code">
           <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleQrCheckin}>
             <input
-              className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
               placeholder="Visitor ID / phone / email / QR code"
               value={qrCode}
               onChange={(e) => setQrCode(e.target.value)}
               required
             />
             <select
-              className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
               value={idCardSelection}
               onChange={(e) => {
                 const value = e.target.value;
@@ -369,21 +358,21 @@ export default function ReceptionQrCheckinPage() {
               }}
               required
             >
-              <option value="" className="bg-[#0f1e2f] text-white">
+              <option value="" className="bg-[var(--surface-1)] text-[var(--text-1)]">
                 {idCardLoading ? "Loading ID cards..." : "Select ID card"}
               </option>
               {availableCards.map((card) => (
-                <option key={card.id} value={card.id_number} className="bg-[#0f1e2f] text-white">
+                <option key={card.id} value={card.id_number} className="bg-[var(--surface-1)] text-[var(--text-1)]">
                   {card.id_number}
                 </option>
               ))}
-              <option value="__custom__" className="bg-[#0f1e2f] text-white">
+              <option value="__custom__" className="bg-[var(--surface-1)] text-[var(--text-1)]">
                 Custom
               </option>
             </select>
             {idCardSelection === "__custom__" ? (
               <input
-                className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+                className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
                 placeholder="Enter ID card number"
                 value={customIdNumber}
                 onChange={(e) => {
@@ -398,36 +387,36 @@ export default function ReceptionQrCheckinPage() {
               type="button"
               onClick={() => handleStatusCheck({ showToast: true, showLoading: true })}
               disabled={loading}
-              className="rounded-md border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 disabled:opacity-60"
+              className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)] disabled:opacity-60"
             >
               Check Status
             </button>
             <button
               type="submit"
               disabled={loading || visitorStatus !== "approved"}
-              className="rounded-md bg-[#ff7a45] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
             >
               {loading ? "Checking in..." : "Check-in"}
             </button>
           </form>
 
-          <label className="mt-3 flex items-center gap-2 text-sm text-slate-200">
+          <label className="mt-3 flex items-center gap-2 text-sm text-[var(--text-2)]">
             <input
               type="checkbox"
               checked={policyAccepted}
               onChange={(e) => setPolicyAccepted(e.target.checked)}
-              className="h-4 w-4 rounded border-white/20 bg-white/5 text-[#ff7a45]"
+              className="h-4 w-4 rounded border border-[var(--border-1)] bg-[var(--surface-2)] accent-[var(--accent)]"
             />
             Policy agreement accepted
           </label>
 
           {visitorDetail ? (
-            <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200">
+            <div className="mt-4 rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)] p-4 text-sm text-[var(--text-2)]">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Host Response</p>
-                  <p className="mt-1 text-base font-semibold text-white">{visitorDetail.name}</p>
-                  <p className="text-xs text-slate-400">Host: {visitorDetail.company ?? "Unknown"}</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Host Response</p>
+                  <p className="mt-1 text-base font-semibold text-[var(--text-1)]">{visitorDetail.name}</p>
+                  <p className="text-xs text-[var(--text-3)]">Host: {visitorDetail.company ?? "Unknown"}</p>
                 </div>
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -445,10 +434,12 @@ export default function ReceptionQrCheckinPage() {
                     : "Pending Host Response"}
                 </span>
               </div>
-              {visitorStatus === "rejected" ? <p className="mt-3 text-xs text-red-300">This visit has been rejected by the host.</p> : null}
+              {visitorStatus === "rejected" ? (
+                <p className="mt-3 text-xs text-red-300">This visit has been rejected by the host.</p>
+              ) : null}
             </div>
           ) : null}
-          {message ? <p className="mt-3 text-sm text-[#ffc5aa]">{message}</p> : null}
+          {message ? <p className="mt-3 text-sm text-[var(--text-2)]">{message}</p> : null}
         </Panel>
 
         <Panel
@@ -459,7 +450,7 @@ export default function ReceptionQrCheckinPage() {
                 type="button"
                 onClick={handleRefresh}
                 disabled={listLoading || idCardLoading}
-                className="rounded-md border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 disabled:opacity-60"
+                className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)] disabled:opacity-60"
               >
                 {listLoading || idCardLoading ? "Refreshing..." : "Refresh"}
               </button>
@@ -468,7 +459,7 @@ export default function ReceptionQrCheckinPage() {
         >
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="text-left text-xs uppercase tracking-[0.2em] text-slate-400">
+              <thead className="text-left text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">
                 <tr>
                   <th className="px-3 py-2">Visitor</th>
                   <th className="px-3 py-2">Host</th>
@@ -476,10 +467,10 @@ export default function ReceptionQrCheckinPage() {
                   <th className="px-3 py-2">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/10">
+              <tbody className="divide-y divide-[var(--border-1)]">
                 {visitList.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-3 py-4 text-sm text-slate-300">
+                    <td colSpan={4} className="px-3 py-4 text-sm text-[var(--text-3)]">
                       No visitor records available.
                     </td>
                   </tr>
@@ -503,10 +494,10 @@ export default function ReceptionQrCheckinPage() {
                         : visit.status;
 
                     return (
-                      <tr key={visit.visit_id} className="text-slate-200">
+                      <tr key={visit.visit_id} className="text-[var(--text-2)]">
                         <td className="px-3 py-3">
-                          <p className="font-semibold text-white">{visit.visitor_name}</p>
-                          <p className="text-xs text-slate-400">Visitor ID: {visit.visitor_id}</p>
+                          <p className="font-semibold text-[var(--text-1)]">{visit.visitor_name}</p>
+                          <p className="text-xs text-[var(--text-3)]">Visitor ID: {visit.visitor_id}</p>
                         </td>
                         <td className="px-3 py-3 text-sm">{visit.host_name ?? "Unknown"}</td>
                         <td className="px-3 py-3">
@@ -519,14 +510,14 @@ export default function ReceptionQrCheckinPage() {
                                 : visit.status === "checked_in"
                                 ? "bg-sky-500/20 text-sky-200"
                                 : visit.status === "checked_out"
-                                ? "bg-slate-500/20 text-slate-200"
+                                ? "bg-[var(--surface-2)] text-[var(--text-2)]"
                                 : "bg-yellow-500/20 text-yellow-200"
                             }`}
                           >
                             {statusLabel}
                           </span>
                           {visit.status === "checked_in" || visit.status === "checked_out" ? null : (
-                            <p className="mt-2 text-xs text-slate-400">
+                            <p className="mt-2 text-xs text-[var(--text-3)]">
                               {emailSent ? (
                                 "Email sent"
                               ) : emailNotSent ? (
@@ -542,7 +533,7 @@ export default function ReceptionQrCheckinPage() {
                             <button
                               type="button"
                               onClick={() => handleLoadVisit(visit)}
-                              className="rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200"
+                              className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)]"
                             >
                               Load
                             </button>
@@ -551,7 +542,7 @@ export default function ReceptionQrCheckinPage() {
                                 type="button"
                                 onClick={() => handleResendApprovalEmail(visit.visit_id)}
                                 disabled={resendBusy}
-                                className="rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 disabled:opacity-60"
+                                className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
                               >
                                 {resendBusy ? "Sending..." : "Resend Email"}
                               </button>
@@ -565,9 +556,9 @@ export default function ReceptionQrCheckinPage() {
               </tbody>
             </table>
           </div>
-          <p className="mt-3 text-xs text-slate-400">Check-in is enabled only when status is approved.</p>
+          <p className="mt-3 text-xs text-[var(--text-3)]">Check-in is enabled only when status is approved.</p>
         </Panel>
       </div>
-    </DashboardShell>
+    </DashboardLayout>
   );
 }

@@ -117,13 +117,13 @@ export default function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
 
   return (
     <div className="space-y-3">
-      <label className="text-sm text-slate-200">Visitor Photo</label>
+      <label className="text-sm text-[var(--text-2)]">Visitor Photo</label>
 
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={cameraActive ? stopCamera : startCamera}
-          className="rounded-md border border-white/20 bg-white/5 px-3 py-2 text-sm font-semibold text-white"
+          className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)]"
         >
           {cameraActive ? "Close Camera" : "Open Camera"}
         </button>
@@ -132,7 +132,7 @@ export default function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
           type="button"
           onClick={captureFrame}
           disabled={!cameraActive || loading}
-          className="rounded-md bg-[#ff7a45] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
         >
           {loading ? "Uploading..." : "Capture Photo"}
         </button>
@@ -142,14 +142,14 @@ export default function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
           accept="image/*"
           capture="user"
           onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
-          className="block w-full text-sm text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-[#ff7a45] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+          className="block w-full text-sm text-[var(--text-2)] file:mr-3 file:rounded-md file:border-0 file:bg-[var(--accent)] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[var(--accent-fg)]"
         />
 
         {preview ? (
           <button
             type="button"
             onClick={handleRetake}
-            className="rounded-md border border-[#ff7a45]/40 bg-[#ff7a45]/10 px-3 py-2 text-xs font-semibold text-[#ffb08a]"
+            className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-xs font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)]"
           >
             Retake
           </button>
@@ -158,7 +158,7 @@ export default function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
 
       {cameraActive && !hasCaptured ? (
         <div className="flex items-center gap-3">
-          <div className="flex h-28 w-36 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/60">
+          <div className="flex h-28 w-36 items-center justify-center overflow-hidden rounded-lg border border-[var(--border-1)] bg-[var(--surface-1)]">
             <video
               ref={videoRef}
               className="h-full w-full object-cover"
@@ -170,25 +170,25 @@ export default function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
               style={{ transform: "scaleX(-1)" }}
             />
           </div>
-          <p className="text-xs text-slate-300">Keep your face centered in the preview.</p>
+          <p className="text-xs text-[var(--text-2)]">Keep your face centered in the preview.</p>
         </div>
       ) : null}
 
       {preview ? (
         <div className="flex items-center gap-3">
-          <div className="flex h-28 w-36 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/40">
+          <div className="flex h-28 w-36 items-center justify-center overflow-hidden rounded-lg border border-[var(--border-1)] bg-[var(--surface-1)]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={preview} alt="Captured visitor" className="h-full w-full object-cover" />
           </div>
-          <p className="text-xs text-slate-300">Photo saved. You can retake if needed.</p>
+          <p className="text-xs text-[var(--text-2)]">Photo saved. You can retake if needed.</p>
         </div>
       ) : (
-        <div className="flex h-16 w-24 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-xs text-slate-400">
+        <div className="flex h-16 w-24 items-center justify-center rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] text-xs text-[var(--text-3)]">
           {loading ? "Uploading..." : "No photo"}
         </div>
       )}
 
-      {error ? <p className="text-xs text-[#ffc5aa]">{error}</p> : null}
+      {error ? <p className="text-xs text-rose-300">{error}</p> : null}
     </div>
   );
 }
