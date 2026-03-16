@@ -30,22 +30,22 @@ export default function FilterBar({
 }: FilterBarProps) {
   return (
     <div className={`flex flex-wrap items-center gap-3 text-sm ${className ?? ""}`}>
-      <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+      <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2">
         <input
           value={searchValue}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder={searchPlaceholder}
-          className="w-full bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
+          className="w-full bg-transparent text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] focus:outline-none"
         />
       </div>
       {selectOptions && onSelectChange ? (
         <select
           value={selectValue ?? ""}
           onChange={(event) => onSelectChange(event.target.value)}
-          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 focus:outline-none"
+          className="rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] focus:outline-none"
         >
           {selectOptions.map((option) => (
-            <option key={option.value} value={option.value} className="bg-slate-900 text-slate-100">
+            <option key={option.value} value={option.value} className="bg-[var(--surface-1)] text-[var(--text-1)]">
               {option.label}
             </option>
           ))}

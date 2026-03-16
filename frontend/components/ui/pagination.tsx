@@ -50,21 +50,21 @@ export default function Pagination({
 
   return (
     <div className={`space-y-4 ${className ?? ""}`}>
-      <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-slate-600">
+      <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-[var(--text-2)]">
         <div className="flex flex-wrap items-center gap-4">
           <span>
             Showing {start}-{end} of {totalItems}
           </span>
           {showPageSize && onPageSizeChange ? (
             <div className="flex items-center gap-3">
-              <span className="text-xs uppercase tracking-[0.2em] text-slate-400">Rows per page</span>
+              <span className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Rows per page</span>
               <select
                 value={pageSize}
                 onChange={(event) => onPageSizeChange(Number(event.target.value))}
-                className="rounded-2xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 shadow-[0_8px_20px_rgba(0,0,0,0.25)] focus:outline-none"
+                className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] shadow-[var(--shadow-1)] focus:outline-none"
               >
                 {pageSizeOptions.map((size) => (
-                  <option key={size} value={size} className="bg-slate-900 text-slate-100">
+                  <option key={size} value={size} className="bg-[var(--surface-1)] text-[var(--text-1)]">
                     {size}
                   </option>
                 ))}
@@ -78,7 +78,7 @@ export default function Pagination({
             type="button"
             onClick={() => onPageChange(1)}
             disabled={safePage === 1}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-1)] bg-[var(--surface-1)] text-[var(--text-2)] transition hover:bg-[var(--surface-2)] disabled:opacity-40"
             aria-label="First page"
           >
             «
@@ -87,14 +87,14 @@ export default function Pagination({
             type="button"
             onClick={() => onPageChange(Math.max(1, safePage - 1))}
             disabled={safePage === 1}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-1)] bg-[var(--surface-1)] text-[var(--text-2)] transition hover:bg-[var(--surface-2)] disabled:opacity-40"
             aria-label="Previous page"
           >
             ‹
           </button>
           {pageItems.map((item, idx) =>
             item === "ellipsis" ? (
-              <span key={`ellipsis-${idx}`} className="px-2 text-sm text-slate-400">
+              <span key={`ellipsis-${idx}`} className="px-2 text-sm text-[var(--text-3)]">
                 ...
               </span>
             ) : (
@@ -104,8 +104,8 @@ export default function Pagination({
                 onClick={() => onPageChange(item)}
                 className={`h-10 w-10 rounded-full border text-sm font-semibold transition ${
                   item === safePage
-                    ? "border-transparent bg-[#f97316] text-white shadow-[0_10px_20px_rgba(249,115,22,0.35)]"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    ? "border-transparent bg-[var(--accent)] text-[var(--accent-fg)] shadow-[var(--shadow-1)]"
+                    : "border-[var(--border-1)] bg-[var(--surface-1)] text-[var(--text-2)] hover:bg-[var(--surface-2)] hover:text-[var(--text-1)]"
                 }`}
               >
                 {item}
@@ -116,7 +116,7 @@ export default function Pagination({
             type="button"
             onClick={() => onPageChange(Math.min(totalPages, safePage + 1))}
             disabled={safePage === totalPages}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-1)] bg-[var(--surface-1)] text-[var(--text-2)] transition hover:bg-[var(--surface-2)] disabled:opacity-40"
             aria-label="Next page"
           >
             ›
@@ -125,7 +125,7 @@ export default function Pagination({
             type="button"
             onClick={() => onPageChange(totalPages)}
             disabled={safePage === totalPages}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-1)] bg-[var(--surface-1)] text-[var(--text-2)] transition hover:bg-[var(--surface-2)] disabled:opacity-40"
             aria-label="Last page"
           >
             »

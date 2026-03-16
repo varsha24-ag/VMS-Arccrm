@@ -7,13 +7,13 @@ interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "typ
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
     ({ label, className = "", id, ...props }, ref) => {
         return (
-            <label className="group flex cursor-pointer items-center gap-2.5 text-sm font-medium text-[#344054]">
+            <label className="group flex cursor-pointer items-center gap-2.5 text-sm font-medium text-[var(--text-2)]">
                 <div className="relative flex h-5 w-5 items-center justify-center">
                     <input
                         type="checkbox"
                         id={id}
                         ref={ref}
-                        className={`peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-[#cfd4dc] bg-white transition-all duration-200 checked:border-[#e9774b] checked:bg-[#e9774b] focus:outline-none focus:ring-4 focus:ring-[#e9774b]/10 group-hover:border-[#e9774b] ${className}`}
+                        className={`peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] transition-all duration-200 checked:border-[var(--accent)] checked:bg-[var(--accent)] focus:outline-none focus:ring-4 focus:ring-[var(--nav-active-bg)] group-hover:border-[var(--accent)] ${className}`}
                         {...props}
                     />
                     <svg

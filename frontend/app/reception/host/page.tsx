@@ -1,44 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-import DashboardShell from "@/components/dashboard-shell";
 import { Panel } from "@/components/dashboard/panels";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
 import HostSearch from "@/components/entry-desk/host-search";
-import { getAuthUser, getRoleRedirectPath } from "@/lib/auth";
+import { useAuthGuard } from "@/lib/use-auth-guard";
 
 export default function ReceptionHostPage() {
-  const router = useRouter();
+  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
   const [hostId, setHostId] = useState<number | null>(null);
 
-  useEffect(() => {
-    const user = getAuthUser();
-    if (!user) {
-      router.replace("/auth/login");
-      return;
-    }
-    if (user.role !== "receptionist" && user.role !== "admin") {
-      router.replace(getRoleRedirectPath(user.role));
-    }
-  }, [router]);
+  if (!user) return null;
 
   return (
-    <DashboardShell
-      title="Host Selection"
-      subtitle="Search and select the employee who will host the visitor."
-      navItems={[
-        { label: "Dashboard", href: "/reception/dashboard" },
-        { label: "Visitors", href: "/reception/visitors" },
-        { label: "Register", href: "/reception/register" },
-        { label: "Photo", href: "/reception/photo" },
-        { label: "Host", href: "/reception/host" },
-        { label: "Check-in", href: "/reception/qr-checkin" },
-        { label: "History", href: "/reception/history" },
-        { label: "Checkout", href: "/reception/manual-checkout" },
-      ]}
-    >
+    <DashboardLayout user={user}>
+      <DashboardPageHeader
+        title="Host Selection"
+        subtitle="Search and select the employee who will host the visitor."
+      />
       <div className="space-y-6">
         <EntryDeskHeader
           title="Host Directory"
@@ -47,11 +29,11 @@ export default function ReceptionHostPage() {
 
         <Panel title="Host Search">
           <HostSearch value={hostId} onChange={setHostId} />
-          <p className="mt-3 text-xs text-slate-300">
+          <p className="mt-3 text-xs text-[var(--text-3)]">
             Selected host ID: {hostId ?? "None"}
           </p>
         </Panel>
       </div>
-    </DashboardShell>
+    </DashboardLayout>
   );
 }
