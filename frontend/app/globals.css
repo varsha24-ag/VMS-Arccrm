@@ -21,6 +21,7 @@
   --accent-fg: #ffffff;
   --nav-active-bg: rgba(233, 119, 75, 0.14);
   --nav-hover-bg: rgba(15, 23, 42, 0.04);
+  --modal-overlay: rgba(15, 23, 42, 0.08);
 }
 
 html[data-theme="dark"] {
@@ -42,6 +43,7 @@ html[data-theme="dark"] {
   --accent-fg: #0b1220;
   --nav-active-bg: rgba(249, 115, 22, 0.20);
   --nav-hover-bg: rgba(255, 255, 255, 0.08);
+  --modal-overlay: rgba(0, 0, 0, 0.55);
 }
 
 * {

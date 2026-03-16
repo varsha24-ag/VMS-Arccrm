@@ -8,6 +8,7 @@ import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 type VisitStatusRow = {
@@ -78,6 +79,23 @@ export default function ReceptionQrCheckinPage() {
 
   const [visitList, setVisitList] = useState<VisitStatusRow[]>([]);
   const [listLoading, setListLoading] = useState(false);
+
+  const statusBadgeClass = (status: string) => {
+    switch (status) {
+      case "approved":
+        return "border-emerald-300/60 bg-emerald-500/15 text-emerald-400";
+      case "pending":
+        return "border-amber-300/60 bg-amber-500/15 text-amber-400";
+      case "rejected":
+        return "border-red-300/60 bg-red-500/15 text-red-400";
+      case "checked_in":
+        return "border-orange-300/60 bg-orange-500/15 text-orange-400";
+      case "checked_out":
+        return "border-slate-300/60 bg-slate-500/15 text-slate-400";
+      default:
+        return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
+    }
+  };
   const [idCardLoading, setIdCardLoading] = useState(false);
   const [availableCards, setAvailableCards] = useState<AvailableIdCard[]>([]);
   const [resendLoading, setResendLoading] = useState<Record<number, boolean>>({});
@@ -86,6 +104,8 @@ export default function ReceptionQrCheckinPage() {
   const cardFetchInFlightRef = useRef(false);
   const cardsLoadedRef = useRef(false);
   const skipStatusResetRef = useRef(false);
+  const statusMapRef = useRef<Record<number, string>>({});
+  const statusMapReadyRef = useRef(false);
 
   const fetchVisitList = useCallback(
     async (options: { showToast?: boolean; showLoading?: boolean } = {}) => {
@@ -95,6 +115,35 @@ export default function ReceptionQrCheckinPage() {
       try {
         const data = await apiFetch<VisitStatusRow[]>("/visits/list");
         const next = data ?? [];
+        if (statusMapReadyRef.current) {
+          const nextMap: Record<number, string> = {};
+          next.forEach((visit) => {
+            nextMap[visit.visit_id] = visit.status;
+            const prevStatus = statusMapRef.current[visit.visit_id];
+            if (prevStatus && prevStatus !== visit.status) {
+              if (visit.status === "approved") {
+                pushToast({
+                  title: "Approved by host",
+                  description: `${visit.visitor_name} is approved.`,
+                  variant: "success",
+                });
+              } else if (visit.status === "rejected") {
+                pushToast({
+                  title: "Rejected by host",
+                  description: `${visit.visitor_name} was rejected.`,
+                  variant: "error",
+                });
+              }
+            }
+          });
+          statusMapRef.current = nextMap;
+        } else {
+          statusMapRef.current = next.reduce<Record<number, string>>((acc, visit) => {
+            acc[visit.visit_id] = visit.status;
+            return acc;
+          }, {});
+          statusMapReadyRef.current = true;
+        }
         setVisitList((prev) => (areVisitStatusListsEqual(prev, next) ? prev : next));
         if (showToast) {
           pushToast({
@@ -315,6 +364,23 @@ export default function ReceptionQrCheckinPage() {
   }, [fetchAvailableCards, fetchVisitList]);
 
   useEffect(() => {
+    if (!user) return;
+    const token = getAccessToken();
+    if (!token) return;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
+    const source = new EventSource(`${baseUrl}/events/visits?token=${encodeURIComponent(token)}`);
+    source.onmessage = () => {
+      void fetchVisitList();
+    };
+    source.onerror = () => {
+      source.close();
+    };
+    return () => {
+      source.close();
+    };
+  }, [fetchVisitList, user]);
+
+  useEffect(() => {
     if (!qrCode) return;
     if (skipStatusResetRef.current) {
       skipStatusResetRef.current = false;
@@ -387,14 +453,14 @@ export default function ReceptionQrCheckinPage() {
               type="button"
               onClick={() => handleStatusCheck({ showToast: true, showLoading: true })}
               disabled={loading}
-              className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)] disabled:opacity-60"
+              className="whitespace-nowrap rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)] disabled:opacity-60"
             >
               Check Status
             </button>
             <button
               type="submit"
               disabled={loading || visitorStatus !== "approved"}
-              className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
+              className="whitespace-nowrap rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
             >
               {loading ? "Checking in..." : "Check-in"}
             </button>
@@ -418,15 +484,7 @@ export default function ReceptionQrCheckinPage() {
                   <p className="mt-1 text-base font-semibold text-[var(--text-1)]">{visitorDetail.name}</p>
                   <p className="text-xs text-[var(--text-3)]">Host: {visitorDetail.company ?? "Unknown"}</p>
                 </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    visitorStatus === "approved"
-                      ? "bg-emerald-500/20 text-emerald-200"
-                      : visitorStatus === "rejected"
-                      ? "bg-red-500/20 text-red-200"
-                      : "bg-yellow-500/20 text-yellow-200"
-                  }`}
-                >
+                <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(visitorStatus)}`}>
                   {visitorStatus === "approved"
                     ? "Approved by Host"
                     : visitorStatus === "rejected"
@@ -495,24 +553,15 @@ export default function ReceptionQrCheckinPage() {
 
                     return (
                       <tr key={visit.visit_id} className="text-[var(--text-2)]">
-                        <td className="px-3 py-3">
-                          <p className="font-semibold text-[var(--text-1)]">{visit.visitor_name}</p>
-                          <p className="text-xs text-[var(--text-3)]">Visitor ID: {visit.visitor_id}</p>
-                        </td>
+                      <td className="px-3 py-3">
+                        <p className="font-semibold text-[var(--text-1)]">{visit.visitor_name}</p>
+                      </td>
                         <td className="px-3 py-3 text-sm">{visit.host_name ?? "Unknown"}</td>
                         <td className="px-3 py-3">
                           <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              visit.status === "approved"
-                                ? "bg-emerald-500/20 text-emerald-200"
-                                : visit.status === "rejected"
-                                ? "bg-red-500/20 text-red-200"
-                                : visit.status === "checked_in"
-                                ? "bg-sky-500/20 text-sky-200"
-                                : visit.status === "checked_out"
-                                ? "bg-[var(--surface-2)] text-[var(--text-2)]"
-                                : "bg-yellow-500/20 text-yellow-200"
-                            }`}
+                            className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(
+                              visit.status
+                            )}`}
                           >
                             {statusLabel}
                           </span>
@@ -533,7 +582,8 @@ export default function ReceptionQrCheckinPage() {
                             <button
                               type="button"
                               onClick={() => handleLoadVisit(visit)}
-                              className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)]"
+                              disabled={visit.status === "checked_in"}
+                              className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
                             >
                               Load
                             </button>

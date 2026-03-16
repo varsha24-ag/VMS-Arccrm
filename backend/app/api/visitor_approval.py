@@ -1,4 +1,5 @@
 from datetime import datetime
+import anyio
 from base64 import b64encode
 from pathlib import Path
 from typing import Optional
@@ -12,6 +13,7 @@ from app.models.visit import Visit
 from app.models.visitor import Visitor
 from app.services.notification_service import send_reception_notification
 from app.core.config import settings
+from app.core.realtime import publish_event
 
 router = APIRouter(tags=["visits-public"])
 
@@ -127,6 +129,10 @@ def approve_visit(
         db.commit()
         if settings.RECEPTION_EMAIL:
             send_reception_notification(settings.RECEPTION_EMAIL, visitor.name, "approved")
+    anyio.from_thread.run(
+        publish_event,
+        {"type": "visit_status", "visit_id": visit.id, "status": "approved", "visitor_id": visit.visitor_id},
+    )
 
     base_url = settings.APP_BASE_URL or "http://localhost:8000"
     approve_link = f"{base_url}/visits/{visit_id}/approve?token={token}"
@@ -186,6 +192,10 @@ def reject_visit(
         db.commit()
         if settings.RECEPTION_EMAIL:
             send_reception_notification(settings.RECEPTION_EMAIL, visitor.name, "rejected")
+    anyio.from_thread.run(
+        publish_event,
+        {"type": "visit_status", "visit_id": visit.id, "status": "rejected", "visitor_id": visit.visitor_id},
+    )
 
     base_url = settings.APP_BASE_URL or "http://localhost:8000"
     approve_link = f"{base_url}/visits/{visit_id}/approve?token={token}"
