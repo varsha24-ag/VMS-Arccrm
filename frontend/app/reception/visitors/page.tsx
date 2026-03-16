@@ -75,8 +75,17 @@ export default function ReceptionVisitorListPage() {
   }, [user]);
 
   const queueRows = useMemo(() => {
+    const todayKey = new Date().toDateString();
+    const isToday = (value?: string | null) =>
+      value ? new Date(value).toDateString() === todayKey : false;
     return history
       .filter((item) => item.status === "pending" || item.status === "approved")
+      .filter(
+        (item) =>
+          item.status === "pending" ||
+          isToday(item.checkin_time) ||
+          isToday(item.checkout_time)
+      )
       .sort((a, b) => b.visit_id - a.visit_id);
   }, [history]);
 
@@ -259,50 +268,75 @@ export default function ReceptionVisitorListPage() {
 
         <Panel title="Visitor Details">
           {detail ? (
-            <div className="space-y-3 text-sm text-[var(--text-2)]">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Visitor</p>
-                <p className="text-lg font-semibold text-[var(--text-1)]">{detail.visitor_name}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Contact</p>
-                <p>{detail.visitor_phone ?? "-"}</p>
-                <p>{detail.visitor_email ?? "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Company</p>
-                <p>{detail.company ?? "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Host</p>
-                <p>
-                  {detail.host_employee_id
-                    ? hostMap[detail.host_employee_id] ?? "Unknown"
-                    : "Unassigned"}
-                </p>
-              </div>
-              <div className="grid gap-2 md:grid-cols-2">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Purpose</p>
-                  <p>{detail.purpose ?? "-"}</p>
+            <div className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-2)] p-5 shadow-[var(--shadow-1)]">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--border-1)] bg-[var(--surface-3)] text-sm font-semibold text-[var(--text-1)]">
+                  {detail.visitor_name
+                    .split(" ")
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
                 </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Status</p>
-                  <p className="capitalize">{detail.status}</p>
+                <div className="min-w-[180px]">
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Visitor</p>
+                  <p className="text-xl font-semibold tracking-tight text-[var(--text-1)]">{detail.visitor_name}</p>
+                  <p className="text-sm text-[var(--text-2)]">{detail.company ?? "—"}</p>
                 </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">ID Card</p>
-                  <p>{detail.id_number ?? "-"}</p>
-                </div>
+                <span
+                  className={`ml-auto rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                    detail.status === "approved" ||
+                    detail.status === "pending" ||
+                    detail.status === "checked_in" ||
+                    detail.status === "checked_out"
+                      ? "border-[var(--nav-active-bg)] bg-[var(--nav-active-bg)] text-[var(--accent)]"
+                      : detail.status === "rejected"
+                      ? "border-rose-200/60 bg-rose-500/15 text-rose-400"
+                      : "border-[var(--border-1)] bg-[var(--surface-1)] text-[var(--text-2)]"
+                  }`}
+                >
+                  {detail.status.replace("_", " ")}
+                </span>
               </div>
-              <div className="grid gap-2 md:grid-cols-2">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Check-in</p>
-                  <p>{detail.checkin_time ? new Date(detail.checkin_time).toLocaleString() : "-"}</p>
+
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Phone</p>
+                  <p className="text-base text-[var(--text-1)]">{detail.visitor_phone ?? "—"}</p>
                 </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Check-out</p>
-                  <p>{detail.checkout_time ? new Date(detail.checkout_time).toLocaleString() : "-"}</p>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Email</p>
+                  <p className="text-base text-[var(--text-1)]">{detail.visitor_email ?? "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Host</p>
+                  <p className="text-base text-[var(--text-1)]">
+                    {detail.host_employee_id ? hostMap[detail.host_employee_id] ?? "Unknown" : "Unassigned"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">ID Card</p>
+                  <p className="text-base text-[var(--text-1)]">{detail.id_number ?? "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Purpose</p>
+                  <p className="text-base text-[var(--text-1)]">{detail.purpose ?? "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Company</p>
+                  <p className="text-base text-[var(--text-1)]">{detail.company ?? "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Check-in</p>
+                  <p className="text-base text-[var(--text-1)]">
+                    {detail.checkin_time ? new Date(detail.checkin_time).toLocaleString() : "—"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Check-out</p>
+                  <p className="text-base text-[var(--text-1)]">
+                    {detail.checkout_time ? new Date(detail.checkout_time).toLocaleString() : "—"}
+                  </p>
                 </div>
               </div>
             </div>

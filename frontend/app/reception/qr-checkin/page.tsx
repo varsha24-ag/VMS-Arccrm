@@ -387,14 +387,14 @@ export default function ReceptionQrCheckinPage() {
               type="button"
               onClick={() => handleStatusCheck({ showToast: true, showLoading: true })}
               disabled={loading}
-              className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)] disabled:opacity-60"
+              className="whitespace-nowrap rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)] disabled:opacity-60"
             >
               Check Status
             </button>
             <button
               type="submit"
               disabled={loading || visitorStatus !== "approved"}
-              className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
+              className="whitespace-nowrap rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
             >
               {loading ? "Checking in..." : "Check-in"}
             </button>
@@ -419,12 +419,12 @@ export default function ReceptionQrCheckinPage() {
                   <p className="text-xs text-[var(--text-3)]">Host: {visitorDetail.company ?? "Unknown"}</p>
                 </div>
                 <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${
                     visitorStatus === "approved"
-                      ? "bg-emerald-500/20 text-emerald-200"
+                      ? "border-[var(--nav-active-bg)] bg-[var(--nav-active-bg)] text-[var(--accent)]"
                       : visitorStatus === "rejected"
-                      ? "bg-red-500/20 text-red-200"
-                      : "bg-yellow-500/20 text-yellow-200"
+                      ? "border-rose-200/60 bg-rose-500/15 text-rose-400"
+                      : "border-amber-200/60 bg-amber-500/15 text-amber-500"
                   }`}
                 >
                   {visitorStatus === "approved"
@@ -495,23 +495,21 @@ export default function ReceptionQrCheckinPage() {
 
                     return (
                       <tr key={visit.visit_id} className="text-[var(--text-2)]">
-                        <td className="px-3 py-3">
-                          <p className="font-semibold text-[var(--text-1)]">{visit.visitor_name}</p>
-                          <p className="text-xs text-[var(--text-3)]">Visitor ID: {visit.visitor_id}</p>
-                        </td>
+                      <td className="px-3 py-3">
+                        <p className="font-semibold text-[var(--text-1)]">{visit.visitor_name}</p>
+                      </td>
                         <td className="px-3 py-3 text-sm">{visit.host_name ?? "Unknown"}</td>
                         <td className="px-3 py-3">
                           <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              visit.status === "approved"
-                                ? "bg-emerald-500/20 text-emerald-200"
+                            className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                              visit.status === "approved" ||
+                              visit.status === "pending" ||
+                              visit.status === "checked_in" ||
+                              visit.status === "checked_out"
+                                ? "border-[var(--nav-active-bg)] bg-[var(--nav-active-bg)] text-[var(--accent)]"
                                 : visit.status === "rejected"
-                                ? "bg-red-500/20 text-red-200"
-                                : visit.status === "checked_in"
-                                ? "bg-sky-500/20 text-sky-200"
-                                : visit.status === "checked_out"
-                                ? "bg-[var(--surface-2)] text-[var(--text-2)]"
-                                : "bg-yellow-500/20 text-yellow-200"
+                                ? "border-rose-200/60 bg-rose-500/15 text-rose-400"
+                                : "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]"
                             }`}
                           >
                             {statusLabel}
@@ -533,7 +531,8 @@ export default function ReceptionQrCheckinPage() {
                             <button
                               type="button"
                               onClick={() => handleLoadVisit(visit)}
-                              className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)]"
+                              disabled={visit.status === "checked_in"}
+                              className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
                             >
                               Load
                             </button>

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
 
-interface HostEmployee {
+export interface HostEmployee {
   id: number;
   name: string;
   department: string;
@@ -14,9 +14,10 @@ interface HostEmployee {
 interface HostSearchProps {
   value: number | null;
   onChange: (value: number | null) => void;
+  onSelectHost?: (host: HostEmployee | null) => void;
 }
 
-export default function HostSearch({ value, onChange }: HostSearchProps) {
+export default function HostSearch({ value, onChange, onSelectHost }: HostSearchProps) {
   const [query, setQuery] = useState("");
   const [hosts, setHosts] = useState<HostEmployee[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,6 +53,12 @@ export default function HostSearch({ value, onChange }: HostSearchProps) {
 
   const selected = hosts.find((host) => host.id === value);
 
+  useEffect(() => {
+    if (onSelectHost) {
+      onSelectHost(selected ?? null);
+    }
+  }, [onSelectHost, selected]);
+
   return (
     <div className="space-y-2">
       <label className="text-sm text-[var(--text-2)]">Host Employee</label>
@@ -68,7 +75,10 @@ export default function HostSearch({ value, onChange }: HostSearchProps) {
           <button
             key={host.id}
             type="button"
-            onClick={() => onChange(host.id)}
+            onClick={() => {
+              onChange(host.id);
+              onSelectHost?.(host);
+            }}
             className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition ${
               host.id === value
                 ? "bg-[var(--nav-active-bg)] text-[var(--accent)]"
@@ -81,7 +91,7 @@ export default function HostSearch({ value, onChange }: HostSearchProps) {
         ))}
       </div>
       <div className="text-xs text-[var(--text-3)]">
-        Selected: {selected ? `${selected.name} (ID ${selected.id})` : "None"}
+        Selected: {selected ? `${selected.name}` : "None"}
       </div>
     </div>
   );
