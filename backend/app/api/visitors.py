@@ -3,10 +3,12 @@ from typing import Annotated, List
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_user_from_token
+from app.core.realtime import event_stream
 from app.models.employee import Employee
 from app.models.visitor import Visitor
 from app.models.id_card import IdCard
@@ -287,3 +289,16 @@ def available_id_cards(
         .all()
     )
     return [IdCardOut(id=card.id, id_number=card.id_number, status=card.status) for card in cards]
+@router.get("/events/visits")
+async def visit_events(
+    token: str,
+    db: Session = Depends(get_db),
+):
+    user = get_user_from_token(token, db)
+    if user.role.lower() not in {"receptionist", "admin"}:
+        raise HTTPException(status_code=403, detail="Unauthorized access")
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { Panel, StatGrid, StatusList, TextList } from "@/components/dashboard/panels";
@@ -8,6 +8,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import Pagination from "@/components/ui/pagination";
 import { apiFetch } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 type VisitHistoryItem = {
@@ -35,17 +36,31 @@ export default function ReceptionDashboard() {
   const [modalPage, setModalPage] = useState(1);
   const [modalPageSize, setModalPageSize] = useState(5);
 
-  useEffect(() => {
-    let mounted = true;
+  const statusBadgeClass = (status: string) => {
+    switch (status) {
+      case "approved":
+        return "border-emerald-300/60 bg-emerald-500/15 text-emerald-400";
+      case "pending":
+        return "border-amber-300/60 bg-amber-500/15 text-amber-400";
+      case "rejected":
+        return "border-red-300/60 bg-red-500/15 text-red-400";
+      case "checked_in":
+        return "border-orange-300/60 bg-orange-500/15 text-orange-400";
+      case "checked_out":
+        return "border-slate-300/60 bg-slate-500/15 text-slate-400";
+      default:
+        return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
+    }
+  };
 
-    async function loadData(isInitial = false) {
-      if (isInitial && mounted) setLoading(true);
+  const loadData = useCallback(
+    async (isInitial = false) => {
+      if (isInitial) setLoading(true);
       try {
         const [historyData, hostData] = await Promise.all([
           apiFetch<VisitHistoryItem[]>("/visit/history"),
           apiFetch<Array<{ id: number; name: string }>>("/employees/hosts"),
         ]);
-        if (!mounted) return;
 
         setHistory((prev) => {
           const next = historyData ?? [];
@@ -59,21 +74,37 @@ export default function ReceptionDashboard() {
         setHostMap((prev) => {
           return JSON.stringify(prev) === JSON.stringify(map) ? prev : map;
         });
-
       } catch {
-        if (!mounted) return;
         // Keep old data on transient network error, no need to wipe out the screen
       } finally {
-        if (isInitial && mounted) setLoading(false);
+        if (isInitial) setLoading(false);
       }
-    }
+    },
+    []
+  );
 
+  useEffect(() => {
+    if (!user) return;
     void loadData(true);
+  }, [loadData, user]);
 
-    return () => {
-      mounted = false;
+  useEffect(() => {
+    if (!user) return;
+    const token = getAccessToken();
+    if (!token) return;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
+    const source = new EventSource(`${baseUrl}/events/visits?token=${encodeURIComponent(token)}`);
+
+    source.onmessage = () => {
+      void loadData();
     };
-  }, []);
+    source.onerror = () => {
+      source.close();
+    };
+    return () => {
+      source.close();
+    };
+  }, [loadData, user]);
 
   const stats = useMemo(() => {
     const todayKey = new Date().toDateString();
@@ -92,8 +123,12 @@ export default function ReceptionDashboard() {
   }, [history]);
 
   const queueItems = useMemo(() => {
+    const todayKey = new Date().toDateString();
+    const isToday = (value?: string | null) =>
+      value ? new Date(value).toDateString() === todayKey : false;
     return [...history]
       .filter((item) => item.status === "pending" || item.status === "approved")
+      .filter((item) => isToday(item.checkin_time) || isToday(item.checkout_time))
       .sort((a, b) => b.visit_id - a.visit_id)
       .slice(0, 6)
       .map((item) => ({
@@ -271,16 +306,9 @@ export default function ReceptionDashboard() {
                           </td>
                           <td className="py-4">
                             <span
-                              className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                                item.status === "approved" ||
-                                item.status === "pending" ||
-                                item.status === "checked_in" ||
-                                item.status === "checked_out"
-                                  ? "border-[var(--nav-active-bg)] bg-[var(--nav-active-bg)] text-[var(--accent)]"
-                                  : item.status === "rejected"
-                                  ? "border-rose-200/60 bg-rose-500/15 text-rose-400"
-                                  : "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]"
-                              }`}
+                              className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(
+                                item.status
+                              )}`}
                             >
                               {item.status.replace("_", " ")}
                             </span>

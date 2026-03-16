@@ -38,6 +38,23 @@ export default function ReceptionVisitorListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  const statusBadgeClass = (status: string) => {
+    switch (status) {
+      case "approved":
+        return "border-emerald-300/60 bg-emerald-500/15 text-emerald-400";
+      case "pending":
+        return "border-amber-300/60 bg-amber-500/15 text-amber-400";
+      case "rejected":
+        return "border-red-300/60 bg-red-500/15 text-red-400";
+      case "checked_in":
+        return "border-orange-300/60 bg-orange-500/15 text-orange-400";
+      case "checked_out":
+        return "border-slate-300/60 bg-slate-500/15 text-slate-400";
+      default:
+        return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
+    }
+  };
+
   useEffect(() => {
     if (!user) return;
     let mounted = true;
@@ -193,7 +210,11 @@ export default function ReceptionVisitorListPage() {
                         <td className="py-3 pr-3">
                           {item.host_employee_id ? hostMap[item.host_employee_id] ?? "Unknown" : "Unassigned"}
                         </td>
-                        <td className="py-3">{item.status}</td>
+                        <td className="py-3">
+                          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(item.status)}`}>
+                            {item.status.replace("_", " ")}
+                          </span>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -244,7 +265,11 @@ export default function ReceptionVisitorListPage() {
                         <td className="py-3 pr-3">{(page - 1) * pageSize + idx + 1}</td>
                         <td className="py-3 pr-3 font-semibold text-[var(--text-1)]">{item.visitor_name}</td>
                         <td className="py-3 pr-3">{item.id_number ?? "-"}</td>
-                        <td className="py-3 pr-3">{item.status}</td>
+                        <td className="py-3 pr-3">
+                          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(item.status)}`}>
+                            {item.status.replace("_", " ")}
+                          </span>
+                        </td>
                         <td className="py-3">
                           {item.checkin_time ? new Date(item.checkin_time).toLocaleString() : "-"}
                         </td>
@@ -284,16 +309,7 @@ export default function ReceptionVisitorListPage() {
                   <p className="text-sm text-[var(--text-2)]">{detail.company ?? "—"}</p>
                 </div>
                 <span
-                  className={`ml-auto rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
-                    detail.status === "approved" ||
-                    detail.status === "pending" ||
-                    detail.status === "checked_in" ||
-                    detail.status === "checked_out"
-                      ? "border-[var(--nav-active-bg)] bg-[var(--nav-active-bg)] text-[var(--accent)]"
-                      : detail.status === "rejected"
-                      ? "border-rose-200/60 bg-rose-500/15 text-rose-400"
-                      : "border-[var(--border-1)] bg-[var(--surface-1)] text-[var(--text-2)]"
-                  }`}
+                  className={`ml-auto rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${statusBadgeClass(detail.status)}`}
                 >
                   {detail.status.replace("_", " ")}
                 </span>

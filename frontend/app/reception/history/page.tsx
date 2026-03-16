@@ -33,6 +33,7 @@ export default function ReceptionHistoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
   useEffect(() => {
@@ -141,7 +142,17 @@ export default function ReceptionHistoryPage() {
                       <td className="py-3 pr-3">
                         {item.photo ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={item.photo} alt={item.visitor_name} className="h-10 w-10 rounded-lg object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setPreviewPhoto(item.photo ?? null)}
+                            className="group h-10 w-10 overflow-hidden rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)]"
+                          >
+                            <img
+                              src={item.photo}
+                              alt={item.visitor_name}
+                              className="h-10 w-10 object-cover transition group-hover:scale-105"
+                            />
+                          </button>
                         ) : (
                           <div className="h-10 w-10 rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)]" />
                         )}
@@ -172,6 +183,25 @@ export default function ReceptionHistoryPage() {
           </div>
         </Panel>
       </div>
+      {previewPhoto ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--modal-overlay)] backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] shadow-[var(--shadow-1)]">
+            <button
+              type="button"
+              onClick={() => setPreviewPhoto(null)}
+              className="absolute right-4 top-4 rounded-full border border-[var(--border-1)] bg-[var(--surface-2)] p-2 text-[var(--text-2)] transition hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
+              aria-label="Close"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+                <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+            <div className="p-6">
+              <img src={previewPhoto} alt="Visitor" className="h-full w-full rounded-xl object-cover" />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </DashboardLayout>
   );
 }
