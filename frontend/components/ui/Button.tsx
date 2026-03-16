@@ -14,12 +14,15 @@ export function Button({
     disabled,
     ...props
 }: ButtonProps) {
-    const baseStyles = "inline-flex items-center justify-center rounded-md px-6 py-3 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+    const baseStyles =
+        "inline-flex items-center justify-center rounded-md px-6 py-3 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--app-bg)] disabled:cursor-not-allowed disabled:opacity-60";
 
     const variants = {
-        primary: "bg-[#e9774b] text-white hover:bg-[#d8663d] focus:ring-[#e9774b]/50 shadow-sm",
-        secondary: "bg-[#102a45] text-white hover:bg-[#0d233a] focus:ring-[#102a45]/50 shadow-sm",
-        outline: "border border-[#cfd4dc] bg-transparent text-[#344054] hover:bg-[#f9fafb] focus:ring-gray-200"
+        primary: "bg-[var(--accent)] text-[var(--accent-fg)] shadow-sm hover:brightness-95 active:brightness-90",
+        secondary:
+            "border border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-1)] shadow-sm hover:bg-[var(--surface-3)]",
+        outline:
+            "border border-[var(--border-1)] bg-transparent text-[var(--text-2)] hover:bg-[var(--surface-2)] hover:text-[var(--text-1)]"
     };
 
     return (

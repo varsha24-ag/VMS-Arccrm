@@ -1,44 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-import DashboardShell from "@/components/dashboard-shell";
 import { Panel } from "@/components/dashboard/panels";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
 import PhotoCapture from "@/components/entry-desk/photo-capture";
-import { getAuthUser, getRoleRedirectPath } from "@/lib/auth";
+import { useAuthGuard } from "@/lib/use-auth-guard";
 
 export default function ReceptionPhotoPage() {
-  const router = useRouter();
+  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
   const [photoUrl, setPhotoUrl] = useState("");
 
-  useEffect(() => {
-    const user = getAuthUser();
-    if (!user) {
-      router.replace("/auth/login");
-      return;
-    }
-    if (user.role !== "receptionist" && user.role !== "admin") {
-      router.replace(getRoleRedirectPath(user.role));
-    }
-  }, [router]);
+  if (!user) return null;
 
   return (
-    <DashboardShell
-      title="Photo Capture"
-      subtitle="Capture and preview visitor photos."
-      navItems={[
-        { label: "Dashboard", href: "/reception/dashboard" },
-        { label: "Visitors", href: "/reception/visitors" },
-        { label: "Register", href: "/reception/register" },
-        { label: "Photo", href: "/reception/photo" },
-        { label: "Host", href: "/reception/host" },
-        { label: "Check-in", href: "/reception/qr-checkin" },
-        { label: "History", href: "/reception/history" },
-        { label: "Checkout", href: "/reception/manual-checkout" },
-      ]}
-    >
+    <DashboardLayout user={user}>
+      <DashboardPageHeader title="Photo Capture" subtitle="Capture and preview visitor photos." />
       <div className="space-y-6">
         <EntryDeskHeader
           title="Photo Station"
@@ -49,6 +28,6 @@ export default function ReceptionPhotoPage() {
           <PhotoCapture value={photoUrl} onChange={setPhotoUrl} />
         </Panel>
       </div>
-    </DashboardShell>
+    </DashboardLayout>
   );
 }

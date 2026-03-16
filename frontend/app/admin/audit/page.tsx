@@ -1,22 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getAuthUser, AuthUser } from "@/lib/auth";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
+import { useAuthGuard } from "@/lib/use-auth-guard";
 
 export default function AuditLogsPage() {
-    const router = useRouter();
-    const [user, setUser] = useState<AuthUser | null>(null);
-
-    useEffect(() => {
-        const authUser = getAuthUser();
-        if (!authUser || authUser.role !== "admin") {
-            router.replace("/auth/login");
-            return;
-        }
-        setUser(authUser);
-    }, [router]);
+    const user = useAuthGuard({ allowedRoles: ["admin"] });
 
     if (!user) return null;
 
@@ -30,31 +19,40 @@ export default function AuditLogsPage() {
 
     return (
         <DashboardLayout user={user}>
-            <header className="mb-8">
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Audit Logs</h1>
-                <p className="text-sm text-slate-500 mt-1">Traceable history of all system and user activities.</p>
-            </header>
+            <DashboardPageHeader
+                title="Audit Logs"
+                subtitle="Traceable history of all system and user activities."
+            />
 
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] shadow-[var(--shadow-1)] overflow-hidden">
                 <div className="p-8">
                     <div className="space-y-8 relative">
-                        <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-slate-100" />
+                        <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-[var(--surface-2)]" />
 
                         {logs.map((log) => (
                             <div key={log.id} className="relative pl-10 group">
-                                <div className={`absolute left-0 top-1 w-6 h-6 rounded-full border-4 border-white shadow-sm flex items-center justify-center transition-all group-hover:scale-110 ${log.type === 'success' ? 'bg-emerald-500' :
-                                        log.type === 'danger' ? 'bg-red-500' :
-                                            log.type === 'warning' ? 'bg-amber-500' :
-                                                'bg-blue-500'
-                                    }`} />
+                                <div
+                                    className={`absolute left-0 top-1 w-6 h-6 rounded-full border-4 border-[var(--surface-1)] shadow-sm flex items-center justify-center transition-all group-hover:scale-110 ${
+                                        log.type === "success"
+                                            ? "bg-emerald-500"
+                                            : log.type === "danger"
+                                                ? "bg-red-500"
+                                                : log.type === "warning"
+                                                    ? "bg-amber-500"
+                                                    : "bg-blue-500"
+                                    }`}
+                                />
 
-                                <div className="p-4 rounded-xl border border-slate-50 bg-slate-50/30 group-hover:bg-slate-50/60 transition-colors">
+                                <div className="p-4 rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)] group-hover:bg-[var(--surface-3)] transition-colors">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                         <div>
-                                            <p className="text-sm font-bold text-slate-900">{log.action}</p>
-                                            <p className="text-xs text-slate-500">Performed by <span className="font-semibold text-slate-700">{log.user}</span></p>
+                                            <p className="text-sm font-bold text-[var(--text-1)]">{log.action}</p>
+                                            <p className="text-xs text-[var(--text-3)]">
+                                                Performed by{" "}
+                                                <span className="font-semibold text-[var(--text-2)]">{log.user}</span>
+                                            </p>
                                         </div>
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{log.time}</span>
+                                        <span className="text-[10px] font-bold text-[var(--text-3)] uppercase tracking-widest">{log.time}</span>
                                     </div>
                                 </div>
                             </div>
@@ -62,8 +60,8 @@ export default function AuditLogsPage() {
                     </div>
                 </div>
 
-                <div className="p-4 bg-slate-50/50 border-t border-slate-100 text-center">
-                    <button className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-all">Load older logs</button>
+                <div className="p-4 bg-[var(--surface-2)] border-t border-[var(--border-1)] text-center">
+                    <button className="text-xs font-bold text-[var(--text-3)] hover:text-[var(--text-1)] transition-all">Load older logs</button>
                 </div>
             </div>
         </DashboardLayout>

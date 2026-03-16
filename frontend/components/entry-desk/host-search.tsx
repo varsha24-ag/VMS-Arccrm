@@ -54,31 +54,33 @@ export default function HostSearch({ value, onChange }: HostSearchProps) {
 
   return (
     <div className="space-y-2">
-      <label className="text-sm text-slate-200">Host Employee</label>
+      <label className="text-sm text-[var(--text-2)]">Host Employee</label>
       <input
-        className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+        className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
         placeholder="Search host by name or department"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
-      <div className="max-h-36 space-y-2 overflow-y-auto rounded-md border border-white/10 bg-black/20 p-2">
-        {loading ? <div className="px-2 py-1 text-xs text-slate-400">Loading hosts...</div> : null}
-        {error ? <div className="px-2 py-1 text-xs text-red-300">{error}</div> : null}
+      <div className="max-h-36 space-y-2 overflow-y-auto rounded-md border border-[var(--border-1)] bg-[var(--surface-1)] p-2">
+        {loading ? <div className="px-2 py-1 text-xs text-[var(--text-3)]">Loading hosts...</div> : null}
+        {error ? <div className="px-2 py-1 text-xs text-rose-300">{error}</div> : null}
         {filtered.map((host) => (
           <button
             key={host.id}
             type="button"
             onClick={() => onChange(host.id)}
             className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition ${
-              host.id === value ? "bg-[#ff7a45]/20 text-[#ffc5aa]" : "bg-white/5 text-slate-200 hover:bg-white/10"
+              host.id === value
+                ? "bg-[var(--nav-active-bg)] text-[var(--accent)]"
+                : "bg-[var(--surface-2)] text-[var(--text-2)] hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
             }`}
           >
             <span>{host.name}</span>
-            <span className="text-xs text-slate-400">{host.department}</span>
+            <span className="text-xs text-[var(--text-3)]">{host.department}</span>
           </button>
         ))}
       </div>
-      <div className="text-xs text-slate-400">
+      <div className="text-xs text-[var(--text-3)]">
         Selected: {selected ? `${selected.name} (ID ${selected.id})` : "None"}
       </div>
     </div>

@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-import DashboardShell from "@/components/dashboard-shell";
 import { Panel, StatGrid, StatusList, TextList } from "@/components/dashboard/panels";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import { apiFetch } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
@@ -120,20 +121,11 @@ export default function ReceptionDashboard() {
   if (!user) return null;
 
   return (
-    <DashboardShell
-      title="Reception Dashboard"
-      subtitle="Manage check-ins, appointment flow, and visitor desk operations in real time."
-      navItems={[
-        { label: "Dashboard", href: "/reception/dashboard" },
-        { label: "Visitors", href: "/reception/visitors" },
-        { label: "Register", href: "/reception/register" },
-        { label: "Photo", href: "/reception/photo" },
-        { label: "Host", href: "/reception/host" },
-        { label: "Check-in", href: "/reception/qr-checkin" },
-        { label: "History", href: "/reception/history" },
-        { label: "Checkout", href: "/reception/manual-checkout" },
-      ]}
-    >
+    <DashboardLayout user={user}>
+      <DashboardPageHeader
+        title="Reception Dashboard"
+        subtitle="Manage check-ins, appointment flow, and visitor desk operations in real time."
+      />
       <StatGrid items={stats} />
 
       <div className="mt-6 grid gap-5 xl:grid-cols-[1.6fr_1fr]">
@@ -141,12 +133,12 @@ export default function ReceptionDashboard() {
           title="Front Desk Queue"
           action={
             <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-slate-300">
+              <span className="text-xs font-semibold text-[var(--text-3)]">
                 {loading ? "Updating..." : "Live"}
               </span>
               <Link
                 href="/reception/visitors"
-                className="rounded-md border border-white/20 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200"
+                className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)]"
               >
                 View all
               </Link>
@@ -160,6 +152,6 @@ export default function ReceptionDashboard() {
           <TextList items={checklistItems} />
         </Panel>
       </div>
-    </DashboardShell>
+    </DashboardLayout>
   );
 }

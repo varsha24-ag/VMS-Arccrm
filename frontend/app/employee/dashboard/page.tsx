@@ -1,14 +1,14 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
-import DashboardShell from "@/components/dashboard-shell";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import { Panel, SimpleTable, StatGrid, TextList } from "@/components/dashboard/panels";
 import FilterBar from "@/components/ui/filter-bar";
 import Pagination from "@/components/ui/pagination";
 import { apiFetch } from "@/lib/api";
-import { getAuthUser, getRoleRedirectPath } from "@/lib/auth";
+import { useAuthGuard } from "@/lib/use-auth-guard";
 
 const stats = [
   { label: "My Visitors", value: "14", delta: "This month" },
@@ -45,7 +45,7 @@ interface AccessPassPayload {
 }
 
 export default function EmployeeDashboard() {
-  const router = useRouter();
+  const user = useAuthGuard({ allowedRoles: ["employee"] });
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [approvalQuery, setApprovalQuery] = useState("");
@@ -61,17 +61,6 @@ export default function EmployeeDashboard() {
     valid_to: "",
     max_visits: 10,
   });
-
-  useEffect(() => {
-    const user = getAuthUser();
-    if (!user) {
-      router.replace("/auth/login");
-      return;
-    }
-    if (user.role !== "employee") {
-      router.replace(getRoleRedirectPath(user.role));
-    }
-  }, [router]);
 
   const filteredApprovalRows = useMemo(() => {
     const query = approvalQuery.trim().toLowerCase();
@@ -132,12 +121,14 @@ export default function EmployeeDashboard() {
     }
   }
 
+  if (!user) return null;
+
   return (
-    <DashboardShell
-      title="Employee Dashboard"
-      subtitle="Track your visitor approvals, scheduled meetings, and daily access tasks."
-      modules={["My Requests", "Approvals", "History", "Notifications", "Profile"]}
-    >
+    <DashboardLayout user={user}>
+      <DashboardPageHeader
+        title="Employee Dashboard"
+        subtitle="Track your visitor approvals, scheduled meetings, and daily access tasks."
+      />
       <StatGrid items={stats} />
 
       <div className="mt-6 grid gap-5 xl:grid-cols-[1.4fr_1fr]">
@@ -165,32 +156,32 @@ export default function EmployeeDashboard() {
         <Panel title="Generate Visitor Access Pass">
           <form className="grid gap-3" onSubmit={handleCreatePass}>
             <input
-              className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
               placeholder="Visitor name"
               value={passPayload.visitor_name}
               onChange={(e) => setPassPayload((prev) => ({ ...prev, visitor_name: e.target.value }))}
               required
             />
             <input
-              className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
               placeholder="Phone"
               value={passPayload.phone}
               onChange={(e) => setPassPayload((prev) => ({ ...prev, phone: e.target.value }))}
             />
             <input
-              className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
               placeholder="Email"
               value={passPayload.email}
               onChange={(e) => setPassPayload((prev) => ({ ...prev, email: e.target.value }))}
             />
             <input
-              className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
               placeholder="Company"
               value={passPayload.company}
               onChange={(e) => setPassPayload((prev) => ({ ...prev, company: e.target.value }))}
             />
             <input
-              className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
               placeholder="Host employee ID"
               value={passPayload.host_employee_id ?? ""}
               onChange={(e) => setPassPayload((prev) => ({ ...prev, host_employee_id: Number(e.target.value) || null }))}
@@ -198,14 +189,14 @@ export default function EmployeeDashboard() {
             <div className="grid gap-3 sm:grid-cols-2">
               <input
                 type="date"
-                className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+                className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
                 value={passPayload.valid_from}
                 onChange={(e) => setPassPayload((prev) => ({ ...prev, valid_from: e.target.value }))}
                 required
               />
               <input
                 type="date"
-                className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+                className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
                 value={passPayload.valid_to}
                 onChange={(e) => setPassPayload((prev) => ({ ...prev, valid_to: e.target.value }))}
                 required
@@ -214,7 +205,7 @@ export default function EmployeeDashboard() {
             <input
               type="number"
               min={1}
-              className="w-full rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
               placeholder="Max visits"
               value={passPayload.max_visits}
               onChange={(e) => setPassPayload((prev) => ({ ...prev, max_visits: Number(e.target.value) }))}
@@ -222,11 +213,11 @@ export default function EmployeeDashboard() {
             <button
               type="submit"
               disabled={loading}
-              className="rounded-md bg-[#ff7a45] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
             >
               {loading ? "Creating..." : "Create Pass"}
             </button>
-            {message ? <p className="text-xs text-[#ffc5aa]">{message}</p> : null}
+            {message ? <p className="text-xs text-[var(--text-2)]">{message}</p> : null}
           </form>
         </Panel>
       </div>
@@ -236,6 +227,6 @@ export default function EmployeeDashboard() {
           <TextList items={timelineItems} />
         </Panel>
       </div>
-    </DashboardShell>
+    </DashboardLayout>
   );
 }

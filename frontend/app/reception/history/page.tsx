@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
-import DashboardShell from "@/components/dashboard-shell";
 import { Panel } from "@/components/dashboard/panels";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
 import FilterBar from "@/components/ui/filter-bar";
 import Pagination from "@/components/ui/pagination";
 import { apiFetch } from "@/lib/api";
-import { getAuthUser, getRoleRedirectPath } from "@/lib/auth";
+import { useAuthGuard } from "@/lib/use-auth-guard";
 
 interface VisitHistoryItem {
   visit_id: number;
@@ -27,7 +27,7 @@ interface VisitHistoryItem {
 }
 
 export default function ReceptionHistoryPage() {
-  const router = useRouter();
+  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
   const [history, setHistory] = useState<VisitHistoryItem[]>([]);
   const [message, setMessage] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,16 +36,9 @@ export default function ReceptionHistoryPage() {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
   useEffect(() => {
-    const user = getAuthUser();
-    if (!user) {
-      router.replace("/auth/login");
-      return;
-    }
-    if (user.role !== "receptionist" && user.role !== "admin") {
-      router.replace(getRoleRedirectPath(user.role));
-    }
+    if (!user) return;
     void loadHistory();
-  }, [router]);
+  }, [user]);
 
   async function loadHistory() {
     try {
@@ -104,21 +97,11 @@ export default function ReceptionHistoryPage() {
     }
   }, [page, totalPages]);
 
+  if (!user) return null;
+
   return (
-    <DashboardShell
-      title="Visit History"
-      subtitle="Review recent visits with timestamps and photos."
-      navItems={[
-        { label: "Dashboard", href: "/reception/dashboard" },
-        { label: "Visitors", href: "/reception/visitors" },
-        { label: "Register", href: "/reception/register" },
-        { label: "Photo", href: "/reception/photo" },
-        { label: "Host", href: "/reception/host" },
-        { label: "Check-in", href: "/reception/qr-checkin" },
-        { label: "History", href: "/reception/history" },
-        { label: "Checkout", href: "/reception/manual-checkout" },
-      ]}
-    >
+    <DashboardLayout user={user}>
+      <DashboardPageHeader title="Visit History" subtitle="Review recent visits with timestamps and photos." />
       <div className="space-y-6">
         <EntryDeskHeader
           title="Visit History"
@@ -136,7 +119,7 @@ export default function ReceptionHistoryPage() {
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead>
-                <tr className="text-slate-300">
+                <tr className="text-[var(--text-3)]">
                   <th className="pb-3 pr-3">Photo</th>
                   <th className="pb-3 pr-3">Visitor</th>
                   <th className="pb-3 pr-3">Purpose</th>
@@ -145,22 +128,22 @@ export default function ReceptionHistoryPage() {
                   <th className="pb-3">Check-out</th>
                 </tr>
               </thead>
-              <tbody className="text-slate-100">
+              <tbody className="text-[var(--text-1)]">
                 {pagedHistory.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-3 text-slate-400">
+                    <td colSpan={6} className="py-3 text-[var(--text-3)]">
                       {message ? message : "No visit history found."}
                     </td>
                   </tr>
                 ) : (
                   pagedHistory.map((item) => (
-                    <tr key={item.visit_id} className="border-t border-white/10">
+                    <tr key={item.visit_id} className="border-t border-[var(--border-1)]">
                       <td className="py-3 pr-3">
                         {item.photo ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={item.photo} alt={item.visitor_name} className="h-10 w-10 rounded-lg object-cover" />
                         ) : (
-                          <div className="h-10 w-10 rounded-lg border border-white/15 bg-white/5" />
+                          <div className="h-10 w-10 rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)]" />
                         )}
                       </td>
                       <td className="py-3 pr-3">{item.visitor_name}</td>
@@ -189,6 +172,6 @@ export default function ReceptionHistoryPage() {
           </div>
         </Panel>
       </div>
-    </DashboardShell>
+    </DashboardLayout>
   );
 }
