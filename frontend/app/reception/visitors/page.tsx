@@ -280,9 +280,9 @@ export default function ReceptionVisitorListPage() {
       filterable: false,
       valueGetter: ((params: HistoryValueGetterParams) => params?.row?.created_at ?? null) as GridValueGetter<HistoryRow>,
       valueFormatter: ((value) =>
-        value ? new Date(value as string).toLocaleString() : "-") as GridValueFormatter<HistoryRow>,
+        value ? new Date(value as string).toLocaleDateString() : "-") as GridValueFormatter<HistoryRow>,
       renderCell: (params: GridRenderCellParams<HistoryRow>) => (
-        <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleString() : "-"}</span>
+        <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleDateString() : "-"}</span>
       ),
     },
     {

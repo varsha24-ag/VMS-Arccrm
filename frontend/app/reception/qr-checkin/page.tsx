@@ -369,7 +369,9 @@ export default function ReceptionQrCheckinPage() {
   );
 
   const visitRows = useMemo(() => {
-    return visitList.map((visit) => {
+    return [...visitList]
+      .sort((a, b) => b.visit_id - a.visit_id)
+      .map((visit) => {
       const emailSent = visit.approval_email_sent === true;
       const emailNotSent = visit.approval_email_sent === false || Boolean(visit.approval_email_error);
       const emailStatus = emailSent
@@ -480,6 +482,7 @@ export default function ReceptionQrCheckinPage() {
         headerName: "Email Status",
         flex: 1,
         minWidth: 180,
+        filterable: false,
         valueGetter: ((params: { row: VisitStatusRow }) => params?.row?.email_status ?? "-") as GridValueGetter<VisitStatusRow>,
       },
       {
@@ -487,11 +490,12 @@ export default function ReceptionQrCheckinPage() {
         headerName: "Created",
         flex: 1,
         minWidth: 180,
+        filterable: false,
         valueGetter: ((params: { row: VisitStatusRow }) => params?.row?.created_at ?? null) as GridValueGetter<VisitStatusRow>,
         valueFormatter: ((value) =>
-          value ? new Date(value as string).toLocaleString() : "-") as GridValueFormatter<VisitStatusRow>,
+          value ? new Date(value as string).toLocaleDateString() : "-") as GridValueFormatter<VisitStatusRow>,
         renderCell: (params: GridRenderCellParams<VisitStatusRow>) => (
-          <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleString() : "-"}</span>
+          <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleDateString() : "-"}</span>
         ),
       },
       {

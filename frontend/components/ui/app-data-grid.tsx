@@ -185,6 +185,9 @@ export default function AppDataGrid({
       color: "var(--text-1)",
       borderRadius: "12px",
     },
+    "& .MuiDataGrid-toolbarQuickFilter .MuiInputBase-input": {
+      color: "#fff",
+    },
     "& .MuiDataGrid-toolbarQuickFilter .MuiOutlinedInput-notchedOutline": {
       borderColor: "var(--border-1)",
     },
@@ -226,6 +229,20 @@ export default function AppDataGrid({
     "& .MuiDataGrid-filterForm": {
       gap: 12,
       padding: 0,
+    },
+    "& .MuiDataGrid-filterForm .MuiInputBase-root": {
+      backgroundColor: "var(--surface-1)",
+      color: "var(--text-1)",
+      borderRadius: "12px",
+    },
+    "& .MuiDataGrid-filterForm .MuiInputBase-input": {
+      color: "#fff",
+    },
+    "& .MuiDataGrid-filterForm .MuiOutlinedInput-notchedOutline": {
+      borderColor: "var(--border-1)",
+    },
+    "& .MuiDataGrid-filterForm .MuiSvgIcon-root": {
+      color: "var(--text-2)",
     },
     "& .MuiDataGrid-panelFooter": {
       borderTop: "1px solid var(--border-1)",

@@ -126,9 +126,9 @@ export default function ManualCheckoutPage() {
         minWidth: 180,
         valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.created_at ?? null) as GridValueGetter<VisitHistoryItem>,
         valueFormatter: ((value) =>
-          value ? new Date(value as string).toLocaleString() : "-") as GridValueFormatter<VisitHistoryItem>,
+          value ? new Date(value as string).toLocaleDateString() : "-") as GridValueFormatter<VisitHistoryItem>,
         renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
-          <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleString() : "-"}</span>
+          <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleDateString() : "-"}</span>
         ),
       },
     ],

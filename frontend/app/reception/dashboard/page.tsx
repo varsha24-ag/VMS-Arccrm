@@ -35,6 +35,7 @@ export default function ReceptionDashboard() {
   const [modalKey, setModalKey] = useState<"pending" | "approved" | "checked_in" | "checked_out" | null>(null);
   const [modalPage, setModalPage] = useState(1);
   const [modalPageSize, setModalPageSize] = useState(5);
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
   const statusBadgeClass = (status: string) => {
     switch (status) {
@@ -123,18 +124,18 @@ export default function ReceptionDashboard() {
   }, [history]);
 
   const queueItems = useMemo(() => {
-    const todayKey = new Date().toDateString();
-    const isToday = (value?: string | null) =>
-      value ? new Date(value).toDateString() === todayKey : false;
     return [...history]
-      .filter((item) => item.status === "pending" || item.status === "approved")
-      .filter((item) => isToday(item.checkin_time) || isToday(item.checkout_time))
       .sort((a, b) => b.visit_id - a.visit_id)
-      .slice(0, 6)
+      .slice(0, 5)
       .map((item) => ({
         title: item.visitor_name,
         subtitle: `${item.purpose ?? "Visit"} · Host: ${item.host_employee_id ? hostMap[item.host_employee_id] ?? "Unknown" : "Unassigned"
           }`,
+        image: item.photo_url
+          ? item.photo_url.startsWith("http")
+            ? item.photo_url
+            : `${baseUrl}${item.photo_url}`
+          : null,
         status:
           item.status === "approved"
             ? "Approved"
@@ -142,7 +143,7 @@ export default function ReceptionDashboard() {
               ? "Pending"
               : item.status,
       }));
-  }, [history, hostMap]);
+  }, [history, hostMap, baseUrl]);
 
   const checklistItems = useMemo(() => {
     const pending = history.filter((item) => item.status === "pending").length;

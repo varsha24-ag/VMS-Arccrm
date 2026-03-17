@@ -79,7 +79,9 @@ export default function ReceptionHistoryPage() {
   }
 
   const historyWithPhotos = useMemo(() => {
-    return history.map((item) => ({
+    return [...history]
+      .sort((a, b) => b.visit_id - a.visit_id)
+      .map((item) => ({
       ...item,
       photo: item.photo_url
         ? item.photo_url.startsWith("http")
@@ -152,6 +154,7 @@ export default function ReceptionHistoryPage() {
       headerName: "Check-in",
       flex: 1,
       minWidth: 180,
+      filterable: false,
       valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.checkin_time ?? null) as GridValueGetter<VisitHistoryItem>,
       valueFormatter: ((value) =>
         value ? new Date(value as string).toLocaleString() : "-") as GridValueFormatter<VisitHistoryItem>,
@@ -166,6 +169,7 @@ export default function ReceptionHistoryPage() {
       headerName: "Check-out",
       flex: 1,
       minWidth: 180,
+      filterable: false,
       valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.checkout_time ?? null) as GridValueGetter<VisitHistoryItem>,
       valueFormatter: ((value) =>
         value ? new Date(value as string).toLocaleString() : "-") as GridValueFormatter<VisitHistoryItem>,
@@ -180,11 +184,12 @@ export default function ReceptionHistoryPage() {
       headerName: "Created",
       flex: 1,
       minWidth: 180,
+      filterable: false,
       valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.created_at ?? null) as GridValueGetter<VisitHistoryItem>,
       valueFormatter: ((value) =>
-        value ? new Date(value as string).toLocaleString() : "-") as GridValueFormatter<VisitHistoryItem>,
+        value ? new Date(value as string).toLocaleDateString() : "-") as GridValueFormatter<VisitHistoryItem>,
       renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
-        <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleString() : "-"}</span>
+        <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleDateString() : "-"}</span>
       ),
     },
     {
@@ -192,6 +197,7 @@ export default function ReceptionHistoryPage() {
       headerName: "Company",
       flex: 1,
       minWidth: 160,
+      filterable: false,
       valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.company ?? "-") as GridValueGetter<VisitHistoryItem>,
     },
     {
@@ -199,6 +205,7 @@ export default function ReceptionHistoryPage() {
       headerName: "Email",
       flex: 1,
       minWidth: 200,
+      filterable: false,
       valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_email ?? "-") as GridValueGetter<VisitHistoryItem>,
     },
     {
@@ -206,18 +213,21 @@ export default function ReceptionHistoryPage() {
       headerName: "Phone",
       flex: 0.8,
       minWidth: 140,
+      filterable: false,
       valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_phone ?? "-") as GridValueGetter<VisitHistoryItem>,
     },
     {
       field: "visitor_id",
       headerName: "Visitor ID",
       width: 120,
+      filterable: false,
       valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_id ?? "-") as GridValueGetter<VisitHistoryItem>,
     },
     {
       field: "visit_id",
       headerName: "Visit ID",
       width: 120,
+      filterable: false,
       valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visit_id ?? "-") as GridValueGetter<VisitHistoryItem>,
     },
   ];
