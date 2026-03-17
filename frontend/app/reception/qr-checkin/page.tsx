@@ -1,11 +1,17 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Panel } from "@/components/dashboard/panels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
+import AppDataGrid, { GridColDef } from "@/components/ui/app-data-grid";
+import type {
+  GridRenderCellParams,
+  GridValueFormatter,
+  GridValueGetter,
+} from "@mui/x-data-grid";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
@@ -17,8 +23,10 @@ type VisitStatusRow = {
   visitor_name: string;
   host_name?: string;
   status: string;
+  created_at?: string | null;
   approval_email_sent?: boolean | null;
   approval_email_error?: string | null;
+  email_status?: string;
 };
 
 type VisitStatusResult = VisitStatusRow;
@@ -96,6 +104,8 @@ export default function ReceptionQrCheckinPage() {
         return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
     }
   };
+  const statusLabel = (status: string) => status.replace(/_/g, " ");
+  const statusOptions = ["approved", "pending", "rejected", "checked_in", "checked_out"];
   const [idCardLoading, setIdCardLoading] = useState(false);
   const [availableCards, setAvailableCards] = useState<AvailableIdCard[]>([]);
   const [resendLoading, setResendLoading] = useState<Record<number, boolean>>({});
@@ -358,6 +368,173 @@ export default function ReceptionQrCheckinPage() {
     [pushToast, qrCode]
   );
 
+  const visitRows = useMemo(() => {
+    return visitList.map((visit) => {
+      const emailSent = visit.approval_email_sent === true;
+      const emailNotSent = visit.approval_email_sent === false || Boolean(visit.approval_email_error);
+      const emailStatus = emailSent
+        ? "Email sent"
+        : emailNotSent
+        ? `Email not sent${visit.approval_email_error ? `: ${visit.approval_email_error}` : ""}`
+        : "Email pending";
+      const visitWithAliases = visit as VisitStatusRow & {
+        host?: { name?: string | null } | null;
+        hostName?: string | null;
+        host_employee_name?: string | null;
+        visitorName?: string | null;
+      };
+      return {
+        ...visit,
+        host_name:
+          visitWithAliases.host_name ??
+          visitWithAliases.hostName ??
+          visitWithAliases.host_employee_name ??
+          visitWithAliases.host?.name ??
+          "",
+        visitor_name: visitWithAliases.visitor_name ?? visitWithAliases.visitorName ?? "",
+        status_label: statusLabel(visit.status),
+        email_status: emailStatus,
+      };
+    });
+  }, [visitList, statusLabel]);
+
+  const visitColumns: GridColDef<VisitStatusRow & { status_label?: string; email_status?: string }>[] = useMemo(
+    () => [
+      {
+        field: "visitor_name",
+        headerName: "Visitor",
+        type: "string",
+        flex: 1,
+        minWidth: 170,
+        valueGetter: ((params: { row: VisitStatusRow }) => {
+          const row = params?.row as VisitStatusRow & { visitorName?: string | null };
+          const value = row?.visitor_name ?? row?.visitorName ?? "";
+          return String(value ?? "").trim().toLowerCase();
+        }) as GridValueGetter<VisitStatusRow>,
+        getQuickFilterText: (params: { value?: unknown }) =>
+          String(params?.value ?? "").toLowerCase(),
+        renderCell: (params: GridRenderCellParams<VisitStatusRow>) => (
+          <p className="font-semibold text-[var(--text-1)]">{params.row.visitor_name}</p>
+        ),
+      },
+      {
+        field: "host_name",
+        headerName: "Host",
+        type: "string",
+        flex: 1,
+        minWidth: 160,
+        valueGetter: ((params: { row: VisitStatusRow }) => {
+          const row = params?.row as VisitStatusRow & {
+            hostName?: string | null;
+            host_employee_name?: string | null;
+            host?: { name?: string | null } | null;
+          };
+          const value =
+            row?.host_name ??
+            row?.hostName ??
+            row?.host_employee_name ??
+            row?.host?.name ??
+            "";
+          return String(value ?? "").trim().toLowerCase();
+        }) as GridValueGetter<VisitStatusRow>,
+        valueFormatter: ((value, row) =>
+          String((row as VisitStatusRow | undefined)?.host_name ?? "Unknown")) as GridValueFormatter<VisitStatusRow>,
+        getApplyQuickFilterFn: (value) => {
+          if (!value || !value.trim()) return null;
+          const search = value.toLowerCase();
+          return (params) => String(params?.row?.host_name ?? "Unknown").toLowerCase().includes(search);
+        },
+        getQuickFilterText: (params: { value?: unknown }) => String(params?.value ?? "").toLowerCase(),
+        renderCell: (params: GridRenderCellParams<VisitStatusRow>) => (
+          <span>{params?.row?.host_name ?? "Unknown"}</span>
+        ),
+      },
+      {
+        field: "status",
+        headerName: "Status",
+        type: "singleSelect",
+        valueOptions: statusOptions,
+        flex: 1,
+        minWidth: 200,
+        valueFormatter: ((value) =>
+          statusLabel(String(value ?? ""))) as GridValueFormatter<VisitStatusRow>,
+        getQuickFilterText: (params: { row?: VisitStatusRow & { status_label?: string } }) => {
+          const row = params?.row as VisitStatusRow & { status_label?: string };
+          const raw = row?.status ?? "";
+          const label = row?.status_label ?? "";
+          return `${raw} ${label}`.toLowerCase();
+        },
+        renderCell: (params: GridRenderCellParams<VisitStatusRow>) => {
+          const row = params.row as VisitStatusRow & { email_status?: string };
+          return (
+            <div className="flex flex-col gap-1 py-2">
+              <span className={`w-fit rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(row.status)}`}>
+                {statusLabel(row.status)}
+              </span>
+            </div>
+          );
+        },
+      },
+      {
+        field: "email_status",
+        headerName: "Email Status",
+        flex: 1,
+        minWidth: 180,
+        valueGetter: ((params: { row: VisitStatusRow }) => params?.row?.email_status ?? "-") as GridValueGetter<VisitStatusRow>,
+      },
+      {
+        field: "created_at",
+        headerName: "Created",
+        flex: 1,
+        minWidth: 180,
+        valueGetter: ((params: { row: VisitStatusRow }) => params?.row?.created_at ?? null) as GridValueGetter<VisitStatusRow>,
+        valueFormatter: ((value) =>
+          value ? new Date(value as string).toLocaleString() : "-") as GridValueFormatter<VisitStatusRow>,
+        renderCell: (params: GridRenderCellParams<VisitStatusRow>) => (
+          <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleString() : "-"}</span>
+        ),
+      },
+      {
+        field: "actions",
+        headerName: "Action",
+        flex: 1,
+        minWidth: 220,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        renderCell: (params: GridRenderCellParams<VisitStatusRow>) => {
+          const row = params.row as VisitStatusRow;
+          const emailSent = row.approval_email_sent === true;
+          const canResend = row.status === "pending" && !emailSent;
+          const resendBusy = Boolean(resendLoading[row.visit_id]);
+          return (
+            <div className="flex items-center gap-2 py-2">
+              <button
+                type="button"
+                onClick={() => handleLoadVisit(row)}
+                disabled={row.status === "checked_in"}
+                className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
+              >
+                Load
+              </button>
+              {canResend ? (
+                <button
+                  type="button"
+                  onClick={() => handleResendApprovalEmail(row.visit_id)}
+                  disabled={resendBusy}
+                  className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
+                >
+                  {resendBusy ? "Sending..." : "Resend Email"}
+                </button>
+              ) : null}
+            </div>
+          );
+        },
+      },
+    ],
+    [handleLoadVisit, handleResendApprovalEmail, resendLoading, statusBadgeClass, statusLabel]
+  );
+
   useEffect(() => {
     void fetchVisitList({ showLoading: true });
     void fetchAvailableCards({ showLoading: true });
@@ -515,97 +692,17 @@ export default function ReceptionQrCheckinPage() {
             </div>
           }
         >
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="text-left text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">
-                <tr>
-                  <th className="px-3 py-2">Visitor</th>
-                  <th className="px-3 py-2">Host</th>
-                  <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border-1)]">
-                {visitList.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-4 text-sm text-[var(--text-3)]">
-                      No visitor records available.
-                    </td>
-                  </tr>
-                ) : (
-                  visitList.map((visit) => {
-                    const emailSent = visit.approval_email_sent === true;
-                    const emailNotSent = visit.approval_email_sent === false || Boolean(visit.approval_email_error);
-                    const canResend = visit.status === "pending" && !emailSent;
-                    const resendBusy = Boolean(resendLoading[visit.visit_id]);
-                    const statusLabel =
-                      visit.status === "approved"
-                        ? "Approved"
-                        : visit.status === "rejected"
-                        ? "Rejected"
-                        : visit.status === "pending"
-                        ? "Pending"
-                        : visit.status === "checked_in"
-                        ? "Checked in"
-                        : visit.status === "checked_out"
-                        ? "Checked out"
-                        : visit.status;
-
-                    return (
-                      <tr key={visit.visit_id} className="text-[var(--text-2)]">
-                      <td className="px-3 py-3">
-                        <p className="font-semibold text-[var(--text-1)]">{visit.visitor_name}</p>
-                      </td>
-                        <td className="px-3 py-3 text-sm">{visit.host_name ?? "Unknown"}</td>
-                        <td className="px-3 py-3">
-                          <span
-                            className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(
-                              visit.status
-                            )}`}
-                          >
-                            {statusLabel}
-                          </span>
-                          {visit.status === "checked_in" || visit.status === "checked_out" ? null : (
-                            <p className="mt-2 text-xs text-[var(--text-3)]">
-                              {emailSent ? (
-                                "Email sent"
-                              ) : emailNotSent ? (
-                                <>Email not sent{visit.approval_email_error ? `: ${visit.approval_email_error}` : ""}</>
-                              ) : (
-                                "Email pending"
-                              )}
-                            </p>
-                          )}
-                        </td>
-                        <td className="px-3 py-3">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleLoadVisit(visit)}
-                              disabled={visit.status === "checked_in"}
-                              className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
-                            >
-                              Load
-                            </button>
-                            {canResend ? (
-                              <button
-                                type="button"
-                                onClick={() => handleResendApprovalEmail(visit.visit_id)}
-                                disabled={resendBusy}
-                                className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
-                              >
-                                {resendBusy ? "Sending..." : "Resend Email"}
-                              </button>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+          <AppDataGrid
+            rows={visitRows}
+            columns={visitColumns}
+            getRowId={(row) => row.visit_id}
+            loading={listLoading}
+            searchPlaceholder="Search visitor, host, status..."
+            rowHeight={76}
+            initialState={{
+              columns: { columnVisibilityModel: { host_name: true, email_status: false } },
+            }}
+          />
           <p className="mt-3 text-xs text-[var(--text-3)]">Check-in is enabled only when status is approved.</p>
         </Panel>
       </div>

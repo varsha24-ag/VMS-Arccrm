@@ -248,6 +248,7 @@ def get_visit_history(db: Session) -> List[VisitHistoryItem]:
                 photo_url=visitor.photo_url,
                 host_employee_id=visit.host_employee_id,
                 purpose=visit.purpose,
+                created_at=visit.created_at,
                 checkin_time=visit.checkin_time,
                 checkout_time=visit.checkout_time,
                 status=visit.status,

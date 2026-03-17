@@ -21,10 +21,6 @@ function applyThemeToDom(theme: AppTheme) {
 
 export function ThemeProvider({ children, defaultTheme = "light" }: { children: ReactNode; defaultTheme?: AppTheme }) {
   const [theme, setThemeState] = useState<AppTheme>(() => {
-    if (typeof document !== "undefined") {
-      const fromDom = document.documentElement.dataset.theme;
-      if (fromDom === "light" || fromDom === "dark") return fromDom;
-    }
     if (typeof localStorage !== "undefined") {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
@@ -33,22 +29,26 @@ export function ThemeProvider({ children, defaultTheme = "light" }: { children: 
         // ignore
       }
     }
+    if (typeof document !== "undefined") {
+      const fromDom = document.documentElement.dataset.theme;
+      if (fromDom === "light" || fromDom === "dark") return fromDom;
+    }
     return defaultTheme;
   });
 
   useEffect(() => {
+    let nextTheme: AppTheme = theme;
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored === "light" || stored === "dark") {
-        setThemeState(stored);
-        applyThemeToDom(stored);
-        return;
+        nextTheme = stored;
       }
     } catch {
       // ignore
     }
-    applyThemeToDom(defaultTheme);
-  }, [defaultTheme]);
+    setThemeState(nextTheme);
+    applyThemeToDom(nextTheme);
+  }, [defaultTheme, theme]);
 
   const setTheme = useCallback((next: AppTheme) => {
     setThemeState(next);

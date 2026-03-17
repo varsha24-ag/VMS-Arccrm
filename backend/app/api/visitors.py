@@ -141,6 +141,7 @@ def get_visit_status_by_code(
         visitor_name=visitor_name,
         host_name=host_name,
         status=visit.status,
+        created_at=visit.created_at,
     )
 
 
@@ -165,6 +166,7 @@ def list_visit_status(
                 visitor_name=visitor_name,
                 host_name=host_name,
                 status=visit.status,
+                created_at=visit.created_at,
             )
         )
     return results
@@ -199,6 +201,7 @@ def get_visit_status(
         visitor_name=visitor_name,
         host_name=host_name,
         status=visit.status,
+        created_at=visit.created_at,
     )
 
 
