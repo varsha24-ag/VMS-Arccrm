@@ -6,8 +6,12 @@ import { Panel } from "@/components/dashboard/panels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
-import FilterBar from "@/components/ui/filter-bar";
-import Pagination from "@/components/ui/pagination";
+import AppDataGrid, { GridColDef } from "@/components/ui/app-data-grid";
+import type {
+  GridRenderCellParams,
+  GridValueFormatter,
+  GridValueGetter,
+} from "@mui/x-data-grid";
 import { apiFetch } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
@@ -21,6 +25,7 @@ interface VisitHistoryItem {
   photo_url?: string;
   host_employee_id?: number | null;
   purpose?: string;
+  created_at?: string | null;
   checkin_time?: string | null;
   checkout_time?: string | null;
   status: string;
@@ -30,11 +35,29 @@ export default function ReceptionHistoryPage() {
   const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
   const [history, setHistory] = useState<VisitHistoryItem[]>([]);
   const [message, setMessage] = useState<string>("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [loading, setLoading] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  type VisitHistoryValueGetterParams = { row: VisitHistoryItem };
+
+  const statusBadgeClass = (status: string) => {
+    switch (status) {
+      case "approved":
+        return "border-emerald-300/60 bg-emerald-500/15 text-emerald-400";
+      case "pending":
+        return "border-amber-300/60 bg-amber-500/15 text-amber-400";
+      case "rejected":
+        return "border-red-300/60 bg-red-500/15 text-red-400";
+      case "checked_in":
+        return "border-orange-300/60 bg-orange-500/15 text-orange-400";
+      case "checked_out":
+        return "border-slate-300/60 bg-slate-500/15 text-slate-400";
+      default:
+        return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
+    }
+  };
+  const statusLabel = (status: string) => status.replace(/_/g, " ");
+  const statusOptions = ["approved", "pending", "rejected", "checked_in", "checked_out"];
 
   useEffect(() => {
     if (!user) return;
@@ -42,11 +65,16 @@ export default function ReceptionHistoryPage() {
   }, [user]);
 
   async function loadHistory() {
+    setLoading(true);
     try {
       const data = await apiFetch<VisitHistoryItem[]>("/visit/history");
       setHistory(data);
+      setMessage("");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to load history");
+      setHistory([]);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -61,42 +89,138 @@ export default function ReceptionHistoryPage() {
     }));
   }, [history, baseUrl]);
 
-  const filteredHistory = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return historyWithPhotos;
-    return historyWithPhotos.filter((item) => {
-      const haystack = [
-        item.visitor_name,
-        item.visitor_id,
-        item.visit_id,
-        item.visitor_email,
-        item.visitor_phone,
-        item.company,
-        item.purpose,
-        item.status,
-      ]
-        .filter(Boolean)
-        .map((value) => String(value).toLowerCase())
-        .join(" ");
-      return haystack.includes(query);
-    });
-  }, [historyWithPhotos, searchQuery]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredHistory.length / pageSize));
-  const pagedHistory = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredHistory.slice(start, start + pageSize);
-  }, [filteredHistory, page, pageSize]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery, pageSize]);
-
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
+  const columns: GridColDef<VisitHistoryItem & { photo?: string | null }>[] = [
+    {
+      field: "photo",
+      headerName: "Photo",
+      width: 90,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem & { photo?: string | null }>) =>
+        params.value ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <button
+            type="button"
+            onClick={() => setPreviewPhoto(params.value as string)}
+            className="group h-10 w-10 overflow-hidden rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)]"
+          >
+            <img
+              src={params.value as string}
+              alt={params.row.visitor_name}
+              className="h-10 w-10 object-cover transition group-hover:scale-105"
+            />
+          </button>
+        ) : (
+          <div className="h-10 w-10 rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)]" />
+        ),
+    },
+    {
+      field: "visitor_name",
+      headerName: "Visitor",
+      flex: 1,
+      minWidth: 160,
+    },
+    {
+      field: "purpose",
+      headerName: "Purpose",
+      type: "string",
+      flex: 1,
+      minWidth: 160,
+      valueGetter: ((params: VisitHistoryValueGetterParams) =>
+        String(params?.row?.purpose ?? "").trim().toLowerCase()) as GridValueGetter<VisitHistoryItem>,
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span>{String(params?.row?.purpose ?? "").trim() || "-"}</span>
+      ),
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      type: "singleSelect",
+      valueOptions: statusOptions,
+      flex: 0.7,
+      minWidth: 140,
+      valueFormatter: ((value) =>
+        statusLabel(String(value ?? ""))) as GridValueFormatter<VisitHistoryItem>,
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(params?.row?.status ?? "")}`}>
+          {statusLabel(String(params?.row?.status ?? "-"))}
+        </span>
+      ),
+    },
+    {
+      field: "checkin_time",
+      headerName: "Check-in",
+      flex: 1,
+      minWidth: 180,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.checkin_time ?? null) as GridValueGetter<VisitHistoryItem>,
+      valueFormatter: ((value) =>
+        value ? new Date(value as string).toLocaleString() : "-") as GridValueFormatter<VisitHistoryItem>,
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span>
+          {params?.row?.checkin_time ? new Date(params.row.checkin_time).toLocaleString() : "-"}
+        </span>
+      ),
+    },
+    {
+      field: "checkout_time",
+      headerName: "Check-out",
+      flex: 1,
+      minWidth: 180,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.checkout_time ?? null) as GridValueGetter<VisitHistoryItem>,
+      valueFormatter: ((value) =>
+        value ? new Date(value as string).toLocaleString() : "-") as GridValueFormatter<VisitHistoryItem>,
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span>
+          {params?.row?.checkout_time ? new Date(params.row.checkout_time).toLocaleString() : "-"}
+        </span>
+      ),
+    },
+    {
+      field: "created_at",
+      headerName: "Created",
+      flex: 1,
+      minWidth: 180,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.created_at ?? null) as GridValueGetter<VisitHistoryItem>,
+      valueFormatter: ((value) =>
+        value ? new Date(value as string).toLocaleString() : "-") as GridValueFormatter<VisitHistoryItem>,
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleString() : "-"}</span>
+      ),
+    },
+    {
+      field: "company",
+      headerName: "Company",
+      flex: 1,
+      minWidth: 160,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.company ?? "-") as GridValueGetter<VisitHistoryItem>,
+    },
+    {
+      field: "visitor_email",
+      headerName: "Email",
+      flex: 1,
+      minWidth: 200,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_email ?? "-") as GridValueGetter<VisitHistoryItem>,
+    },
+    {
+      field: "visitor_phone",
+      headerName: "Phone",
+      flex: 0.8,
+      minWidth: 140,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_phone ?? "-") as GridValueGetter<VisitHistoryItem>,
+    },
+    {
+      field: "visitor_id",
+      headerName: "Visitor ID",
+      width: 120,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_id ?? "-") as GridValueGetter<VisitHistoryItem>,
+    },
+    {
+      field: "visit_id",
+      headerName: "Visit ID",
+      width: 120,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visit_id ?? "-") as GridValueGetter<VisitHistoryItem>,
+    },
+  ];
 
   if (!user) return null;
 
@@ -110,77 +234,30 @@ export default function ReceptionHistoryPage() {
         />
 
         <Panel title="History (Photo)">
-          <div className="mb-4">
-            <FilterBar
-              searchValue={searchQuery}
-              onSearchChange={setSearchQuery}
-              searchPlaceholder="Search visitor, purpose, status..."
-            />
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead>
-                <tr className="text-[var(--text-3)]">
-                  <th className="pb-3 pr-3">Photo</th>
-                  <th className="pb-3 pr-3">Visitor</th>
-                  <th className="pb-3 pr-3">Purpose</th>
-                  <th className="pb-3 pr-3">Status</th>
-                  <th className="pb-3 pr-3">Check-in</th>
-                  <th className="pb-3">Check-out</th>
-                </tr>
-              </thead>
-              <tbody className="text-[var(--text-1)]">
-                {pagedHistory.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-3 text-[var(--text-3)]">
-                      {message ? message : "No visit history found."}
-                    </td>
-                  </tr>
-                ) : (
-                  pagedHistory.map((item) => (
-                    <tr key={item.visit_id} className="border-t border-[var(--border-1)]">
-                      <td className="py-3 pr-3">
-                        {item.photo ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <button
-                            type="button"
-                            onClick={() => setPreviewPhoto(item.photo ?? null)}
-                            className="group h-10 w-10 overflow-hidden rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)]"
-                          >
-                            <img
-                              src={item.photo}
-                              alt={item.visitor_name}
-                              className="h-10 w-10 object-cover transition group-hover:scale-105"
-                            />
-                          </button>
-                        ) : (
-                          <div className="h-10 w-10 rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)]" />
-                        )}
-                      </td>
-                      <td className="py-3 pr-3">{item.visitor_name}</td>
-                      <td className="py-3 pr-3">{item.purpose ?? "-"}</td>
-                      <td className="py-3 pr-3">{item.status}</td>
-                      <td className="py-3 pr-3">
-                        {item.checkin_time ? new Date(item.checkin_time).toLocaleString() : "-"}
-                      </td>
-                      <td className="py-3">
-                        {item.checkout_time ? new Date(item.checkout_time).toLocaleString() : "-"}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-4">
-            <Pagination
-              page={page}
-              totalItems={filteredHistory.length}
-              pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-            />
-          </div>
+          <AppDataGrid
+            rows={historyWithPhotos}
+            columns={columns}
+            getRowId={(row) => row.visit_id}
+            loading={loading}
+            searchPlaceholder="Search visitor, purpose, status..."
+            initialState={{
+              columns: {
+                columnVisibilityModel: {
+                  purpose: true,
+                  checkin_time: true,
+                  checkout_time: true,
+                  company: false,
+                  visitor_email: false,
+                  visitor_phone: false,
+                  visitor_id: false,
+                  visit_id: false,
+                },
+              },
+            }}
+            localeText={{
+              noRowsLabel: message ? message : "No visit history found.",
+            }}
+          />
         </Panel>
       </div>
       {previewPhoto ? (

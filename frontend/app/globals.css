@@ -16,6 +16,7 @@
   --surface-1: #ffffff;
   --surface-2: #f1f5f9;
   --surface-3: #e2e8f0;
+  --grid-header-bg: var(--surface-2);
   --shadow-1: 0 10px 26px rgba(15, 23, 42, 0.08);
   --accent: var(--brand-orange);
   --accent-fg: #ffffff;
@@ -38,6 +39,7 @@ html[data-theme="dark"] {
   --surface-1: rgba(11, 34, 57, 0.72);
   --surface-2: rgba(255, 255, 255, 0.06);
   --surface-3: rgba(255, 255, 255, 0.10);
+  --grid-header-bg: rgba(11, 34, 57, 0.9);
   --shadow-1: 0 18px 45px rgba(0, 0, 0, 0.35);
   --accent: var(--brand-orange-bright);
   --accent-fg: #0b1220;
