@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-import { Panel, StatGrid, StatusList, TextList } from "@/components/dashboard/panels";
+import { Panel, StatGrid, StatusList } from "@/components/dashboard/panels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import Pagination from "@/components/ui/pagination";
-import { apiFetch } from "@/lib/api";
+import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
@@ -28,6 +29,7 @@ type VisitHistoryItem = {
 };
 
 export default function ReceptionDashboard() {
+  const router = useRouter();
   const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
   const [history, setHistory] = useState<VisitHistoryItem[]>([]);
   const [hostMap, setHostMap] = useState<Record<number, string>>({});
@@ -35,8 +37,6 @@ export default function ReceptionDashboard() {
   const [modalKey, setModalKey] = useState<"pending" | "approved" | "checked_in" | "checked_out" | null>(null);
   const [modalPage, setModalPage] = useState(1);
   const [modalPageSize, setModalPageSize] = useState(5);
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
   const statusBadgeClass = (status: string) => {
     switch (status) {
       case "approved":
@@ -93,8 +93,7 @@ export default function ReceptionDashboard() {
     if (!user) return;
     const token = getAccessToken();
     if (!token) return;
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
-    const source = new EventSource(`${baseUrl}/events/visits?token=${encodeURIComponent(token)}`);
+    const source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);
 
     source.onmessage = () => {
       void loadData();
@@ -134,8 +133,10 @@ export default function ReceptionDashboard() {
         image: item.photo_url
           ? item.photo_url.startsWith("http")
             ? item.photo_url
-            : `${baseUrl}${item.photo_url}`
+            : `${API_BASE_URL}${item.photo_url}`
           : null,
+        visit_id: item.visit_id,
+        visitor_id: item.visitor_id,
         status:
           item.status === "approved"
             ? "Approved"
@@ -143,7 +144,7 @@ export default function ReceptionDashboard() {
               ? "Pending"
               : item.status,
       }));
-  }, [history, hostMap, baseUrl]);
+  }, [history, hostMap]);
 
   const checklistItems = useMemo(() => {
     const pending = history.filter((item) => item.status === "pending").length;
@@ -197,9 +198,11 @@ export default function ReceptionDashboard() {
         title="Reception Dashboard"
         subtitle="Manage check-ins, appointment flow, and visitor desk operations in real time."
       />
-      <StatGrid items={stats} />
+      <div className="mt-6">
+        <StatGrid items={stats} />
+      </div>
 
-      <div className="mt-6 grid gap-5 xl:grid-cols-[1.6fr_1fr]">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.75fr_0.95fr]">
         <Panel
           title="Front Desk Queue"
           action={
@@ -209,24 +212,34 @@ export default function ReceptionDashboard() {
               </span>
               <Link
                 href="/reception/visitors"
-                className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)]"
+                className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1 text-xs font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)]"
               >
                 View all
               </Link>
             </div>
           }
         >
-          <StatusList items={queueItems} />
+          <StatusList
+            items={queueItems}
+            onItemClick={(item) => {
+              if (!item.visit_id && !item.visitor_id) return;
+              const params = new URLSearchParams();
+              if (item.visit_id) params.set("visitId", String(item.visit_id));
+              if (item.visitor_id) params.set("visitorId", String(item.visitor_id));
+              router.push(`/reception/visitors?${params.toString()}`);
+            }}
+          />
         </Panel>
 
-        <Panel title="Today’s Checklist">
+        <div className="space-y-6 xl:sticky xl:top-20 self-start">
+          <Panel title="Today’s Checklist">
           <ul className="space-y-3 text-sm text-[var(--text-2)]">
             {checklistItems.map((item) => (
               <li key={item.key}>
                 <button
                   type="button"
                   onClick={() => setModalKey(item.key)}
-                  className="flex w-full items-center justify-between rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-left text-[var(--text-2)] transition hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
+                  className="flex w-full items-center justify-between rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-left text-[var(--text-2)] transition hover:-translate-y-0.5 hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
                 >
                   <span>{item.label}</span>
                   <span className="rounded-full border border-[var(--border-1)] bg-[var(--surface-1)] px-2.5 py-0.5 text-xs font-semibold text-[var(--text-1)]">
@@ -237,6 +250,7 @@ export default function ReceptionDashboard() {
             ))}
           </ul>
         </Panel>
+        </div>
       </div>
 
       {modalKey ? (

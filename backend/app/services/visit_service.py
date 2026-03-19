@@ -197,9 +197,21 @@ def checkout_visit(db: Session, payload: VisitCheckout) -> VisitOut:
             .order_by(desc(Visit.checkin_time))
             .first()
         )
+    elif payload.id_number:
+        visitor = db.query(Visitor).filter(Visitor.id_number == payload.id_number.strip()).first()
+        if visitor:
+            visit = (
+                db.query(Visit)
+                .filter(Visit.visitor_id == visitor.id, Visit.status == "checked_in")
+                .order_by(desc(Visit.checkin_time))
+                .first()
+            )
 
     if not visit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
+
+    if visit.status == "checked_out":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Visitor is already checked out")
 
     visit.checkout_time = datetime.now(timezone.utc)
     visit.status = "checked_out"

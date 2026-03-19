@@ -89,3 +89,29 @@ body {
 .animate-pop {
   animation: pop-in 180ms ease-out;
 }
+/* MUI menu dropdowns (DataGrid filter/column/operator) */
+.MuiMenu-paper,
+.MuiPopover-paper,
+.MuiPaper-root.MuiMenu-paper,
+.MuiPaper-root.MuiPopover-paper {
+  background-color: var(--surface-1) !important;
+  background-image: none !important;
+  opacity: 1 !important;
+  color: var(--text-1) !important;
+  border: 1px solid var(--border-1) !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+.MuiMenu-list {
+  background-color: var(--surface-1) !important;
+}
+
+.MuiMenuItem-root {
+  color: var(--text-1) !important;
+  background-color: var(--surface-1) !important;
+}
+
+.MuiMenuItem-root.Mui-selected {
+  background-color: var(--surface-2) !important;
+}

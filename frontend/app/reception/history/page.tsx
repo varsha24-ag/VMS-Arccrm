@@ -6,13 +6,11 @@ import { Panel } from "@/components/dashboard/panels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
-import AppDataGrid, { GridColDef } from "@/components/ui/app-data-grid";
-import type {
-  GridRenderCellParams,
-  GridValueFormatter,
-  GridValueGetter,
-} from "@mui/x-data-grid";
-import { apiFetch } from "@/lib/api";
+import AppDataGrid, {
+  GridColDef,
+  type GridRenderCellParams,
+} from "@/components/ui/app-data-grid";
+import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 interface VisitHistoryItem {
@@ -37,7 +35,6 @@ export default function ReceptionHistoryPage() {
   const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
   type VisitHistoryValueGetterParams = { row: VisitHistoryItem };
 
   const statusBadgeClass = (status: string) => {
@@ -86,16 +83,16 @@ export default function ReceptionHistoryPage() {
       photo: item.photo_url
         ? item.photo_url.startsWith("http")
           ? item.photo_url
-          : `${baseUrl}${item.photo_url}`
+          : `${API_BASE_URL}${item.photo_url}`
         : null,
     }));
-  }, [history, baseUrl]);
+  }, [history]);
 
   const columns: GridColDef<VisitHistoryItem & { photo?: string | null }>[] = [
     {
       field: "photo",
       headerName: "Photo",
-      width: 90,
+      width: 104,
       sortable: false,
       filterable: false,
       renderCell: (params: GridRenderCellParams<VisitHistoryItem & { photo?: string | null }>) =>
@@ -120,7 +117,10 @@ export default function ReceptionHistoryPage() {
       field: "visitor_name",
       headerName: "Visitor",
       flex: 1,
-      minWidth: 160,
+      minWidth: 190,
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span className="block truncate">{params.row.visitor_name}</span>
+      ),
     },
     {
       field: "purpose",
@@ -129,9 +129,9 @@ export default function ReceptionHistoryPage() {
       flex: 1,
       minWidth: 160,
       valueGetter: ((params: VisitHistoryValueGetterParams) =>
-        String(params?.row?.purpose ?? "").trim().toLowerCase()) as GridValueGetter<VisitHistoryItem>,
+        String(params?.row?.purpose ?? "").trim().toLowerCase()),
       renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
-        <span>{String(params?.row?.purpose ?? "").trim() || "-"}</span>
+        <span className="block truncate">{String(params?.row?.purpose ?? "").trim() || "-"}</span>
       ),
     },
     {
@@ -139,14 +139,19 @@ export default function ReceptionHistoryPage() {
       headerName: "Status",
       type: "singleSelect",
       valueOptions: statusOptions,
-      flex: 0.7,
-      minWidth: 140,
+      width: 150,
+      minWidth: 150,
+      filterable: true,
       valueFormatter: ((value) =>
-        statusLabel(String(value ?? ""))) as GridValueFormatter<VisitHistoryItem>,
+        statusLabel(String(value ?? ""))),
       renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
-        <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(params?.row?.status ?? "")}`}>
-          {statusLabel(String(params?.row?.status ?? "-"))}
-        </span>
+        <div className="min-w-0">
+          <span className={`inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap ${statusBadgeClass(params?.row?.status ?? "")}`}>
+            <span className="truncate">
+              {statusLabel(String(params?.row?.status ?? "-"))}
+            </span>
+          </span>
+        </div>
       ),
     },
     {
@@ -155,11 +160,11 @@ export default function ReceptionHistoryPage() {
       flex: 1,
       minWidth: 180,
       filterable: false,
-      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.checkin_time ?? null) as GridValueGetter<VisitHistoryItem>,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.checkin_time ?? null),
       valueFormatter: ((value) =>
-        value ? new Date(value as string).toLocaleString() : "-") as GridValueFormatter<VisitHistoryItem>,
+        value ? new Date(value as string).toLocaleString() : "-"),
       renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
-        <span>
+        <span className="block truncate">
           {params?.row?.checkin_time ? new Date(params.row.checkin_time).toLocaleString() : "-"}
         </span>
       ),
@@ -170,11 +175,11 @@ export default function ReceptionHistoryPage() {
       flex: 1,
       minWidth: 180,
       filterable: false,
-      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.checkout_time ?? null) as GridValueGetter<VisitHistoryItem>,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.checkout_time ?? null),
       valueFormatter: ((value) =>
-        value ? new Date(value as string).toLocaleString() : "-") as GridValueFormatter<VisitHistoryItem>,
+        value ? new Date(value as string).toLocaleString() : "-"),
       renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
-        <span>
+        <span className="block truncate">
           {params?.row?.checkout_time ? new Date(params.row.checkout_time).toLocaleString() : "-"}
         </span>
       ),
@@ -182,53 +187,48 @@ export default function ReceptionHistoryPage() {
     {
       field: "created_at",
       headerName: "Created",
-      flex: 1,
-      minWidth: 180,
-      filterable: false,
-      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.created_at ?? null) as GridValueGetter<VisitHistoryItem>,
+      width: 140,
+      minWidth: 140,
+      filterable: true,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.created_at ?? null),
       valueFormatter: ((value) =>
-        value ? new Date(value as string).toLocaleDateString() : "-") as GridValueFormatter<VisitHistoryItem>,
+        value ? new Date(value as string).toLocaleDateString() : "-"),
       renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
-        <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleDateString() : "-"}</span>
+        <span className="block truncate">{params?.row?.created_at ? new Date(params.row.created_at).toLocaleDateString() : "-"}</span>
       ),
     },
     {
       field: "company",
       headerName: "Company",
       flex: 1,
-      minWidth: 160,
+      minWidth: 150,
       filterable: false,
-      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.company ?? "-") as GridValueGetter<VisitHistoryItem>,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.company ?? "-"),
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span className="block truncate">{String(params.row.company ?? "-")}</span>
+      ),
     },
     {
       field: "visitor_email",
       headerName: "Email",
       flex: 1,
-      minWidth: 200,
+      minWidth: 210,
       filterable: false,
-      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_email ?? "-") as GridValueGetter<VisitHistoryItem>,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_email ?? "-"),
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span className="block truncate">{String(params.row.visitor_email ?? "-")}</span>
+      ),
     },
     {
       field: "visitor_phone",
       headerName: "Phone",
-      flex: 0.8,
+      width: 140,
       minWidth: 140,
       filterable: false,
-      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_phone ?? "-") as GridValueGetter<VisitHistoryItem>,
-    },
-    {
-      field: "visitor_id",
-      headerName: "Visitor ID",
-      width: 120,
-      filterable: false,
-      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_id ?? "-") as GridValueGetter<VisitHistoryItem>,
-    },
-    {
-      field: "visit_id",
-      headerName: "Visit ID",
-      width: 120,
-      filterable: false,
-      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visit_id ?? "-") as GridValueGetter<VisitHistoryItem>,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_phone ?? "-"),
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span className="block truncate">{String(params.row.visitor_phone ?? "-")}</span>
+      ),
     },
   ];
 
@@ -259,8 +259,6 @@ export default function ReceptionHistoryPage() {
                   company: false,
                   visitor_email: false,
                   visitor_phone: false,
-                  visitor_id: false,
-                  visit_id: false,
                 },
               },
             }}
