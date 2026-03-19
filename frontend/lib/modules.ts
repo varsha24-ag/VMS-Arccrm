@@ -22,8 +22,8 @@ export const MODULES: ModuleConfig[] = [
   { id: "reception-photo", label: "Photo", path: "/reception/photo", role: ["receptionist", "admin"] },
   { id: "reception-host", label: "Host", path: "/reception/host", role: ["receptionist", "admin"] },
   { id: "reception-checkin", label: "Check-in", path: "/reception/qr-checkin", role: ["receptionist", "admin"] },
-  { id: "reception-history", label: "History", path: "/reception/history", role: ["receptionist", "admin"] },
   { id: "reception-checkout", label: "Checkout", path: "/reception/manual-checkout", role: ["receptionist", "admin"] },
+  { id: "reception-history", label: "History", path: "/reception/history", role: ["receptionist", "admin"] },
 
   // Employee Modules
   { id: "employee-dashboard", label: "Dashboard", path: "/employee/dashboard", role: ["employee", "admin"] },

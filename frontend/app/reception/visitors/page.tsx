@@ -95,7 +95,7 @@ function TableColumnToggle({ columns, visibleColumns, defaultVisibleColumns, onT
         type="button"
         className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
           isActive
-            ? "border-[var(--accent)] bg-[var(--nav-active-bg)] text-[var(--accent)]"
+            ? "border-[var(--accent)] bg-[var(--nav-active-bg)] text-[var(--accent)] shadow-[0_0_0_1px_var(--accent)]"
             : "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)] hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
         }`}
         onClick={() => setOpen((current) => !current)}
@@ -108,10 +108,9 @@ function TableColumnToggle({ columns, visibleColumns, defaultVisibleColumns, onT
             Visible columns
           </div>
           <div className="max-h-72 space-y-1 overflow-y-auto">
-            {columns.map((column) => (
-              (() => {
-                const isVisible = visibleColumns.includes(column.key);
-                return (
+            {columns.map((column) => {
+              const isVisible = visibleColumns.includes(column.key);
+              return (
               <label
                 key={column.key}
                 className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-2 text-sm text-[var(--text-1)] hover:bg-[var(--surface-2)]"
@@ -126,9 +125,8 @@ function TableColumnToggle({ columns, visibleColumns, defaultVisibleColumns, onT
                 />
                 <span>{column.label}</span>
               </label>
-                );
-              })()
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : null}
@@ -139,7 +137,6 @@ function TableColumnToggle({ columns, visibleColumns, defaultVisibleColumns, onT
 function ReceptionVisitorsContent() {
   const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
   const searchParams = useSearchParams();
-  const detailRef = useRef<HTMLDivElement | null>(null);
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [selectedVisitId, setSelectedVisitId] = useState<number | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
@@ -159,13 +156,6 @@ function ReceptionVisitorsContent() {
       setDetailsOpen(true);
     }
   }, [visitIdParam]);
-
-  useEffect(() => {
-    if (!selectedVisitId) return;
-    if (detailsOpen) {
-      detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [detailsOpen, selectedVisitId]);
 
   const statusBadgeClass = (status: string) => {
     switch (status) {
@@ -416,7 +406,6 @@ function ReceptionVisitorsContent() {
         </button>
       </div>
       <div className="h-full overflow-y-auto p-4">
-        <div ref={detailRef} />
         <div className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-1)]">
           <div className="flex flex-wrap items-center gap-4">
             {selectedRow.photo ? (

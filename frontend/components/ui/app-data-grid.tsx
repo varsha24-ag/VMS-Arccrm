@@ -159,8 +159,8 @@ function AppGridFilterPanel<R>({
   const getInputClass = (active: boolean) =>
     `w-full h-10 rounded-xl border bg-[var(--surface-1)] px-3 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] transition focus:outline-none focus:ring-2 ${
       active
-        ? "border-[var(--accent)] ring-1 ring-[var(--accent)]/20 focus:border-[var(--accent)] focus:ring-[var(--accent)]/15"
-        : "border-slate-700/70 focus:border-[var(--accent)] focus:ring-[var(--accent)]/10"
+        ? "border-[var(--focus-accent)] ring-1 ring-[var(--focus-ring)] focus:border-[var(--focus-accent)] focus:ring-[var(--focus-ring)]"
+        : "border-slate-700/70 focus:border-[var(--focus-accent)] focus:ring-[var(--focus-ring)]"
     }`;
 
   const getLabel = useCallback(
@@ -316,10 +316,13 @@ export default function AppDataGrid<R extends object>({
   const stateCellClass = "px-6 py-10 text-center text-sm text-[var(--text-3)]";
   const toolbarButtonClass =
     "rounded-full border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-xs font-semibold text-[var(--text-2)] transition hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]";
+  const activeToolbarButtonClass =
+    "rounded-full border border-[var(--accent)] bg-[var(--nav-active-bg)] px-4 py-2 text-xs font-semibold text-[var(--accent)] transition shadow-[0_0_0_1px_var(--accent)]";
 
   const defaultPageSize = initialState?.pagination?.paginationModel?.pageSize ?? pageSizeOptions[0] ?? 5;
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
+  const [exportActive, setExportActive] = useState(false);
   const [panelFilters, setPanelFilters] = useState<FilterState>({
     search: filterModel?.quickFilterValues?.[0] ?? "",
     fields: {},
@@ -360,6 +363,7 @@ export default function AppDataGrid<R extends object>({
   }, [columnsOpen]);
 
   const effectiveVisibilityModel = columnVisibilityModel ?? internalColumnVisibilityModel;
+  const baselineColumnVisibilityModel = initialState?.columns?.columnVisibilityModel ?? {};
 
   const visibleColumns = useMemo(
     () => columns.filter((column) => effectiveVisibilityModel[column.field] !== false),
@@ -367,14 +371,27 @@ export default function AppDataGrid<R extends object>({
   );
 
   const hasCustomColumnSelection = useMemo(
-    () => columns.some((column) => effectiveVisibilityModel[column.field] === false),
-    [columns, effectiveVisibilityModel]
+    () =>
+      columns.some(
+        (column) =>
+          (effectiveVisibilityModel[column.field] ?? true) !== (baselineColumnVisibilityModel[column.field] ?? true)
+      ),
+    [baselineColumnVisibilityModel, columns, effectiveVisibilityModel]
   );
 
   const filterPanelColumns = useMemo(
     () => visibleColumns.filter((column) => column.filterable !== false),
     [visibleColumns]
   );
+
+  const hasActiveFilters = useMemo(() => {
+    const hasFieldFilters = Object.values(panelFilters.fields).some((value) => value.trim());
+    const hasDateFilters =
+      Object.values(panelFilters.dateFrom).some((value) => value.trim()) ||
+      Object.values(panelFilters.dateTo).some((value) => value.trim());
+    return Boolean(panelFilters.search.trim() || hasFieldFilters || hasDateFilters);
+  }, [panelFilters]);
+  const hasActiveExportScope = exportActive || hasCustomColumnSelection || hasActiveFilters;
 
   const rowsWithId = useMemo(
     () =>
@@ -563,6 +580,7 @@ export default function AppDataGrid<R extends object>({
   );
 
   const handleExport = useCallback(() => {
+    setExportActive(true);
     const header = visibleColumns.map((column) => column.headerName ?? column.field);
     const lines = filteredRows.map(({ row, id }) =>
       visibleColumns
@@ -582,6 +600,9 @@ export default function AppDataGrid<R extends object>({
     link.download = "table-export.csv";
     link.click();
     URL.revokeObjectURL(url);
+    window.setTimeout(() => {
+      setExportActive(false);
+    }, 1200);
   }, [filteredRows, getRawValue, visibleColumns]);
 
   const defaultFilterPanel = filtersOpen ? (
@@ -654,8 +675,8 @@ export default function AppDataGrid<R extends object>({
                   <div
                     className={`min-w-[220px] max-w-[360px] flex-1 rounded-xl border px-3 py-2 ${
                       panelFilters.search.trim()
-                        ? "border-[var(--accent)] bg-[var(--surface-2)] ring-1 ring-[var(--accent)]/15"
-                        : "border-slate-700/70 bg-[var(--surface-2)]"
+                        ? "border-[var(--focus-accent)] bg-[var(--surface-2)] ring-1 ring-[var(--focus-ring)]"
+                        : "border-slate-700/70 bg-[var(--surface-2)] focus-within:border-[var(--focus-accent)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)]"
                     }`}
                   >
                     <input
@@ -679,11 +700,7 @@ export default function AppDataGrid<R extends object>({
                   <button
                     type="button"
                     onClick={handleFilterToggle}
-                    className={`px-4 py-2 ${
-                      filtersOpen
-                        ? "rounded-full border border-[var(--accent)] bg-[var(--nav-active-bg)] text-[var(--accent)]"
-                        : toolbarButtonClass
-                    }`}
+                    className={filtersOpen || hasActiveFilters ? activeToolbarButtonClass : toolbarButtonClass}
                   >
                     Filters
                   </button>
@@ -694,20 +711,15 @@ export default function AppDataGrid<R extends object>({
                     <button
                       type="button"
                       onClick={() => setColumnsOpen((current) => !current)}
-                      className={`${toolbarButtonClass} ${
-                        columnsOpen || hasCustomColumnSelection
-                          ? "border-[var(--accent)] bg-[var(--nav-active-bg)] text-[var(--accent)]"
-                          : ""
-                      }`}
+                      className={columnsOpen || hasCustomColumnSelection ? activeToolbarButtonClass : toolbarButtonClass}
                     >
                       Columns
                     </button>
                     {columnsOpen ? (
                       <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)]/100 p-2 shadow-[0_18px_45px_rgba(15,23,42,0.42)] backdrop-blur-xl">
-                        {columns.map((column) => (
-                          (() => {
-                            const isVisible = effectiveVisibilityModel[column.field] !== false;
-                            return (
+                        {columns.map((column) => {
+                          const isVisible = effectiveVisibilityModel[column.field] !== false;
+                          return (
                           <label
                             key={column.field}
                             className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-2 text-sm text-[var(--text-1)] hover:bg-[var(--surface-2)]"
@@ -722,9 +734,8 @@ export default function AppDataGrid<R extends object>({
                             />
                             <span>{column.headerName ?? column.field}</span>
                           </label>
-                            );
-                          })()
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : null}
                   </div>
@@ -734,7 +745,7 @@ export default function AppDataGrid<R extends object>({
                   <button
                     type="button"
                     onClick={handleExport}
-                    className={toolbarButtonClass}
+                    className={hasActiveExportScope ? activeToolbarButtonClass : toolbarButtonClass}
                   >
                     Export
                   </button>
@@ -850,7 +861,7 @@ export default function AppDataGrid<R extends object>({
                     setPageSize(Number(event.target.value));
                     setPage(0);
                   }}
-                  className="rounded-lg border border-[var(--border-1)] bg-[var(--surface-1)] px-3 py-2 text-sm text-[var(--text-1)] focus:outline-none"
+                  className="rounded-lg border border-[var(--border-1)] bg-[var(--surface-1)] px-3 py-2 text-sm text-[var(--text-1)] focus:outline-none focus:border-[var(--focus-accent)] focus:ring-2 focus:ring-[var(--focus-ring)]"
                 >
                   {pageSizeOptions.map((option) => (
                     <option key={option} value={option}>
