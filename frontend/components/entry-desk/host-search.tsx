@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
-import AppDataGrid, { GridColDef } from "@/components/ui/app-data-grid";
-import type { GridRenderCellParams, GridValueGetter } from "@mui/x-data-grid";
+import AppDataGrid, {
+  GridColDef,
+  type GridRenderCellParams,
+} from "@/components/ui/app-data-grid";
 
 export interface HostEmployee {
   id: number;
@@ -61,7 +63,8 @@ export default function HostSearch({ value, onChange, onSelectHost }: HostSearch
         headerName: "Name",
         type: "string",
         flex: 1,
-        minWidth: 160,
+        minWidth: 180,
+        filterable: true,
         valueGetter: ((params: HostValueGetterParams) => {
           const row = params?.row as HostEmployee & {
             full_name?: string | null;
@@ -75,7 +78,7 @@ export default function HostSearch({ value, onChange, onSelectHost }: HostSearch
             row?.host_name ??
             "";
           return String(value ?? "").trim();
-        }) as GridValueGetter<HostEmployee>,
+        }),
         renderCell: (params: GridRenderCellParams<HostEmployee>) => {
           const row = params?.row as HostEmployee & {
             full_name?: string | null;
@@ -94,17 +97,25 @@ export default function HostSearch({ value, onChange, onSelectHost }: HostSearch
       {
         field: "department",
         headerName: "Department",
-        type: "string",
+        type: "singleSelect",
+        valueOptions: Array.from(
+          new Set(
+            hosts
+              .map((host) => String(host.department ?? "").trim().toLowerCase().replace(/\s+/g, "_"))
+              .filter(Boolean)
+          )
+        ),
         flex: 1,
         minWidth: 160,
+        filterable: true,
         valueGetter: ((params: HostValueGetterParams) => {
           const row = params?.row as HostEmployee & {
             department_name?: string | null;
             dept?: string | null;
           };
           const value = row?.department ?? row?.department_name ?? row?.dept ?? "";
-          return String(value ?? "").trim();
-        }) as GridValueGetter<HostEmployee>,
+          return String(value ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+        }),
         renderCell: (params: GridRenderCellParams<HostEmployee>) => {
           const row = params?.row as HostEmployee & {
             department_name?: string | null;
@@ -120,24 +131,24 @@ export default function HostSearch({ value, onChange, onSelectHost }: HostSearch
         type: "string",
         flex: 1,
         minWidth: 200,
+        filterable: true,
         valueGetter: ((params: HostValueGetterParams) => {
           const email = params?.row?.email;
           return email && String(email).trim().length > 0 ? String(email).trim() : "";
-        }) as GridValueGetter<HostEmployee>,
+        }),
         renderCell: (params: GridRenderCellParams<HostEmployee>) => {
           const email = params?.row?.email;
           return <span>{email && String(email).trim().length > 0 ? email : "-"}</span>;
         },
       },
     ],
-    []
+    [hosts]
   );
 
   return (
-    <div className="space-y-2">
-      <label className="text-sm text-[var(--text-2)]">Host Employee</label>
+    <div className="space-y-4">
       {error ? <div className="rounded-md border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">{error}</div> : null}
-      <div className="h-[320px]">
+      <div className="h-[420px]">
         <AppDataGrid
           rows={hosts}
           columns={columns}
@@ -158,7 +169,6 @@ export default function HostSearch({ value, onChange, onSelectHost }: HostSearch
           }}
         />
       </div>
-      <div className="text-xs text-[var(--text-3)]">Selected: {selected ? `${selected.name}` : "None"}</div>
     </div>
   );
 }

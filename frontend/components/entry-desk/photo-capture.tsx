@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { resolveApiAssetUrl, uploadVisitorPhoto } from "@/lib/api";
+import { API_BASE_URL, uploadVisitorPhoto } from "@/lib/api";
 
 interface PhotoCaptureProps {
   value?: string;
@@ -17,9 +17,8 @@ export default function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
   const [hasCaptured, setHasCaptured] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-
   useEffect(() => {
-    setPreview(resolveApiAssetUrl(value) ?? value);
+    setPreview(value);
     setHasCaptured(Boolean(value));
   }, [value]);
 
@@ -75,8 +74,9 @@ export default function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
     setError("");
     try {
       const result = await uploadVisitorPhoto(file);
-      setPreview(resolveApiAssetUrl(result.photo_url) ?? undefined);
-      onChange(result.photo_url);
+      const fullUrl = result.photo_url.startsWith("http") ? result.photo_url : `${API_BASE_URL}${result.photo_url}`;
+      setPreview(fullUrl);
+      onChange(fullUrl);
       setHasCaptured(true);
       stopCamera();
     } catch (err) {
