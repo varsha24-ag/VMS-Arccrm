@@ -1,31 +1,71 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
+import { apiFetch } from "@/lib/api";
+import { buildCsv, downloadCsv } from "@/lib/csv";
 import { useAuthGuard } from "@/lib/use-auth-guard";
+
+type EmployeeRow = {
+    id: number;
+    name: string;
+    email?: string | null;
+    department?: string | null;
+    role?: string | null;
+};
 
 export default function UserManagementPage() {
     const user = useAuthGuard({ allowedRoles: ["admin"] });
+    const [rows, setRows] = useState<EmployeeRow[]>([]);
+    const [query, setQuery] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        if (!user) return;
+        let mounted = true;
+        async function load() {
+            setLoading(true);
+            setError("");
+            try {
+                const data = await apiFetch<EmployeeRow[]>("/employees/hosts");
+                if (!mounted) return;
+                setRows(data ?? []);
+            } catch (err) {
+                if (!mounted) return;
+                setError(err instanceof Error ? err.message : "Failed to load users");
+                setRows([]);
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        }
+        void load();
+        return () => {
+            mounted = false;
+        };
+    }, [user]);
+
+    const filtered = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        if (!q) return rows;
+        return rows.filter((row) => {
+            const haystack = [row.name, row.email, row.department, row.role]
+                .filter(Boolean)
+                .map((value) => String(value).toLowerCase())
+                .join(" ");
+            return haystack.includes(q);
+        });
+    }, [query, rows]);
 
     if (!user) return null;
-
-    const users = [
-        { id: 1, name: "Admin User", email: "admin@arccrm.com", role: "admin", dept: "IT" },
-        { id: 2, name: "Receptionist 1", email: "reception@arccrm.com", role: "receptionist", dept: "Administration" },
-        { id: 3, name: "John Host", email: "john@arccrm.com", role: "employee", dept: "Engineering" },
-        { id: 4, name: "Sarah Manager", email: "sarah@arccrm.com", role: "employee", dept: "HR" },
-    ];
 
     return (
         <DashboardLayout user={user}>
             <DashboardPageHeader
                 title="User Management"
                 subtitle="Manage internal access and roles."
-                actions={
-                    <button className="px-6 py-2.5 bg-[var(--accent)] text-[var(--accent-fg)] rounded-xl text-sm font-bold shadow-[var(--shadow-1)] hover:brightness-95 transition-all">
-                        Add New User
-                    </button>
-                }
             />
 
             <div className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] shadow-[var(--shadow-1)] overflow-hidden">
@@ -34,6 +74,8 @@ export default function UserManagementPage() {
                         <input
                             type="text"
                             placeholder="Search users..."
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 border border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-1)] placeholder:text-[var(--text-3)] rounded-xl text-xs focus:ring-4 focus:ring-[var(--nav-active-bg)] focus:border-[var(--accent)] outline-none transition-all"
                         />
                         <svg className="w-4 h-4 text-[var(--text-3)] absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -41,8 +83,34 @@ export default function UserManagementPage() {
                         </svg>
                     </div>
                     <div className="flex gap-2">
-                        <button className="p-2 rounded-lg border border-[var(--border-1)] text-[var(--text-3)] hover:text-[var(--text-1)] hover:bg-[var(--surface-2)] transition-all font-bold text-[10px] uppercase tracking-widest px-3">Filter</button>
-                        <button className="p-2 rounded-lg border border-[var(--border-1)] text-[var(--text-3)] hover:text-[var(--text-1)] hover:bg-[var(--surface-2)] transition-all font-bold text-[10px] uppercase tracking-widest px-3">Export CSV</button>
+                        <button
+                            type="button"
+                            disabled={filtered.length === 0}
+                            onClick={() => {
+                                const csv = buildCsv(
+                                    filtered.map((row) => ({
+                                        id: row.id,
+                                        name: row.name,
+                                        email: row.email ?? "",
+                                        role: row.role ?? "",
+                                        department: row.department ?? "General",
+                                    })),
+                                    {
+                                        headers: [
+                                            { key: "id", label: "ID" },
+                                            { key: "name", label: "Name" },
+                                            { key: "email", label: "Email" },
+                                            { key: "role", label: "Role" },
+                                            { key: "department", label: "Department" },
+                                        ],
+                                    }
+                                );
+                                downloadCsv(`users-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+                            }}
+                            className="p-2 rounded-lg border border-[var(--border-1)] text-[var(--text-3)] hover:text-[var(--text-1)] hover:bg-[var(--surface-2)] transition-all font-bold text-[10px] uppercase tracking-widest px-3 disabled:opacity-60"
+                        >
+                            Export CSV
+                        </button>
                     </div>
                 </div>
 
@@ -53,39 +121,34 @@ export default function UserManagementPage() {
                                 <th className="py-4 px-6 font-semibold uppercase tracking-wider text-[10px]">Name & Email</th>
                                 <th className="py-4 px-6 font-semibold uppercase tracking-wider text-[10px]">Role</th>
                                 <th className="py-4 px-6 font-semibold uppercase tracking-wider text-[10px]">Department</th>
-                                <th className="py-4 px-6 font-semibold uppercase tracking-wider text-[10px] text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--border-1)]">
-                            {users.map((u) => (
-                                <tr key={u.id} className="hover:bg-[var(--surface-2)] group transition-colors">
+                            {filtered.length === 0 ? (
+                                <tr>
+                                    <td colSpan={3} className="py-6 px-6 text-sm text-[var(--text-3)]">
+                                        {loading ? "Loading users..." : error ? error : "No users found."}
+                                    </td>
+                                </tr>
+                            ) : (
+                                filtered.map((u) => (
+                                <tr key={u.id} className="hover:bg-[var(--surface-2)] transition-colors">
                                     <td className="py-4 px-6">
-                                        <p className="font-bold text-[var(--text-1)] group-hover:text-[var(--accent)] transition-colors">{u.name}</p>
-                                        <p className="text-xs text-[var(--text-3)]">{u.email}</p>
+                                        <p className="font-bold text-[var(--text-1)]">{u.name}</p>
+                                        <p className="text-xs text-[var(--text-3)]">{u.email ?? "-"}</p>
                                     </td>
                                     <td className="py-4 px-6">
                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-[var(--border-1)] ${u.role === 'admin' ? 'bg-indigo-500/15 text-indigo-500' :
                                                 u.role === 'receptionist' ? 'bg-amber-500/15 text-amber-500' :
-                                                    'bg-[var(--surface-2)] text-[var(--text-2)]'
+                                                    'bg-emerald-500/15 text-emerald-500'
                                             }`}>
-                                            {u.role}
+                                            {u.role ?? "unknown"}
                                         </span>
                                     </td>
-                                    <td className="py-4 px-6 font-medium text-[var(--text-2)]">{u.dept}</td>
-                                    <td className="py-4 px-6 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button className="text-[var(--text-3)] hover:text-[var(--accent)] p-1">
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                            </svg>
-                                        </button>
-                                        <button className="text-[var(--text-3)] hover:text-red-400 p-1 ml-2">
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    </td>
+                                    <td className="py-4 px-6 font-medium text-[var(--text-2)]">{u.department ?? "General"}</td>
                                 </tr>
-                            ))}
+                            ))
+                            )}
                         </tbody>
                     </table>
                 </div>
