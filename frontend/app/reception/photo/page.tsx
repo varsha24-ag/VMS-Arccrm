@@ -10,7 +10,7 @@ import PhotoCapture from "@/components/entry-desk/photo-capture";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 export default function ReceptionPhotoPage() {
-  const user = useAuthGuard({ allowedRoles: ["receptionist"] });
+  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
   const [photoUrl, setPhotoUrl] = useState("");
 
   if (!user) return null;

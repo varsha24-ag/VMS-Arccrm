@@ -56,7 +56,7 @@ function StepIndicator({ stepIndex, current }: { stepIndex: number; current: num
 }
 
 export default function ReceptionRegisterPage() {
-  const user = useAuthGuard({ allowedRoles: ["receptionist"] });
+  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
   const router = useRouter();
   const { pushToast } = useToast();
   const [step, setStep] = useState(0);

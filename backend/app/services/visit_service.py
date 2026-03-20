@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
-from typing import List, Optional
-from urllib.parse import urlparse
+from typing import List
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -26,21 +25,6 @@ from app.schemas.visit import (
 from app.services.notification_service import send_host_notification
 
 
-def _normalize_photo_url(photo_url: Optional[str]) -> Optional[str]:
-    if not photo_url:
-        return None
-    if photo_url.startswith("/uploads/"):
-        return photo_url
-    if photo_url.startswith("http://") or photo_url.startswith("https://"):
-        try:
-            parsed = urlparse(photo_url)
-            if parsed.path.startswith("/uploads/"):
-                return parsed.path
-        except Exception:
-            return photo_url
-    return photo_url
-
-
 def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
     visitor = Visitor(
         name=payload.name,
@@ -50,7 +34,7 @@ def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
         visitor_type=payload.visitor_type,
         status="pending",
         approval_token=uuid4().hex,
-        photo_url=_normalize_photo_url(payload.photo_url),
+        photo_url=payload.photo_url,
     )
     db.add(visitor)
     db.commit()

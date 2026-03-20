@@ -4,7 +4,6 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 from app.api.auth import router as auth_router
-from app.api.admin import router as admin_router
 from app.api.employees import router as employees_router
 from app.api.visitor_approval import router as visitor_approval_router
 from app.api.visitors import router as visitors_router
@@ -23,7 +22,6 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
-app.include_router(admin_router)
 app.include_router(employees_router)
 app.include_router(visitor_approval_router)
 app.include_router(visitors_router)

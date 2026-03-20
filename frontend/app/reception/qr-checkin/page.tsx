@@ -10,7 +10,7 @@ import AppDataGrid, {
   type GridRenderCellParams,
 } from "@/components/ui/app-data-grid";
 import { useToast } from "@/components/ui/toast";
-import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
@@ -64,7 +64,7 @@ function areAvailableCardsEqual(a: AvailableIdCard[], b: AvailableIdCard[]) {
 
 export default function ReceptionQrCheckinPage() {
   const { pushToast } = useToast();
-  const user = useAuthGuard({ allowedRoles: ["receptionist"] });
+  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
 
   const [qrCode, setQrCode] = useState("");
   const [idNumber, setIdNumber] = useState("");
@@ -548,7 +548,8 @@ export default function ReceptionQrCheckinPage() {
     if (!user) return;
     const token = getAccessToken();
     if (!token) return;
-    const source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
+    const source = new EventSource(`${baseUrl}/events/visits?token=${encodeURIComponent(token)}`);
     source.onmessage = () => {
       void fetchVisitList();
     };
