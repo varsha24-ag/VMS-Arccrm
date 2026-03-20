@@ -1,11 +1,150 @@
 "use client";
 
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+
 import { useAuthGuard } from "@/lib/use-auth-guard";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
+import { TodaysChecklistPanel, type VisitChecklistRow } from "@/components/dashboard/todays-checklist";
+import PhotoPreviewModal from "@/components/ui/photo-preview-modal";
+import { API_BASE_URL, apiFetch, resolveApiAssetUrl } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth";
+
+type AdminDashboardSummary = {
+  visitors_today: number;
+  checked_in_visitors: number;
+  checked_out_visitors: number;
+  pending_approvals: number;
+  recent_visits: Array<{
+    visit_id: number;
+    visitor_name: string;
+    photo_url?: string | null;
+    host_name?: string | null;
+    purpose?: string | null;
+    checkin_time?: string | null;
+    checkout_time?: string | null;
+    status: string;
+  }>;
+};
+
+function statusBadgeClass(status: string) {
+  switch (status) {
+    case "approved":
+      return "border-emerald-300/60 bg-emerald-500/15 text-emerald-400";
+    case "pending":
+      return "border-amber-300/60 bg-amber-500/15 text-amber-400";
+    case "rejected":
+      return "border-red-300/60 bg-red-500/15 text-red-400";
+    case "checked_in":
+      return "border-orange-300/60 bg-orange-500/15 text-orange-400";
+    case "checked_out":
+      return "border-slate-300/60 bg-slate-500/15 text-slate-400";
+    default:
+      return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
+  }
+}
 
 export default function AdminDashboard() {
   const user = useAuthGuard({ allowedRoles: ["admin"] });
+  const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+
+  const [history, setHistory] = useState<VisitChecklistRow[]>([]);
+  const [hostMap, setHostMap] = useState<Record<number, string>>({});
+
+  const loadSummary = useCallback(async (isInitial = false) => {
+    if (isInitial) setSummaryLoading(true);
+    try {
+      const data = await apiFetch<AdminDashboardSummary>("/admin/dashboard/summary");
+      setSummaryError(null);
+      setSummary((prev) => {
+        if (!prev) return data;
+        return JSON.stringify(prev) === JSON.stringify(data) ? prev : data;
+      });
+    } catch (err) {
+      setSummaryError(err instanceof Error ? err.message : "Failed to refresh dashboard data");
+    } finally {
+      if (isInitial) setSummaryLoading(false);
+    }
+  }, []);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const [historyData, hostData] = await Promise.all([
+        apiFetch<VisitChecklistRow[]>("/visit/history"),
+        apiFetch<Array<{ id: number; name: string }>>("/employees/hosts"),
+      ]);
+
+      setHistory((prev) => {
+        const next = historyData ?? [];
+        return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
+      });
+
+      const map: Record<number, string> = {};
+      (hostData ?? []).forEach((host) => {
+        map[host.id] = host.name;
+      });
+      setHostMap((prev) => {
+        return JSON.stringify(prev) === JSON.stringify(map) ? prev : map;
+      });
+    } catch {
+      // Keep old data on transient network error
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    void loadSummary(true);
+    void loadHistory();
+  }, [loadHistory, loadSummary, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const token = getAccessToken();
+    if (!token) return;
+    const source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);
+
+    source.onmessage = () => {
+      void loadSummary();
+      void loadHistory();
+    };
+    source.onerror = () => {
+      source.close();
+    };
+    return () => {
+      source.close();
+    };
+  }, [loadHistory, loadSummary, user]);
+
+  const stats = useMemo(() => {
+    const visitorsToday = summary?.visitors_today ?? 0;
+    const checkedInVisitors = summary?.checked_in_visitors ?? 0;
+    const checkedOutVisitors = summary?.checked_out_visitors ?? 0;
+    const pendingApprovals = summary?.pending_approvals ?? 0;
+    return [
+      { label: "Visitors Today", value: String(visitorsToday), change: "Today", color: "text-sky-400", bg: "bg-sky-500/15" },
+      { label: "Check-in Visitors", value: String(checkedInVisitors), change: "Live", color: "text-[var(--accent)]", bg: "bg-[var(--nav-active-bg)]" },
+      { label: "Check-out Visitors", value: String(checkedOutVisitors), change: "Today", color: "text-emerald-400", bg: "bg-emerald-500/15" },
+      { label: "Pending Approvals", value: String(pendingApprovals), change: "Awaiting host", color: "text-amber-400", bg: "bg-amber-500/15" },
+    ] as const;
+  }, [summary]);
+
+  const recentVisitors = useMemo(() => {
+    const formatTime = (value?: string | null) => {
+      if (!value) return "—";
+      return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    };
+
+    return (summary?.recent_visits ?? []).slice(0, 5).map((item) => {
+      const isCheckedOut = item.status === "checked_out";
+      const visitTime = isCheckedOut ? formatTime(item.checkout_time ?? item.checkin_time) : formatTime(item.checkin_time);
+      const photo = resolveApiAssetUrl(item.photo_url);
+      return { name: item.visitor_name, visitTime, status: item.status, statusLabel: item.status.replace("_", " "), photo };
+    });
+  }, [summary]);
 
   if (!user) return null;
 
@@ -18,12 +157,7 @@ export default function AdminDashboard() {
 
       {/* KPI Cards */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        {[
-          { label: "Visitors Today", value: "24", change: "+12%", color: "text-sky-400", bg: "bg-sky-500/15" },
-          { label: "Active Visitors", value: "8", change: "Current", color: "text-[var(--accent)]", bg: "bg-[var(--nav-active-bg)]" },
-          { label: "Total Employees", value: "156", change: "Stable", color: "text-emerald-400", bg: "bg-emerald-500/15" },
-          { label: "Pending Approvals", value: "3", change: "-2", color: "text-amber-400", bg: "bg-amber-500/15" },
-        ].map((stat, i) => (
+        {stats.map((stat, i) => (
           <div
             key={i}
             className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-6 shadow-[var(--shadow-1)]"
@@ -44,54 +178,65 @@ export default function AdminDashboard() {
         <section className="lg:col-span-2 rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-6 shadow-[var(--shadow-1)] overflow-hidden">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-bold text-[var(--text-1)]">Recent Visitors</h3>
-            <button className="text-sm font-semibold text-[var(--accent)] hover:brightness-95">View all</button>
+            <Link
+              href="/reception/visitors"
+              className="text-sm font-semibold text-[var(--accent)] hover:brightness-95"
+            >
+              View all
+            </Link>
           </div>
           <div className="space-y-4">
-            {[1, 2, 3].map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between p-4 rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)]"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-[var(--surface-3)]" />
-                  <div>
-                    <p className="text-sm font-bold text-[var(--text-1)]">John Doe {i + 1}</p>
-                    <p className="text-xs text-[var(--text-3)]">Scheduled: 10:30 AM</p>
-                  </div>
-                </div>
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 text-[10px] font-bold uppercase">
-                  Signed In
-                </span>
+            {recentVisitors.length === 0 ? (
+              <div className="rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)] p-4 text-sm text-[var(--text-3)]">
+                {summaryLoading ? "Loading recent visitors..." : summaryError ? "Unable to load recent visitors." : "No recent visitors found."}
               </div>
-            ))}
+            ) : (
+              recentVisitors.map((row, i) => (
+                <div
+                  key={`${row.name}-${i}`}
+                  className="flex items-center justify-between p-4 rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)]"
+                >
+                  <div className="flex items-center gap-4">
+                    {row.photo ? (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewPhoto(row.photo ?? null)}
+                        className="group h-10 w-10 overflow-hidden rounded-full border border-[var(--border-1)] bg-[var(--surface-3)]"
+                        aria-label={`Preview photo for ${row.name}`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={row.photo}
+                          alt={row.name}
+                          className="h-full w-full object-cover transition group-hover:scale-105"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      </button>
+                    ) : (
+                      <div className="h-10 w-10 rounded-full border border-[var(--border-1)] bg-[var(--surface-3)]" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-[var(--text-1)] truncate">{row.name}</p>
+                      <p className="text-xs text-[var(--text-3)] truncate">Visit time: {row.visitTime}</p>
+                    </div>
+                  </div>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(row.status)}`}>
+                    {row.statusLabel}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </section>
 
-        {/* System Health */}
-        <section className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] shadow-[var(--shadow-1)] p-6">
-          <h3 className="font-bold text-[var(--text-1)] mb-6">System Health</h3>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-bold">
-                <span className="text-[var(--text-3)] uppercase tracking-wider">Database Sync</span>
-                <span className="text-emerald-400">Active</span>
-              </div>
-              <div className="h-1.5 w-full bg-[var(--surface-2)] rounded-full overflow-hidden">
-                <div className="h-full w-full bg-emerald-500" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-bold">
-                <span className="text-[var(--text-3)] uppercase tracking-wider">API Response Time</span>
-                <span className="text-[var(--accent)]">42ms</span>
-              </div>
-              <div className="h-1.5 w-full bg-[var(--surface-2)] rounded-full overflow-hidden">
-                <div className="h-full w-[85%] bg-[var(--accent)]" />
-              </div>
-            </div>
-          </div>
-        </section>
+        <TodaysChecklistPanel history={history} hostMap={hostMap} />
       </div>
+
+      {previewPhoto ? (
+        <PhotoPreviewModal src={previewPhoto} alt="Visitor" onClose={() => setPreviewPhoto(null)} />
+      ) : null}
     </DashboardLayout>
   );
 }

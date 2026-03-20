@@ -1,7 +1,27 @@
 import { getAccessToken } from "./auth";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
+const RAW_API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
+export const API_BASE_URL = RAW_API_BASE_URL.replace(/\/+$/, "");
 const DEFAULT_TIMEOUT_MS = 15000;
+
+export function resolveApiAssetUrl(value?: string | null): string | null {
+  if (!value) return null;
+
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    try {
+      const url = new URL(value);
+      if (url.pathname.startsWith("/uploads/")) {
+        return `${API_BASE_URL}${url.pathname}`;
+      }
+    } catch {
+      // Ignore malformed absolute URLs; use raw value.
+    }
+    return value;
+  }
+
+  if (value.startsWith("/")) return `${API_BASE_URL}${value}`;
+  return `${API_BASE_URL}/${value}`;
+}
 
 async function fetchWithTimeout(input: RequestInfo, init: RequestInit = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const controller = new AbortController();

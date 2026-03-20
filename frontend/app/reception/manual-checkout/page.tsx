@@ -24,7 +24,7 @@ interface VisitHistoryItem {
 }
 
 export default function ManualCheckoutPage() {
-  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
+  const user = useAuthGuard({ allowedRoles: ["receptionist"] });
   const [visitId, setVisitId] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
