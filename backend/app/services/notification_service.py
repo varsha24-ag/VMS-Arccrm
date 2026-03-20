@@ -86,7 +86,7 @@ def send_host_notification(
               <p style="margin:0;color:#cbd5f5;font-size:14px;">📝 {purpose or "N/A"}</p>
             </div>
           </div>
-          <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap;">
+          <div style="margin-top:18px;display:flex;gap:16px;flex-wrap:wrap;">
             <a href="{approve_link}" style="background:#22c55e;color:#0b1220;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700;">Accept</a>
             <a href="{reject_link}" style="background:#ef4444;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700;">Reject</a>
           </div>

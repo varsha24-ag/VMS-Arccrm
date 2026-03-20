@@ -1,13 +1,17 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Panel } from "@/components/dashboard/panels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
-import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
+import AppDataGrid, {
+  GridColDef,
+  type GridRenderCellParams,
+} from "@/components/ui/app-data-grid";
 import { useToast } from "@/components/ui/toast";
-import { apiFetch } from "@/lib/api";
+import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 type VisitStatusRow = {
@@ -16,8 +20,10 @@ type VisitStatusRow = {
   visitor_name: string;
   host_name?: string;
   status: string;
+  created_at?: string | null;
   approval_email_sent?: boolean | null;
   approval_email_error?: string | null;
+  email_status?: string;
 };
 
 type VisitStatusResult = VisitStatusRow;
@@ -58,7 +64,7 @@ function areAvailableCardsEqual(a: AvailableIdCard[], b: AvailableIdCard[]) {
 
 export default function ReceptionQrCheckinPage() {
   const { pushToast } = useToast();
-  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
+  const user = useAuthGuard({ allowedRoles: ["receptionist"] });
 
   const [qrCode, setQrCode] = useState("");
   const [idNumber, setIdNumber] = useState("");
@@ -78,6 +84,25 @@ export default function ReceptionQrCheckinPage() {
 
   const [visitList, setVisitList] = useState<VisitStatusRow[]>([]);
   const [listLoading, setListLoading] = useState(false);
+
+  const statusBadgeClass = (status: string) => {
+    switch (status) {
+      case "approved":
+        return "border-emerald-400/20 bg-emerald-500/10 text-emerald-300";
+      case "pending":
+        return "border-amber-300/60 bg-amber-500/15 text-amber-400";
+      case "rejected":
+        return "border-red-300/60 bg-red-500/15 text-red-400";
+      case "checked_in":
+        return "border-orange-300/60 bg-orange-500/15 text-orange-400";
+      case "checked_out":
+        return "border-slate-300/60 bg-slate-500/15 text-slate-400";
+      default:
+        return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
+    }
+  };
+  const statusLabel = (status: string) => status.replace(/_/g, " ");
+  const statusOptions = ["approved", "pending", "rejected", "checked_in", "checked_out"];
   const [idCardLoading, setIdCardLoading] = useState(false);
   const [availableCards, setAvailableCards] = useState<AvailableIdCard[]>([]);
   const [resendLoading, setResendLoading] = useState<Record<number, boolean>>({});
@@ -86,6 +111,8 @@ export default function ReceptionQrCheckinPage() {
   const cardFetchInFlightRef = useRef(false);
   const cardsLoadedRef = useRef(false);
   const skipStatusResetRef = useRef(false);
+  const statusMapRef = useRef<Record<number, string>>({});
+  const statusMapReadyRef = useRef(false);
 
   const fetchVisitList = useCallback(
     async (options: { showToast?: boolean; showLoading?: boolean } = {}) => {
@@ -95,6 +122,35 @@ export default function ReceptionQrCheckinPage() {
       try {
         const data = await apiFetch<VisitStatusRow[]>("/visits/list");
         const next = data ?? [];
+        if (statusMapReadyRef.current) {
+          const nextMap: Record<number, string> = {};
+          next.forEach((visit) => {
+            nextMap[visit.visit_id] = visit.status;
+            const prevStatus = statusMapRef.current[visit.visit_id];
+            if (prevStatus && prevStatus !== visit.status) {
+              if (visit.status === "approved") {
+                pushToast({
+                  title: "Approved by host",
+                  description: `${visit.visitor_name} is approved.`,
+                  variant: "success",
+                });
+              } else if (visit.status === "rejected") {
+                pushToast({
+                  title: "Rejected by host",
+                  description: `${visit.visitor_name} was rejected.`,
+                  variant: "error",
+                });
+              }
+            }
+          });
+          statusMapRef.current = nextMap;
+        } else {
+          statusMapRef.current = next.reduce<Record<number, string>>((acc, visit) => {
+            acc[visit.visit_id] = visit.status;
+            return acc;
+          }, {});
+          statusMapReadyRef.current = true;
+        }
         setVisitList((prev) => (areVisitStatusListsEqual(prev, next) ? prev : next));
         if (showToast) {
           pushToast({
@@ -309,10 +365,200 @@ export default function ReceptionQrCheckinPage() {
     [pushToast, qrCode]
   );
 
+  const visitRows = useMemo(() => {
+    return [...visitList]
+      .sort((a, b) => b.visit_id - a.visit_id)
+      .map((visit) => {
+      const emailSent = visit.approval_email_sent === true;
+      const emailNotSent = visit.approval_email_sent === false || Boolean(visit.approval_email_error);
+      const emailStatus = emailSent
+        ? "Email sent"
+        : emailNotSent
+        ? `Email not sent${visit.approval_email_error ? `: ${visit.approval_email_error}` : ""}`
+        : "Email pending";
+      const visitWithAliases = visit as VisitStatusRow & {
+        host?: { name?: string | null } | null;
+        hostName?: string | null;
+        host_employee_name?: string | null;
+        visitorName?: string | null;
+      };
+      return {
+        ...visit,
+        host_name:
+          visitWithAliases.host_name ??
+          visitWithAliases.hostName ??
+          visitWithAliases.host_employee_name ??
+          visitWithAliases.host?.name ??
+          "",
+        visitor_name: visitWithAliases.visitor_name ?? visitWithAliases.visitorName ?? "",
+        status_label: statusLabel(visit.status),
+        email_status: emailStatus,
+      };
+    });
+  }, [visitList, statusLabel]);
+
+  const visitColumns: GridColDef<VisitStatusRow & { status_label?: string; email_status?: string }>[] = useMemo(
+    () => [
+      {
+        field: "visitor_name",
+        headerName: "Visitor",
+        type: "string",
+        flex: 1,
+        minWidth: 170,
+        filterable: true,
+        valueGetter: ((params: { row: VisitStatusRow }) => {
+          const row = params?.row as VisitStatusRow & { visitorName?: string | null };
+          const value = row?.visitor_name ?? row?.visitorName ?? "";
+          return String(value ?? "").trim().toLowerCase();
+        }),
+        getQuickFilterText: (params: { value?: unknown }) =>
+          String(params?.value ?? "").toLowerCase(),
+        renderCell: (params: GridRenderCellParams<VisitStatusRow>) => (
+          <p className="font-semibold text-[var(--text-1)]">{params.row.visitor_name}</p>
+        ),
+      },
+      {
+        field: "host_name",
+        headerName: "Host",
+        type: "string",
+        flex: 1,
+        minWidth: 160,
+        filterable: true,
+        valueGetter: ((params: { row: VisitStatusRow }) => {
+          const row = params?.row as VisitStatusRow & {
+            hostName?: string | null;
+            host_employee_name?: string | null;
+            host?: { name?: string | null } | null;
+          };
+          const value =
+            row?.host_name ??
+            row?.hostName ??
+            row?.host_employee_name ??
+            row?.host?.name ??
+            "";
+          return String(value ?? "").trim().toLowerCase();
+        }),
+        valueFormatter: ((value, row) =>
+          String((row as VisitStatusRow | undefined)?.host_name ?? "Unknown")),
+        getApplyQuickFilterFn: (value) => {
+          if (!value || !value.trim()) return null;
+          const search = value.toLowerCase();
+          return (params) => String(params?.row?.host_name ?? "Unknown").toLowerCase().includes(search);
+        },
+        getQuickFilterText: (params: { value?: unknown }) => String(params?.value ?? "").toLowerCase(),
+        renderCell: (params: GridRenderCellParams<VisitStatusRow>) => (
+          <span>{params?.row?.host_name ?? "Unknown"}</span>
+        ),
+      },
+      {
+        field: "status",
+        headerName: "Status",
+        type: "singleSelect",
+        valueOptions: statusOptions,
+        flex: 1,
+        minWidth: 200,
+        filterable: true,
+        valueFormatter: ((value) =>
+          statusLabel(String(value ?? ""))),
+        getQuickFilterText: (params: { row?: VisitStatusRow & { status_label?: string } }) => {
+          const row = params?.row as VisitStatusRow & { status_label?: string };
+          const raw = row?.status ?? "";
+          const label = row?.status_label ?? "";
+          return `${raw} ${label}`.toLowerCase();
+        },
+        renderCell: (params: GridRenderCellParams<VisitStatusRow>) => {
+          const row = params.row as VisitStatusRow & { email_status?: string };
+          return (
+            <div className="flex flex-col gap-1 py-2">
+              <span className={`w-fit rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(row.status)}`}>
+                {statusLabel(row.status)}
+              </span>
+            </div>
+          );
+        },
+      },
+      {
+        field: "email_status",
+        headerName: "Email Status",
+        flex: 1,
+        minWidth: 180,
+        filterable: false,
+        valueGetter: ((params: { row: VisitStatusRow }) => params?.row?.email_status ?? "-"),
+      },
+      {
+        field: "created_at",
+        headerName: "Created",
+        flex: 1,
+        minWidth: 180,
+        filterable: true,
+        valueGetter: ((params: { row: VisitStatusRow }) => params?.row?.created_at ?? null),
+        valueFormatter: ((value) =>
+          value ? new Date(value as string).toLocaleDateString() : "-"),
+        renderCell: (params: GridRenderCellParams<VisitStatusRow>) => (
+          <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleDateString() : "-"}</span>
+        ),
+      },
+      {
+        field: "actions",
+        headerName: "Action",
+        flex: 1,
+        minWidth: 220,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        renderCell: (params: GridRenderCellParams<VisitStatusRow>) => {
+          const row = params.row as VisitStatusRow;
+          const emailSent = row.approval_email_sent === true;
+          const canResend = row.status === "pending" && !emailSent;
+          const resendBusy = Boolean(resendLoading[row.visit_id]);
+          return (
+            <div className="flex items-center gap-2 py-2">
+              <button
+                type="button"
+                onClick={() => handleLoadVisit(row)}
+                disabled={row.status === "checked_in"}
+                className="rounded-md border border-[var(--border-1)] bg-transparent px-3 py-1.5 text-xs font-semibold text-[var(--text-2)] transition hover:bg-[var(--surface-2)] hover:text-[var(--text-1)] disabled:opacity-60"
+              >
+                Load
+              </button>
+              {canResend ? (
+                <button
+                  type="button"
+                  onClick={() => handleResendApprovalEmail(row.visit_id)}
+                  disabled={resendBusy}
+                  className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
+                >
+                  {resendBusy ? "Sending..." : "Resend Email"}
+                </button>
+              ) : null}
+            </div>
+          );
+        },
+      },
+    ],
+    [handleLoadVisit, handleResendApprovalEmail, resendLoading, statusBadgeClass, statusLabel]
+  );
+
   useEffect(() => {
     void fetchVisitList({ showLoading: true });
     void fetchAvailableCards({ showLoading: true });
   }, [fetchAvailableCards, fetchVisitList]);
+
+  useEffect(() => {
+    if (!user) return;
+    const token = getAccessToken();
+    if (!token) return;
+    const source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);
+    source.onmessage = () => {
+      void fetchVisitList();
+    };
+    source.onerror = () => {
+      source.close();
+    };
+    return () => {
+      source.close();
+    };
+  }, [fetchVisitList, user]);
 
   useEffect(() => {
     if (!qrCode) return;
@@ -331,9 +577,9 @@ export default function ReceptionQrCheckinPage() {
     <DashboardLayout user={user}>
       <DashboardPageHeader title="Check-in" subtitle="Scan or paste a QR code to complete a check-in." />
       <div className="space-y-6">
-        <EntryDeskHeader title="QR Fast Check-in" subtitle="Use QR codes for returning visitors and access passes." />
+        
 
-        <Panel title="QR Code">
+        <Panel title="Check-in">
           <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleQrCheckin}>
             <input
               className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
@@ -387,14 +633,14 @@ export default function ReceptionQrCheckinPage() {
               type="button"
               onClick={() => handleStatusCheck({ showToast: true, showLoading: true })}
               disabled={loading}
-              className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)] disabled:opacity-60"
+              className="whitespace-nowrap rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)] disabled:opacity-60"
             >
               Check Status
             </button>
             <button
               type="submit"
               disabled={loading || visitorStatus !== "approved"}
-              className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
+              className="whitespace-nowrap rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
             >
               {loading ? "Checking in..." : "Check-in"}
             </button>
@@ -418,15 +664,7 @@ export default function ReceptionQrCheckinPage() {
                   <p className="mt-1 text-base font-semibold text-[var(--text-1)]">{visitorDetail.name}</p>
                   <p className="text-xs text-[var(--text-3)]">Host: {visitorDetail.company ?? "Unknown"}</p>
                 </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    visitorStatus === "approved"
-                      ? "bg-emerald-500/20 text-emerald-200"
-                      : visitorStatus === "rejected"
-                      ? "bg-red-500/20 text-red-200"
-                      : "bg-yellow-500/20 text-yellow-200"
-                  }`}
-                >
+                <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(visitorStatus)}`}>
                   {visitorStatus === "approved"
                     ? "Approved by Host"
                     : visitorStatus === "rejected"
@@ -457,105 +695,17 @@ export default function ReceptionQrCheckinPage() {
             </div>
           }
         >
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="text-left text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">
-                <tr>
-                  <th className="px-3 py-2">Visitor</th>
-                  <th className="px-3 py-2">Host</th>
-                  <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border-1)]">
-                {visitList.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-4 text-sm text-[var(--text-3)]">
-                      No visitor records available.
-                    </td>
-                  </tr>
-                ) : (
-                  visitList.map((visit) => {
-                    const emailSent = visit.approval_email_sent === true;
-                    const emailNotSent = visit.approval_email_sent === false || Boolean(visit.approval_email_error);
-                    const canResend = visit.status === "pending" && !emailSent;
-                    const resendBusy = Boolean(resendLoading[visit.visit_id]);
-                    const statusLabel =
-                      visit.status === "approved"
-                        ? "Approved"
-                        : visit.status === "rejected"
-                        ? "Rejected"
-                        : visit.status === "pending"
-                        ? "Pending"
-                        : visit.status === "checked_in"
-                        ? "Checked in"
-                        : visit.status === "checked_out"
-                        ? "Checked out"
-                        : visit.status;
-
-                    return (
-                      <tr key={visit.visit_id} className="text-[var(--text-2)]">
-                        <td className="px-3 py-3">
-                          <p className="font-semibold text-[var(--text-1)]">{visit.visitor_name}</p>
-                          <p className="text-xs text-[var(--text-3)]">Visitor ID: {visit.visitor_id}</p>
-                        </td>
-                        <td className="px-3 py-3 text-sm">{visit.host_name ?? "Unknown"}</td>
-                        <td className="px-3 py-3">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              visit.status === "approved"
-                                ? "bg-emerald-500/20 text-emerald-200"
-                                : visit.status === "rejected"
-                                ? "bg-red-500/20 text-red-200"
-                                : visit.status === "checked_in"
-                                ? "bg-sky-500/20 text-sky-200"
-                                : visit.status === "checked_out"
-                                ? "bg-[var(--surface-2)] text-[var(--text-2)]"
-                                : "bg-yellow-500/20 text-yellow-200"
-                            }`}
-                          >
-                            {statusLabel}
-                          </span>
-                          {visit.status === "checked_in" || visit.status === "checked_out" ? null : (
-                            <p className="mt-2 text-xs text-[var(--text-3)]">
-                              {emailSent ? (
-                                "Email sent"
-                              ) : emailNotSent ? (
-                                <>Email not sent{visit.approval_email_error ? `: ${visit.approval_email_error}` : ""}</>
-                              ) : (
-                                "Email pending"
-                              )}
-                            </p>
-                          )}
-                        </td>
-                        <td className="px-3 py-3">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleLoadVisit(visit)}
-                              className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)]"
-                            >
-                              Load
-                            </button>
-                            {canResend ? (
-                              <button
-                                type="button"
-                                onClick={() => handleResendApprovalEmail(visit.visit_id)}
-                                disabled={resendBusy}
-                                className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
-                              >
-                                {resendBusy ? "Sending..." : "Resend Email"}
-                              </button>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+          <AppDataGrid
+            rows={visitRows}
+            columns={visitColumns}
+            getRowId={(row) => row.visit_id}
+            loading={listLoading}
+            searchPlaceholder="Search visitor, host, status..."
+            rowHeight={76}
+            initialState={{
+              columns: { columnVisibilityModel: { host_name: true, email_status: false } },
+            }}
+          />
           <p className="mt-3 text-xs text-[var(--text-3)]">Check-in is enabled only when status is approved.</p>
         </Panel>
       </div>

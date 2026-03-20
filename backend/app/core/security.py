@@ -64,6 +64,23 @@ def get_current_user(
     return user
 
 
+def get_user_from_token(token: str, db: Session) -> Employee:
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        user_id = payload.get("sub")
+        role = payload.get("role")
+        if not user_id or not role:
+            raise TokenError("Unauthorized access")
+    except JWTError as exc:
+        raise TokenError("Unauthorized access") from exc
+
+    user = db.query(Employee).filter(Employee.id == int(user_id)).first()
+    if not user:
+        raise TokenError("User not found")
+
+    return user
+
+
 def require_roles(*allowed_roles: str):
     allowed = {r.lower() for r in allowed_roles}
 

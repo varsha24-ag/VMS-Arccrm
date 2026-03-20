@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
+from urllib.parse import urlparse
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -25,6 +26,21 @@ from app.schemas.visit import (
 from app.services.notification_service import send_host_notification
 
 
+def _normalize_photo_url(photo_url: Optional[str]) -> Optional[str]:
+    if not photo_url:
+        return None
+    if photo_url.startswith("/uploads/"):
+        return photo_url
+    if photo_url.startswith("http://") or photo_url.startswith("https://"):
+        try:
+            parsed = urlparse(photo_url)
+            if parsed.path.startswith("/uploads/"):
+                return parsed.path
+        except Exception:
+            return photo_url
+    return photo_url
+
+
 def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
     visitor = Visitor(
         name=payload.name,
@@ -34,7 +50,7 @@ def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
         visitor_type=payload.visitor_type,
         status="pending",
         approval_token=uuid4().hex,
-        photo_url=payload.photo_url,
+        photo_url=_normalize_photo_url(payload.photo_url),
     )
     db.add(visitor)
     db.commit()
@@ -197,9 +213,21 @@ def checkout_visit(db: Session, payload: VisitCheckout) -> VisitOut:
             .order_by(desc(Visit.checkin_time))
             .first()
         )
+    elif payload.id_number:
+        visitor = db.query(Visitor).filter(Visitor.id_number == payload.id_number.strip()).first()
+        if visitor:
+            visit = (
+                db.query(Visit)
+                .filter(Visit.visitor_id == visitor.id, Visit.status == "checked_in")
+                .order_by(desc(Visit.checkin_time))
+                .first()
+            )
 
     if not visit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
+
+    if visit.status == "checked_out":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Visitor is already checked out")
 
     visit.checkout_time = datetime.now(timezone.utc)
     visit.status = "checked_out"
@@ -248,6 +276,7 @@ def get_visit_history(db: Session) -> List[VisitHistoryItem]:
                 photo_url=visitor.photo_url,
                 host_employee_id=visit.host_employee_id,
                 purpose=visit.purpose,
+                created_at=visit.created_at,
                 checkin_time=visit.checkin_time,
                 checkout_time=visit.checkout_time,
                 status=visit.status,

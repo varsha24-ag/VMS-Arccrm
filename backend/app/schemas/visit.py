@@ -43,6 +43,7 @@ class VisitCheckin(BaseModel):
 class VisitCheckout(BaseModel):
     visit_id: Optional[int] = None
     visitor_id: Optional[int] = None
+    id_number: Optional[str] = None
 
 
 class VisitOut(BaseModel):
@@ -68,6 +69,7 @@ class VisitHistoryItem(BaseModel):
     photo_url: Optional[str] = None
     host_employee_id: Optional[int] = None
     purpose: Optional[str] = None
+    created_at: datetime
     checkin_time: Optional[datetime] = None
     checkout_time: Optional[datetime] = None
     status: str

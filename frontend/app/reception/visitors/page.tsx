@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
-import { Panel } from "@/components/dashboard/panels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
-import FilterBar from "@/components/ui/filter-bar";
-import Pagination from "@/components/ui/pagination";
-import { apiFetch } from "@/lib/api";
+import AppDataGrid, {
+  GridColDef,
+  type GridRenderCellParams,
+} from "@/components/ui/app-data-grid";
+import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 type VisitHistoryItem = {
@@ -22,295 +23,561 @@ type VisitHistoryItem = {
   photo_url?: string | null;
   host_employee_id?: number | null;
   purpose?: string | null;
+  created_at?: string | null;
   checkin_time?: string | null;
   checkout_time?: string | null;
   status: string;
 };
 
-export default function ReceptionVisitorListPage() {
-  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
-  const [history, setHistory] = useState<VisitHistoryItem[]>([]);
-  const [hostMap, setHostMap] = useState<Record<number, string>>({});
-  const [selected, setSelected] = useState<VisitHistoryItem | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+type HistoryRow = VisitHistoryItem & {
+  host_name: string;
+  status_label: string;
+  photo: string | null;
+};
+
+type ColumnOption = {
+  key: string;
+  label: string;
+};
+
+const defaultVisitorVisibleColumns = [
+  "sr_no",
+  "visitor_name",
+  "host_name",
+  "status",
+  "created_at",
+  "purpose",
+];
+
+type TableColumnToggleProps = {
+  columns: ColumnOption[];
+  visibleColumns: string[];
+  defaultVisibleColumns: string[];
+  onToggle: (field: string) => void;
+};
+
+function Loader2() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 animate-spin" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function TableColumnToggle({ columns, visibleColumns, defaultVisibleColumns, onToggle }: TableColumnToggleProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  const hasCustomSelection =
+    visibleColumns.length !== defaultVisibleColumns.length ||
+    defaultVisibleColumns.some((column) => !visibleColumns.includes(column));
+  const isActive = open || hasCustomSelection;
 
   useEffect(() => {
-    if (!user) return;
-    let mounted = true;
-    async function loadData() {
-      setLoading(true);
-      try {
-        const [historyData, hostData] = await Promise.all([
-          apiFetch<VisitHistoryItem[]>("/visit/history"),
-          apiFetch<Array<{ id: number; name: string }>>("/employees/hosts"),
-        ]);
-        if (!mounted) return;
-        setHistory(historyData ?? []);
-        const map: Record<number, string> = {};
-        (hostData ?? []).forEach((host) => {
-          map[host.id] = host.name;
-        });
-        setHostMap(map);
-      } catch {
-        if (!mounted) return;
-        setHistory([]);
-        setHostMap({});
-      } finally {
-        if (mounted) setLoading(false);
+    function handleClickOutside(event: MouseEvent) {
+      if (!ref.current?.contains(event.target as Node)) {
+        setOpen(false);
       }
     }
 
-    void loadData();
-    const interval = window.setInterval(() => {
-      void loadData();
-    }, 12000);
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
     return () => {
-      mounted = false;
-      window.clearInterval(interval);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [user]);
+  }, [open]);
 
-  const queueRows = useMemo(() => {
-    return history
-      .filter((item) => item.status === "pending" || item.status === "approved")
-      .sort((a, b) => b.visit_id - a.visit_id);
-  }, [history]);
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
+          isActive
+            ? "border-[var(--accent)] bg-[var(--nav-active-bg)] text-[var(--accent)] shadow-[0_0_0_1px_var(--accent)]"
+            : "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)] hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
+        }`}
+        onClick={() => setOpen((current) => !current)}
+      >
+        Columns
+      </button>
+      {open ? (
+        <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)]/100 p-2 shadow-[0_18px_45px_rgba(15,23,42,0.42)] backdrop-blur-xl">
+          <div className="mb-2 px-2 pt-1 text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">
+            Visible columns
+          </div>
+          <div className="max-h-72 space-y-1 overflow-y-auto">
+            {columns.map((column) => {
+              const isVisible = visibleColumns.includes(column.key);
+              return (
+              <label
+                key={column.key}
+                className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-2 text-sm text-[var(--text-1)] hover:bg-[var(--surface-2)]"
+              >
+                <input
+                  type="checkbox"
+                  checked={isVisible}
+                  onChange={() => onToggle(column.key)}
+                  className={`h-4 w-4 rounded border accent-[var(--accent)] ${
+                    isVisible ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/20" : "border-[var(--border-1)]"
+                  }`}
+                />
+                <span>{column.label}</span>
+              </label>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
-  const historyRows = useMemo(() => {
-    return [...history].sort((a, b) => b.visit_id - a.visit_id);
-  }, [history]);
+function ReceptionVisitorsContent() {
+  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
+  const searchParams = useSearchParams();
+  const [rows, setRows] = useState<HistoryRow[]>([]);
+  const [selectedVisitId, setSelectedVisitId] = useState<number | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(defaultVisitorVisibleColumns);
+  const [hostMap, setHostMap] = useState<Record<number, string>>({});
 
-  const statusOptions = useMemo(() => {
-    const unique = new Set(historyRows.map((item) => item.status).filter(Boolean));
-    return ["all", ...Array.from(unique).sort()];
-  }, [historyRows]);
-
-  const filteredHistoryRows = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    const normalizedStatus = statusFilter.trim().toLowerCase();
-    return historyRows.filter((item) => {
-      if (normalizedStatus !== "all" && item.status.toLowerCase() !== normalizedStatus) {
-        return false;
-      }
-      if (!query) return true;
-      const hostName = item.host_employee_id ? hostMap[item.host_employee_id] ?? "" : "";
-      const haystack = [
-        item.visitor_name,
-        item.visitor_id,
-        item.id_number,
-        item.company,
-        item.visitor_email,
-        item.visitor_phone,
-        item.purpose,
-        item.status,
-        hostName,
-      ]
-        .filter(Boolean)
-        .map((value) => String(value).toLowerCase())
-        .join(" ");
-      return haystack.includes(query);
-    });
-  }, [historyRows, hostMap, searchQuery, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredHistoryRows.length / pageSize));
-  const pagedRows = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredHistoryRows.slice(start, start + pageSize);
-  }, [filteredHistoryRows, page, pageSize]);
+  const visitIdParam = searchParams.get("visitId");
+  const visitorIdParam = searchParams.get("visitorId");
 
   useEffect(() => {
-    setPage(1);
-  }, [searchQuery, statusFilter, pageSize]);
-
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
+    if (!visitIdParam) return;
+    const parsed = Number(visitIdParam);
+    if (!Number.isNaN(parsed)) {
+      setSelectedVisitId(parsed);
+      setDetailsOpen(true);
     }
-  }, [page, totalPages]);
+  }, [visitIdParam]);
 
-  const detail =
-    (selected && filteredHistoryRows.some((item) => item.visit_id === selected.visit_id) ? selected : null) ??
-    filteredHistoryRows[0] ??
-    null;
+  const statusBadgeClass = (status: string) => {
+    switch (status) {
+      case "approved":
+        return "border-emerald-300/60 bg-emerald-500/15 text-emerald-400";
+      case "pending":
+        return "border-amber-300/60 bg-amber-500/15 text-amber-400";
+      case "rejected":
+        return "border-red-300/60 bg-red-500/15 text-red-400";
+      case "checked_in":
+        return "border-orange-300/60 bg-orange-500/15 text-orange-400";
+      case "checked_out":
+        return "border-slate-300/60 bg-slate-500/15 text-slate-400";
+      default:
+        return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
+    }
+  };
+
+  const statusLabel = useCallback((status: string) => status.replace(/_/g, " "), []);
+
+  const fetchData = useCallback(async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    try {
+      const [historyData, hostData] = await Promise.all([
+        apiFetch<VisitHistoryItem[]>("/visit/history"),
+        apiFetch<Array<{ id: number; name: string }>>("/employees/hosts"),
+      ]);
+
+      const nextHostMap: Record<number, string> = {};
+      (hostData ?? []).forEach((host) => {
+        nextHostMap[host.id] = host.name;
+      });
+      setHostMap(nextHostMap);
+
+      const enrichedRows = [...(historyData ?? [])]
+        .sort((a, b) => b.visit_id - a.visit_id)
+        .map((item) => ({
+          ...item,
+          host_name: item.host_employee_id ? nextHostMap[item.host_employee_id] ?? "Unknown" : "Unassigned",
+          status_label: statusLabel(item.status),
+          photo:
+            item.photo_url
+              ? item.photo_url.startsWith("http")
+                ? item.photo_url
+                : `${API_BASE_URL}${item.photo_url}`
+              : null,
+        }));
+
+      setRows(enrichedRows);
+
+      if (visitorIdParam) {
+        const parsed = Number(visitorIdParam);
+        if (!Number.isNaN(parsed)) {
+          const latestForVisitor = enrichedRows.find((item) => item.visitor_id === parsed);
+          if (latestForVisitor) {
+            setSelectedVisitId(latestForVisitor.visit_id);
+          }
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [statusLabel, user, visitorIdParam]);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
+
+  const selectedRow = useMemo(() => {
+    if (rows.length === 0) return null;
+    return rows.find((item) => item.visit_id === selectedVisitId) ?? rows[0];
+  }, [rows, selectedVisitId]);
+
+  const allColumnOptions = useMemo<ColumnOption[]>(
+    () => [
+      { key: "sr_no", label: "Sr. No." },
+      { key: "visitor_name", label: "Visitor" },
+      { key: "host_name", label: "Host" },
+      { key: "id_number", label: "ID Card" },
+      { key: "status", label: "Status" },
+      { key: "checkin_time", label: "Check-in" },
+      { key: "created_at", label: "Created" },
+      { key: "company", label: "Company" },
+      { key: "visitor_email", label: "Email" },
+      { key: "visitor_phone", label: "Phone" },
+      { key: "purpose", label: "Purpose" },
+    ],
+    []
+  );
+
+  const visibleColumnModel = useMemo(
+    () =>
+      Object.fromEntries(allColumnOptions.map((column) => [column.key, visibleColumns.includes(column.key)])),
+    [allColumnOptions, visibleColumns]
+  );
+
+  type HistoryValueGetterParams = {
+    row: HistoryRow;
+    api?: { getRowIndexRelativeToVisibleRows: (id: unknown) => number };
+    id?: unknown;
+  };
+
+  const listColumns: GridColDef<HistoryRow>[] = useMemo(
+    () => [
+      {
+        field: "sr_no",
+        headerName: "Sr. No.",
+        width: 90,
+        filterable: false,
+        valueGetter: ((params: HistoryValueGetterParams) => {
+          if (!params?.api) return "";
+          return params.api.getRowIndexRelativeToVisibleRows(params.id) + 1;
+        }),
+        renderCell: (params: GridRenderCellParams<HistoryRow>) => {
+          if (!params?.api) return "";
+          return params.api.getRowIndexRelativeToVisibleRows(params.id) + 1;
+        },
+      },
+      {
+        field: "visitor_name",
+        headerName: "Visitor",
+        flex: 1,
+        minWidth: 210,
+        filterable: true,
+      },
+      {
+        field: "host_name",
+        headerName: "Host",
+        flex: 1,
+        minWidth: 190,
+        filterable: true,
+        valueGetter: ((params: HistoryValueGetterParams) =>
+          String(params?.row?.host_name ?? "").trim().toLowerCase()),
+        renderCell: (params: GridRenderCellParams<HistoryRow>) => <span>{params.row.host_name}</span>,
+      },
+      {
+        field: "id_number",
+        headerName: "ID Card",
+        flex: 0.8,
+        minWidth: 140,
+        filterable: false,
+      },
+      {
+        field: "status",
+        headerName: "Status",
+        type: "singleSelect",
+        valueOptions: ["approved", "pending", "rejected", "checked_in", "checked_out"],
+        width: 180,
+        minWidth: 180,
+        filterable: true,
+        valueFormatter: (value) => statusLabel(String(value ?? "")),
+        renderCell: (params: GridRenderCellParams<HistoryRow>) => (
+          <div className="min-w-0">
+            <span
+              className={`inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap ${statusBadgeClass(
+                String(params.row.status ?? "")
+              )}`}
+            >
+              <span className="truncate">
+                {statusLabel(String(params.row.status ?? ""))}
+              </span>
+            </span>
+          </div>
+        ),
+      },
+      {
+        field: "checkin_time",
+        headerName: "Check-in",
+        flex: 1,
+        minWidth: 180,
+        filterable: false,
+        valueGetter: (params: HistoryValueGetterParams) => params?.row?.checkin_time ?? null,
+        valueFormatter: (value) => (value ? new Date(value as string).toLocaleString() : "-"),
+        renderCell: (params: GridRenderCellParams<HistoryRow>) => (
+          <span>{params.row.checkin_time ? new Date(params.row.checkin_time).toLocaleString() : "-"}</span>
+        ),
+      },
+      {
+        field: "created_at",
+        headerName: "Created",
+        flex: 0.9,
+        minWidth: 165,
+        filterable: true,
+        valueGetter: (params: HistoryValueGetterParams) => params?.row?.created_at ?? null,
+        valueFormatter: (value) => (value ? new Date(value as string).toLocaleDateString() : "-"),
+        renderCell: (params: GridRenderCellParams<HistoryRow>) => (
+          <span>{params.row.created_at ? new Date(params.row.created_at).toLocaleDateString() : "-"}</span>
+        ),
+      },
+      {
+        field: "company",
+        headerName: "Company",
+        flex: 1,
+        minWidth: 160,
+        filterable: false,
+      },
+      {
+        field: "visitor_email",
+        headerName: "Email",
+        flex: 1,
+        minWidth: 200,
+        filterable: false,
+      },
+      {
+        field: "visitor_phone",
+        headerName: "Phone",
+        flex: 0.8,
+        minWidth: 140,
+        filterable: false,
+      },
+      {
+        field: "purpose",
+        headerName: "Purpose",
+        flex: 1,
+        minWidth: 180,
+        filterable: true,
+        valueGetter: ((params: HistoryValueGetterParams) =>
+          String(params?.row?.purpose ?? "").trim().toLowerCase()),
+        renderCell: (params: GridRenderCellParams<HistoryRow>) => <span>{String(params.row.purpose ?? "").trim() || "-"}</span>,
+      },
+    ],
+    [statusLabel]
+  );
+
+  const handleToggleColumn = useCallback((field: string) => {
+    setVisibleColumns((current) =>
+      current.includes(field) ? current.filter((item) => item !== field) : [...current, field]
+    );
+  }, []);
+
+  const detailPanel = selectedRow ? (
+    <>
+      <div className="flex h-[61px] items-center justify-between border-b border-white/10 px-4">
+        <div>
+          <p className="text-sm font-semibold text-[var(--text-1)]">Visitor Details</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setDetailsOpen(false)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border-1)] bg-[var(--surface-1)] text-[var(--text-2)] transition hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
+          aria-label="Close visitor details"
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+            <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+      <div className="h-full overflow-y-auto p-4">
+        <div className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-1)]">
+          <div className="flex flex-wrap items-center gap-4">
+            {selectedRow.photo ? (
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(selectedRow.photo)}
+                className="group h-12 w-12 overflow-hidden rounded-full border border-[var(--border-1)] bg-[var(--surface-2)]"
+              >
+                <img
+                  src={selectedRow.photo}
+                  alt={selectedRow.visitor_name}
+                  className="h-12 w-12 object-cover transition group-hover:scale-105"
+                />
+              </button>
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--border-1)] bg-[var(--surface-3)] text-sm font-semibold text-[var(--text-1)]">
+                {selectedRow.visitor_name
+                  .split(" ")
+                  .map((part) => part[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-[180px]">
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Visitor</p>
+              <p className="text-xl font-semibold tracking-tight text-[var(--text-1)]">{selectedRow.visitor_name}</p>
+              <p className="truncate text-sm text-[var(--text-2)]">{selectedRow.visitor_email ?? "—"}</p>
+            </div>
+            <span className={`ml-auto rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${statusBadgeClass(selectedRow.status)}`}>
+              {selectedRow.status.replace("_", " ")}
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Phone</p>
+              <p className="text-base text-[var(--text-1)]">{selectedRow.visitor_phone ?? "—"}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Host</p>
+              <p className="text-base text-[var(--text-1)]">
+                {selectedRow.host_employee_id ? hostMap[selectedRow.host_employee_id] ?? "Unknown" : "Unassigned"}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">ID Card</p>
+              <p className="text-base text-[var(--text-1)]">{selectedRow.id_number ?? "—"}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Purpose</p>
+              <p className="text-base text-[var(--text-1)]">{selectedRow.purpose ?? "—"}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Company</p>
+              <p className="text-base text-[var(--text-1)]">{selectedRow.company ?? "—"}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Check-in</p>
+              <p className="text-base text-[var(--text-1)]">
+                {selectedRow.checkin_time ? new Date(selectedRow.checkin_time).toLocaleString() : "—"}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Check-out</p>
+              <p className="text-base text-[var(--text-1)]">
+                {selectedRow.checkout_time ? new Date(selectedRow.checkout_time).toLocaleString() : "—"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  ) : null;
 
   if (!user) return null;
 
   return (
     <DashboardLayout user={user}>
       <DashboardPageHeader title="Visitor List" subtitle="Front desk queue and full visitor history." />
-      <div className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
-        <div className="space-y-6">
-          <Panel
-            title="Front Desk Queue"
-            action={
-              <Link
-                href="/reception/register"
-                className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)]"
-              >
-                Add
-              </Link>
+      <section className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-1)]">
+        <div className="relative">
+          {isLoading ? (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-[var(--surface-1)]/70 text-[var(--text-1)] backdrop-blur-sm">
+              <Loader2 />
+            </div>
+          ) : null}
+          <AppDataGrid
+            headerAction={
+              <TableColumnToggle
+                columns={allColumnOptions}
+                visibleColumns={visibleColumns}
+                defaultVisibleColumns={defaultVisitorVisibleColumns}
+                onToggle={handleToggleColumn}
+              />
             }
-          >
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="text-[var(--text-3)]">
-                  <tr>
-                    <th className="pb-3 pr-3">Visitor</th>
-                    <th className="pb-3 pr-3">Purpose</th>
-                    <th className="pb-3 pr-3">Host</th>
-                    <th className="pb-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="text-[var(--text-1)]">
-                  {queueRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="py-3 text-[var(--text-3)]">
-                        {loading ? "Loading queue..." : "No visitors in queue."}
-                      </td>
-                    </tr>
-                  ) : (
-                    queueRows.map((item) => (
-                      <tr
-                        key={item.visit_id}
-                        className="cursor-pointer border-t border-[var(--border-1)] transition hover:bg-[var(--surface-2)]"
-                        onClick={() => setSelected(item)}
-                      >
-                        <td className="py-3 pr-3 font-semibold text-[var(--text-1)]">{item.visitor_name}</td>
-                        <td className="py-3 pr-3">{item.purpose ?? "-"}</td>
-                        <td className="py-3 pr-3">
-                          {item.host_employee_id ? hostMap[item.host_employee_id] ?? "Unknown" : "Unassigned"}
-                        </td>
-                        <td className="py-3">{item.status}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Panel>
-
-          <Panel title="Visitor List">
-            <div className="mb-4">
-              <FilterBar
-                searchValue={searchQuery}
-                onSearchChange={setSearchQuery}
-                searchPlaceholder="Search visitor, ID, company, host..."
-                selectValue={statusFilter}
-                onSelectChange={setStatusFilter}
-                selectOptions={statusOptions.map((status) => ({
-                  value: status,
-                  label: status === "all" ? "All statuses" : status,
-                }))}
-              />
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="text-[var(--text-3)]">
-                  <tr>
-                    <th className="pb-3 pr-3">Sr. No.</th>
-                    <th className="pb-3 pr-3">Visitor</th>
-                    <th className="pb-3 pr-3">ID Card</th>
-                    <th className="pb-3 pr-3">Status</th>
-                    <th className="pb-3">Check-in</th>
-                  </tr>
-                </thead>
-                <tbody className="text-[var(--text-1)]">
-                  {filteredHistoryRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-3 text-[var(--text-3)]">
-                        {loading ? "Loading visitors..." : "No visitors found for the current filter."}
-                      </td>
-                    </tr>
-                  ) : (
-                    pagedRows.map((item, idx) => (
-                      <tr
-                        key={item.visit_id}
-                        className="cursor-pointer border-t border-[var(--border-1)] transition hover:bg-[var(--surface-2)]"
-                        onClick={() => setSelected(item)}
-                      >
-                        <td className="py-3 pr-3">{(page - 1) * pageSize + idx + 1}</td>
-                        <td className="py-3 pr-3 font-semibold text-[var(--text-1)]">{item.visitor_name}</td>
-                        <td className="py-3 pr-3">{item.id_number ?? "-"}</td>
-                        <td className="py-3 pr-3">{item.status}</td>
-                        <td className="py-3">
-                          {item.checkin_time ? new Date(item.checkin_time).toLocaleString() : "-"}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-4">
-              <Pagination
-                page={page}
-                totalItems={filteredHistoryRows.length}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
-            </div>
-          </Panel>
+            rows={rows}
+            columns={listColumns}
+            getRowId={(row) => row.visit_id}
+            loading={false}
+            searchPlaceholder="Search visitor, host, status..."
+            showSearch={true}
+            showColumns={false}
+            showFilters={true}
+            showExport={false}
+            showPagination={true}
+            onFiltersOpenChange={(open) => {
+              if (open) setDetailsOpen(false);
+            }}
+            onFilterToggle={(open) => {
+              if (open) setDetailsOpen(false);
+            }}
+            sidePanelOpen={detailsOpen}
+            sidePanelContent={detailPanel}
+            sidePanelWidth={380}
+            columnVisibilityModel={visibleColumnModel}
+            rowSelection
+            disableRowSelectionOnClick={false}
+            rowSelectionModel={selectedVisitId ? [selectedVisitId] : []}
+            onRowSelectionModelChange={(model) => {
+              const nextId = model[0] ? Number(model[0]) : null;
+              if (nextId && nextId === selectedVisitId && detailsOpen) {
+                setDetailsOpen(false);
+                return;
+              }
+              setSelectedVisitId(nextId);
+              if (nextId) {
+                setDetailsOpen(true);
+              }
+            }}
+            initialState={{
+              pagination: {
+                paginationModel: {
+                  page: 0,
+                  pageSize: 10,
+                },
+              },
+            }}
+            localeText={{
+              noRowsLabel: isLoading ? "Loading visitors..." : "No visitors found.",
+            }}
+          />
         </div>
+      </section>
 
-        <Panel title="Visitor Details">
-          {detail ? (
-            <div className="space-y-3 text-sm text-[var(--text-2)]">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Visitor</p>
-                <p className="text-lg font-semibold text-[var(--text-1)]">{detail.visitor_name}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Contact</p>
-                <p>{detail.visitor_phone ?? "-"}</p>
-                <p>{detail.visitor_email ?? "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Company</p>
-                <p>{detail.company ?? "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Host</p>
-                <p>
-                  {detail.host_employee_id
-                    ? hostMap[detail.host_employee_id] ?? "Unknown"
-                    : "Unassigned"}
-                </p>
-              </div>
-              <div className="grid gap-2 md:grid-cols-2">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Purpose</p>
-                  <p>{detail.purpose ?? "-"}</p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Status</p>
-                  <p className="capitalize">{detail.status}</p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">ID Card</p>
-                  <p>{detail.id_number ?? "-"}</p>
-                </div>
-              </div>
-              <div className="grid gap-2 md:grid-cols-2">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Check-in</p>
-                  <p>{detail.checkin_time ? new Date(detail.checkin_time).toLocaleString() : "-"}</p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Check-out</p>
-                  <p>{detail.checkout_time ? new Date(detail.checkout_time).toLocaleString() : "-"}</p>
-                </div>
-              </div>
+      {previewPhoto ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--modal-overlay)] p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] shadow-[var(--shadow-1)]">
+            <button
+              type="button"
+              onClick={() => setPreviewPhoto(null)}
+              className="absolute right-4 top-4 rounded-full border border-[var(--border-1)] bg-[var(--surface-2)] p-2 text-[var(--text-2)] transition hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
+              aria-label="Close"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+                <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+            <div className="p-6">
+              <img src={previewPhoto} alt="Visitor" className="h-full w-full rounded-xl object-cover" />
             </div>
-          ) : (
-            <p className="text-sm text-[var(--text-3)]">Select a visitor to view details.</p>
-          )}
-        </Panel>
-      </div>
+          </div>
+        </div>
+      ) : null}
     </DashboardLayout>
+  );
+}
+
+export default function ReceptionVisitorListPage() {
+  return (
+    <Suspense fallback={null}>
+      <ReceptionVisitorsContent />
+    </Suspense>
   );
 }

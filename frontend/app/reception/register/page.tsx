@@ -7,7 +7,7 @@ import { Panel } from "@/components/dashboard/panels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
-import HostSearch from "@/components/entry-desk/host-search";
+import HostSearch, { HostEmployee } from "@/components/entry-desk/host-search";
 import PhotoCapture from "@/components/entry-desk/photo-capture";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/api";
@@ -56,7 +56,7 @@ function StepIndicator({ stepIndex, current }: { stepIndex: number; current: num
 }
 
 export default function ReceptionRegisterPage() {
-  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
+  const user = useAuthGuard({ allowedRoles: ["receptionist"] });
   const router = useRouter();
   const { pushToast } = useToast();
   const [step, setStep] = useState(0);
@@ -66,6 +66,7 @@ export default function ReceptionRegisterPage() {
   const [customVisitorType, setCustomVisitorType] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [selectedHost, setSelectedHost] = useState<HostEmployee | null>(null);
 
   const [register, setRegister] = useState<VisitorCreatePayload>({
     name: "",
@@ -271,7 +272,7 @@ export default function ReceptionRegisterPage() {
                   </select>
                 </label>
                 {visitorTypeOption === "Custom" ? (
-                  <label className="text-sm text-[var(--text-2)] md:col-span-2">
+                  <label className="text-sm text-[var(--text-2)]">
                     Custom Visitor Type
                     <input
                       className="mt-2 w-full rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
@@ -368,7 +369,11 @@ export default function ReceptionRegisterPage() {
                 <HostSearch
                   value={register.host_employee ?? null}
                   onChange={(value) => setRegister((prev) => ({ ...prev, host_employee: value }))}
+                  onSelectHost={setSelectedHost}
                 />
+                <p className="text-xs text-[var(--text-3)]">
+                  Selected host email: {selectedHost?.email ?? "None"}
+                </p>
                 {formErrors.host_employee ? <p className="text-sm text-red-400">{formErrors.host_employee}</p> : null}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <button
@@ -392,7 +397,8 @@ export default function ReceptionRegisterPage() {
                       disabled={loading}
                       className="rounded-lg bg-[var(--accent)] px-6 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
                     >
-                      {loading ? "Registering..." : "Register Visitor"}
+                      {loading ? "Registering..." : "Register"}
+                      {loading ? <span className="ml-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--accent-fg)]/30 border-t-[var(--accent-fg)]" /> : null}
                     </button>
                   </div>
                 </div>

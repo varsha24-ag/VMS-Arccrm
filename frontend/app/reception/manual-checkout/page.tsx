@@ -6,27 +6,30 @@ import { Panel } from "@/components/dashboard/panels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
-import FilterBar from "@/components/ui/filter-bar";
-import Pagination from "@/components/ui/pagination";
+import AppDataGrid, {
+  GridColDef,
+  type GridRenderCellParams,
+} from "@/components/ui/app-data-grid";
+import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 interface VisitHistoryItem {
   visit_id: number;
+  id_number?: string | null;
   visitor_name: string;
   status: string;
+  created_at?: string | null;
   checkin_time?: string | null;
 }
 
 export default function ManualCheckoutPage() {
   const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
-  const [visitId, setVisitId] = useState("");
-  const [message, setMessage] = useState("");
+  const { pushToast } = useToast();
+  const [idCardNumber, setIdCardNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<VisitHistoryItem[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [checkoutCandidate, setCheckoutCandidate] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -38,27 +41,45 @@ export default function ManualCheckoutPage() {
       const data = await apiFetch<VisitHistoryItem[]>("/visit/history");
       setHistory(data);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Failed to load history");
+      pushToast({
+        title: "Failed to load history",
+        description: err instanceof Error ? err.message : "Failed to load history",
+        variant: "error",
+      });
     }
   }
 
-  async function handleCheckout(e: FormEvent) {
-    e.preventDefault();
-    setMessage("");
+  async function submitCheckout(idNumber: string) {
     setLoading(true);
     try {
       await apiFetch("/visit/checkout", {
         method: "POST",
-        body: JSON.stringify({ visit_id: Number(visitId) }),
+        body: JSON.stringify({ id_number: idNumber }),
       });
-      setMessage("Check-out completed.");
-      setVisitId("");
+      pushToast({
+        title: "Visitor checked out",
+        description: `ID card ${idNumber} was checked out successfully.`,
+        variant: "success",
+      });
+      setIdCardNumber("");
+      setCheckoutCandidate(null);
       await loadHistory();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Check-out failed");
+      pushToast({
+        title: "Check-out failed",
+        description: err instanceof Error ? err.message : "Check-out failed",
+        variant: "error",
+      });
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleCheckout(e: FormEvent) {
+    e.preventDefault();
+    const normalizedId = idCardNumber.trim();
+    if (!normalizedId) return;
+    setCheckoutCandidate(normalizedId);
   }
 
   const checkedInRows = useMemo(
@@ -69,125 +90,156 @@ export default function ManualCheckoutPage() {
     [history]
   );
 
-  const filteredRows = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return checkedInRows;
-    return checkedInRows.filter((item) => {
-      const haystack = [item.visitor_name, item.visit_id, item.checkin_time]
-        .filter(Boolean)
-        .map((value) => String(value).toLowerCase())
-        .join(" ");
-      return haystack.includes(query);
-    });
-  }, [checkedInRows, searchQuery]);
+  type VisitHistoryValueGetterParams = { row: VisitHistoryItem; id?: unknown; index: number };
 
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
-  const pagedRows = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredRows.slice(start, start + pageSize);
-  }, [filteredRows, page, pageSize]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery, pageSize]);
-
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
+  const columns: GridColDef<VisitHistoryItem>[] = useMemo(
+    () => [
+      {
+        field: "sr_no",
+        headerName: "Sr. No.",
+        width: 90,
+        sortable: false,
+        filterable: false,
+        valueGetter: ((params: VisitHistoryValueGetterParams) => {
+          return params.index + 1;
+        }),
+        renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => {
+          return params.index + 1;
+        },
+      },
+      {
+        field: "visitor_name",
+        headerName: "Visitor",
+        flex: 1,
+        minWidth: 180,
+        filterable: true,
+      },
+      {
+        field: "checkin_time",
+        headerName: "Check-in",
+        flex: 1,
+        minWidth: 180,
+        filterable: false,
+        valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.checkin_time ?? null),
+        valueFormatter: ((value) =>
+          value ? new Date(value as string).toLocaleString() : "-"),
+      },
+      {
+        field: "id_number",
+        headerName: "ID Card",
+        width: 150,
+        filterable: false,
+        valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.id_number ?? "-"),
+        renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+          <span className="block truncate">{String(params.row.id_number ?? "-")}</span>
+        ),
+      },
+      {
+        field: "actions",
+        headerName: "Action",
+        width: 140,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => setIdCardNumber(String(params.row.id_number ?? ""))}
+            className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1 text-xs text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
+          >
+            Checkout
+          </button>
+        ),
+      },
+      {
+        field: "created_at",
+        headerName: "Created",
+        flex: 1,
+        minWidth: 180,
+        filterable: true,
+        valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.created_at ?? null),
+        valueFormatter: ((value) =>
+          value ? new Date(value as string).toLocaleDateString() : "-"),
+        renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+          <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleDateString() : "-"}</span>
+        ),
+      },
+    ],
+    [loading]
+  );
 
   if (!user) return null;
 
   return (
     <DashboardLayout user={user}>
-      <DashboardPageHeader title="Checkout" subtitle="Check out visitors by visit ID when needed." />
+      <DashboardPageHeader title="Checkout" subtitle="Check out visitors by ID card when needed." />
       <div className="space-y-6">
         <EntryDeskHeader
           title="Checkout"
-          subtitle="Use visit ID to complete check-out quickly."
+          subtitle="Use the assigned ID card number to complete check-out quickly."
         />
 
-        <Panel title="Check-out by Visit ID">
+        <Panel title="Check-out by ID Card">
           <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleCheckout}>
             <input
               className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
-              placeholder="Visit ID"
-              value={visitId}
-              onChange={(e) => setVisitId(e.target.value)}
+              placeholder="ID Card Number"
+              value={idCardNumber}
+              onChange={(e) => setIdCardNumber(e.target.value)}
               required
             />
             <button
               type="submit"
               disabled={loading}
-              className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
+              className="whitespace-nowrap rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
             >
               {loading ? "Checking out..." : "Check-out"}
             </button>
           </form>
-          {message ? <p className="mt-3 text-sm text-[var(--text-2)]">{message}</p> : null}
         </Panel>
 
         <Panel title="Currently Checked In">
-          <div className="mb-4">
-            <FilterBar
-              searchValue={searchQuery}
-              onSearchChange={setSearchQuery}
-              searchPlaceholder="Search visitor or visit ID..."
-            />
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead>
-                <tr className="text-[var(--text-3)]">
-                  <th className="pb-3 pr-3">Sr. No.</th>
-                  <th className="pb-3 pr-3">Visitor</th>
-                  <th className="pb-3 pr-3">Check-in</th>
-                  <th className="pb-3">Action</th>
-                </tr>
-              </thead>
-              <tbody className="text-[var(--text-1)]">
-                {pagedRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="py-3 text-[var(--text-3)]">
-                      {loading ? "Loading checked-in visitors..." : "No checked-in visitors found."}
-                    </td>
-                  </tr>
-                ) : (
-                  pagedRows.map((item, idx) => (
-                    <tr key={item.visit_id} className="border-t border-[var(--border-1)]">
-                      <td className="py-3 pr-3">{(page - 1) * pageSize + idx + 1}</td>
-                      <td className="py-3 pr-3">{item.visitor_name}</td>
-                      <td className="py-3 pr-3">
-                        {item.checkin_time ? new Date(item.checkin_time).toLocaleString() : "-"}
-                      </td>
-                      <td className="py-3">
-                        <button
-                          type="button"
-                          disabled={loading}
-                          onClick={() => setVisitId(String(item.visit_id))}
-                          className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1 text-xs text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
-                        >
-                          Use ID
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-4">
-            <Pagination
-              page={page}
-              totalItems={filteredRows.length}
-              pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-            />
-          </div>
+          <AppDataGrid
+            rows={checkedInRows}
+            columns={columns}
+            getRowId={(row) => row.visit_id}
+            loading={loading && checkedInRows.length === 0}
+            searchPlaceholder="Search visitor or visit ID..."
+            localeText={{
+              noRowsLabel: loading ? "Loading checked-in visitors..." : "No checked-in visitors found.",
+            }}
+          />
         </Panel>
       </div>
+      {checkoutCandidate ? (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/45 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-6 shadow-[var(--shadow-1)]">
+            <h2 className="text-lg font-semibold text-[var(--text-1)]">Confirm check-out</h2>
+            <p className="mt-2 text-sm text-[var(--text-3)]">
+              Check out the visitor using ID card <span className="font-semibold text-[var(--text-1)]">{checkoutCandidate}</span>?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setCheckoutCandidate(null)}
+                disabled={loading}
+                className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void submitCheckout(checkoutCandidate)}
+                disabled={loading}
+                className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
+              >
+                {loading ? "Checking out..." : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </DashboardLayout>
   );
 }

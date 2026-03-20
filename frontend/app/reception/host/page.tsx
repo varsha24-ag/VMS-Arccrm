@@ -10,8 +10,8 @@ import HostSearch from "@/components/entry-desk/host-search";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 export default function ReceptionHostPage() {
-  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
-  const [hostId, setHostId] = useState<number | null>(null);
+  const user = useAuthGuard({ allowedRoles: ["receptionist"] });
+  const [selectedHostId, setSelectedHostId] = useState<number | null>(null);
 
   if (!user) return null;
 
@@ -28,10 +28,7 @@ export default function ReceptionHostPage() {
         />
 
         <Panel title="Host Search">
-          <HostSearch value={hostId} onChange={setHostId} />
-          <p className="mt-3 text-xs text-[var(--text-3)]">
-            Selected host ID: {hostId ?? "None"}
-          </p>
+          <HostSearch value={selectedHostId} onChange={setSelectedHostId} />
         </Panel>
       </div>
     </DashboardLayout>

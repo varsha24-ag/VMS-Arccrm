@@ -6,9 +6,11 @@ import { Panel } from "@/components/dashboard/panels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
-import FilterBar from "@/components/ui/filter-bar";
-import Pagination from "@/components/ui/pagination";
-import { apiFetch } from "@/lib/api";
+import AppDataGrid, {
+  GridColDef,
+  type GridRenderCellParams,
+} from "@/components/ui/app-data-grid";
+import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 interface VisitHistoryItem {
@@ -21,6 +23,7 @@ interface VisitHistoryItem {
   photo_url?: string;
   host_employee_id?: number | null;
   purpose?: string;
+  created_at?: string | null;
   checkin_time?: string | null;
   checkout_time?: string | null;
   status: string;
@@ -30,10 +33,28 @@ export default function ReceptionHistoryPage() {
   const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
   const [history, setHistory] = useState<VisitHistoryItem[]>([]);
   const [message, setMessage] = useState<string>("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  const [loading, setLoading] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+  type VisitHistoryValueGetterParams = { row: VisitHistoryItem };
+
+  const statusBadgeClass = (status: string) => {
+    switch (status) {
+      case "approved":
+        return "border-emerald-300/60 bg-emerald-500/15 text-emerald-400";
+      case "pending":
+        return "border-amber-300/60 bg-amber-500/15 text-amber-400";
+      case "rejected":
+        return "border-red-300/60 bg-red-500/15 text-red-400";
+      case "checked_in":
+        return "border-orange-300/60 bg-orange-500/15 text-orange-400";
+      case "checked_out":
+        return "border-slate-300/60 bg-slate-500/15 text-slate-400";
+      default:
+        return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
+    }
+  };
+  const statusLabel = (status: string) => status.replace(/_/g, " ");
+  const statusOptions = ["approved", "pending", "rejected", "checked_in", "checked_out"];
 
   useEffect(() => {
     if (!user) return;
@@ -41,61 +62,175 @@ export default function ReceptionHistoryPage() {
   }, [user]);
 
   async function loadHistory() {
+    setLoading(true);
     try {
       const data = await apiFetch<VisitHistoryItem[]>("/visit/history");
       setHistory(data);
+      setMessage("");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to load history");
+      setHistory([]);
+    } finally {
+      setLoading(false);
     }
   }
 
   const historyWithPhotos = useMemo(() => {
-    return history.map((item) => ({
+    return [...history]
+      .sort((a, b) => b.visit_id - a.visit_id)
+      .map((item) => ({
       ...item,
       photo: item.photo_url
         ? item.photo_url.startsWith("http")
           ? item.photo_url
-          : `${baseUrl}${item.photo_url}`
+          : `${API_BASE_URL}${item.photo_url}`
         : null,
     }));
-  }, [history, baseUrl]);
+  }, [history]);
 
-  const filteredHistory = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return historyWithPhotos;
-    return historyWithPhotos.filter((item) => {
-      const haystack = [
-        item.visitor_name,
-        item.visitor_id,
-        item.visit_id,
-        item.visitor_email,
-        item.visitor_phone,
-        item.company,
-        item.purpose,
-        item.status,
-      ]
-        .filter(Boolean)
-        .map((value) => String(value).toLowerCase())
-        .join(" ");
-      return haystack.includes(query);
-    });
-  }, [historyWithPhotos, searchQuery]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredHistory.length / pageSize));
-  const pagedHistory = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredHistory.slice(start, start + pageSize);
-  }, [filteredHistory, page, pageSize]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery, pageSize]);
-
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
+  const columns: GridColDef<VisitHistoryItem & { photo?: string | null }>[] = [
+    {
+      field: "photo",
+      headerName: "Photo",
+      width: 104,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem & { photo?: string | null }>) =>
+        params.value ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <button
+            type="button"
+            onClick={() => setPreviewPhoto(params.value as string)}
+            className="group h-10 w-10 overflow-hidden rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)]"
+          >
+            <img
+              src={params.value as string}
+              alt={params.row.visitor_name}
+              className="h-10 w-10 object-cover transition group-hover:scale-105"
+            />
+          </button>
+        ) : (
+          <div className="h-10 w-10 rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)]" />
+        ),
+    },
+    {
+      field: "visitor_name",
+      headerName: "Visitor",
+      flex: 1,
+      minWidth: 190,
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span className="block truncate">{params.row.visitor_name}</span>
+      ),
+    },
+    {
+      field: "purpose",
+      headerName: "Purpose",
+      type: "string",
+      flex: 1,
+      minWidth: 160,
+      valueGetter: ((params: VisitHistoryValueGetterParams) =>
+        String(params?.row?.purpose ?? "").trim().toLowerCase()),
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span className="block truncate">{String(params?.row?.purpose ?? "").trim() || "-"}</span>
+      ),
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      type: "singleSelect",
+      valueOptions: statusOptions,
+      width: 150,
+      minWidth: 150,
+      filterable: true,
+      valueFormatter: ((value) =>
+        statusLabel(String(value ?? ""))),
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <div className="min-w-0">
+          <span className={`inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap ${statusBadgeClass(params?.row?.status ?? "")}`}>
+            <span className="truncate">
+              {statusLabel(String(params?.row?.status ?? "-"))}
+            </span>
+          </span>
+        </div>
+      ),
+    },
+    {
+      field: "checkin_time",
+      headerName: "Check-in",
+      flex: 1,
+      minWidth: 180,
+      filterable: false,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.checkin_time ?? null),
+      valueFormatter: ((value) =>
+        value ? new Date(value as string).toLocaleString() : "-"),
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span className="block truncate">
+          {params?.row?.checkin_time ? new Date(params.row.checkin_time).toLocaleString() : "-"}
+        </span>
+      ),
+    },
+    {
+      field: "checkout_time",
+      headerName: "Check-out",
+      flex: 1,
+      minWidth: 180,
+      filterable: false,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.checkout_time ?? null),
+      valueFormatter: ((value) =>
+        value ? new Date(value as string).toLocaleString() : "-"),
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span className="block truncate">
+          {params?.row?.checkout_time ? new Date(params.row.checkout_time).toLocaleString() : "-"}
+        </span>
+      ),
+    },
+    {
+      field: "created_at",
+      headerName: "Created",
+      width: 140,
+      minWidth: 140,
+      filterable: true,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.created_at ?? null),
+      valueFormatter: ((value) =>
+        value ? new Date(value as string).toLocaleDateString() : "-"),
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span className="block truncate">{params?.row?.created_at ? new Date(params.row.created_at).toLocaleDateString() : "-"}</span>
+      ),
+    },
+    {
+      field: "company",
+      headerName: "Company",
+      flex: 1,
+      minWidth: 150,
+      filterable: false,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.company ?? "-"),
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span className="block truncate">{String(params.row.company ?? "-")}</span>
+      ),
+    },
+    {
+      field: "visitor_email",
+      headerName: "Email",
+      flex: 1,
+      minWidth: 210,
+      filterable: false,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_email ?? "-"),
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span className="block truncate">{String(params.row.visitor_email ?? "-")}</span>
+      ),
+    },
+    {
+      field: "visitor_phone",
+      headerName: "Phone",
+      width: 140,
+      minWidth: 140,
+      filterable: false,
+      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_phone ?? "-"),
+      renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
+        <span className="block truncate">{String(params.row.visitor_phone ?? "-")}</span>
+      ),
+    },
+  ];
 
   if (!user) return null;
 
@@ -109,69 +244,49 @@ export default function ReceptionHistoryPage() {
         />
 
         <Panel title="History (Photo)">
-          <div className="mb-4">
-            <FilterBar
-              searchValue={searchQuery}
-              onSearchChange={setSearchQuery}
-              searchPlaceholder="Search visitor, purpose, status..."
-            />
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead>
-                <tr className="text-[var(--text-3)]">
-                  <th className="pb-3 pr-3">Photo</th>
-                  <th className="pb-3 pr-3">Visitor</th>
-                  <th className="pb-3 pr-3">Purpose</th>
-                  <th className="pb-3 pr-3">Status</th>
-                  <th className="pb-3 pr-3">Check-in</th>
-                  <th className="pb-3">Check-out</th>
-                </tr>
-              </thead>
-              <tbody className="text-[var(--text-1)]">
-                {pagedHistory.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-3 text-[var(--text-3)]">
-                      {message ? message : "No visit history found."}
-                    </td>
-                  </tr>
-                ) : (
-                  pagedHistory.map((item) => (
-                    <tr key={item.visit_id} className="border-t border-[var(--border-1)]">
-                      <td className="py-3 pr-3">
-                        {item.photo ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={item.photo} alt={item.visitor_name} className="h-10 w-10 rounded-lg object-cover" />
-                        ) : (
-                          <div className="h-10 w-10 rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)]" />
-                        )}
-                      </td>
-                      <td className="py-3 pr-3">{item.visitor_name}</td>
-                      <td className="py-3 pr-3">{item.purpose ?? "-"}</td>
-                      <td className="py-3 pr-3">{item.status}</td>
-                      <td className="py-3 pr-3">
-                        {item.checkin_time ? new Date(item.checkin_time).toLocaleString() : "-"}
-                      </td>
-                      <td className="py-3">
-                        {item.checkout_time ? new Date(item.checkout_time).toLocaleString() : "-"}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-4">
-            <Pagination
-              page={page}
-              totalItems={filteredHistory.length}
-              pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-            />
-          </div>
+          <AppDataGrid
+            rows={historyWithPhotos}
+            columns={columns}
+            getRowId={(row) => row.visit_id}
+            loading={loading}
+            searchPlaceholder="Search visitor, purpose, status..."
+            initialState={{
+              columns: {
+                columnVisibilityModel: {
+                  purpose: true,
+                  checkin_time: true,
+                  checkout_time: true,
+                  company: false,
+                  visitor_email: false,
+                  visitor_phone: false,
+                },
+              },
+            }}
+            localeText={{
+              noRowsLabel: message ? message : "No visit history found.",
+            }}
+          />
         </Panel>
       </div>
+      {previewPhoto ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--modal-overlay)] backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] shadow-[var(--shadow-1)]">
+            <button
+              type="button"
+              onClick={() => setPreviewPhoto(null)}
+              className="absolute right-4 top-4 rounded-full border border-[var(--border-1)] bg-[var(--surface-2)] p-2 text-[var(--text-2)] transition hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
+              aria-label="Close"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+                <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+            <div className="p-6">
+              <img src={previewPhoto} alt="Visitor" className="h-full w-full rounded-xl object-cover" />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </DashboardLayout>
   );
 }

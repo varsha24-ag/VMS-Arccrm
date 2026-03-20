@@ -1,12 +1,15 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { AuthUser, clearAuthSession } from "@/lib/auth";
+import { getAccessToken } from "@/lib/auth";
+import { API_BASE_URL } from "@/lib/api";
 import { getModulesForRole } from "@/lib/modules";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { useToast } from "@/components/ui/toast";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -18,6 +21,45 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
   const router = useRouter();
   const modules = getModulesForRole(user.role);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { pushToast } = useToast();
+
+  useEffect(() => {
+    if (!user || !["receptionist", "admin"].includes(user.role)) return;
+    const token = getAccessToken();
+    if (!token) return;
+    const source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);
+    source.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data) as {
+          type?: string;
+          status?: string;
+          visit_id?: number;
+          visitor_id?: number;
+        };
+        if (payload?.type !== "visit_status" || !payload.status) return;
+        const statusLabel =
+          payload.status === "approved"
+            ? "Approved by host"
+            : payload.status === "rejected"
+            ? "Rejected by host"
+            : "Status updated";
+        const visitLabel = payload.visit_id ? `Visit #${payload.visit_id}` : "Visit update";
+        pushToast({
+          title: statusLabel,
+          description: `${visitLabel} · Receptionist notification`,
+          variant: payload.status === "approved" ? "success" : payload.status === "rejected" ? "error" : "info",
+        });
+      } catch {
+        // ignore malformed events
+      }
+    };
+    source.onerror = () => {
+      source.close();
+    };
+    return () => {
+      source.close();
+    };
+  }, [pushToast, user]);
 
   const handleLogout = () => {
     clearAuthSession();
@@ -30,7 +72,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
       <aside
         className={`${isSidebarOpen ? "w-64" : "w-20"} sticky top-0 h-screen flex flex-col border-r border-[var(--border-1)] bg-[var(--surface-1)] backdrop-blur-xl transition-all duration-300 z-50`}
       >
-        <div className="p-6 flex items-center gap-3 border-b border-[var(--border-1)] overflow-hidden">
+        <div className="h-16 px-6 flex items-center gap-3 border-b border-[var(--border-1)] overflow-hidden">
           <Image src="/arc-logo.svg" alt="Logo" width={32} height={32} className="shrink-0" />
           {isSidebarOpen && (
             <span className="font-bold text-lg text-[var(--text-1)] whitespace-nowrap">ArcCRM</span>
