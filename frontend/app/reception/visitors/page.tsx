@@ -169,6 +169,8 @@ function ReceptionVisitorsContent() {
         return "border-orange-300/60 bg-orange-500/15 text-orange-400";
       case "checked_out":
         return "border-slate-300/60 bg-slate-500/15 text-slate-400";
+      case "auto_checked_out":
+        return "border-slate-300/60 bg-slate-500/15 text-slate-400";
       default:
         return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
     }
@@ -304,7 +306,7 @@ function ReceptionVisitorsContent() {
         field: "status",
         headerName: "Status",
         type: "singleSelect",
-        valueOptions: ["approved", "pending", "rejected", "checked_in", "checked_out"],
+        valueOptions: ["approved", "pending", "rejected", "checked_in", "checked_out", "auto_checked_out"],
         width: 180,
         minWidth: 180,
         filterable: true,

@@ -15,6 +15,17 @@ class VisitorCreate(BaseModel):
     photo_url: Optional[str] = None
 
 
+class QRInviteCreate(BaseModel):
+    name: str = Field(..., min_length=1)
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    company: Optional[str] = None
+    visitor_type: Optional[str] = None
+    host_employee_id: int
+    purpose: str = Field(..., min_length=1)
+    photo_url: Optional[str] = None
+
+
 class VisitorOut(BaseModel):
     id: int
     visit_id: Optional[int] = None
@@ -33,11 +44,13 @@ class VisitorOut(BaseModel):
 
 class VisitCheckin(BaseModel):
     visitor_id: int
+    visit_id: Optional[int] = None
     host_employee_id: Optional[int] = None
     purpose: Optional[str] = None
     policy_accepted: Optional[bool] = False
     qr_code: Optional[str] = None
     id_number: Optional[str] = None
+    photo_url: Optional[str] = None
 
 
 class VisitCheckout(BaseModel):
@@ -56,6 +69,16 @@ class VisitOut(BaseModel):
     status: str
     policy_accepted: bool = False
     qr_code: Optional[str] = None
+    source: Optional[str] = None
+    qr_expiry: Optional[datetime] = None
+
+
+class QRInviteOut(BaseModel):
+    visit_id: int
+    visitor_id: int
+    qr_code: str
+    created_at: datetime
+    qr_checkin_url: str
 
 
 class VisitHistoryItem(BaseModel):
@@ -74,6 +97,28 @@ class VisitHistoryItem(BaseModel):
     checkout_time: Optional[datetime] = None
     status: str
     qr_code: Optional[str] = None
+    source: Optional[str] = None
+    qr_expiry: Optional[datetime] = None
+
+
+class VisitDetailOut(BaseModel):
+    visit_id: Optional[int] = None
+    visitor_id: int
+    visitor_name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    company: Optional[str] = None
+    purpose: Optional[str] = None
+    host_name: Optional[str] = None
+    photo_url: Optional[str] = None
+    status: str
+    created_at: datetime
+    qr_code: Optional[str] = None
+    valid_from: Optional[datetime] = None
+    is_currently_valid: bool = True
+    validity_error: Optional[str] = None
+    source: Optional[str] = None
+    qr_expiry: Optional[datetime] = None
 
 
 class AccessPassCreate(BaseModel):
@@ -81,8 +126,9 @@ class AccessPassCreate(BaseModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     company: Optional[str] = None
+    purpose: Optional[str] = None
     host_employee_id: Optional[int] = None
-    valid_from: datetime
+    valid_from: Optional[datetime] = None
     valid_to: datetime
     max_visits: int = Field(..., ge=1)
 
@@ -96,6 +142,9 @@ class AccessPassOut(BaseModel):
     max_visits: int
     remaining_visits: int
     qr_code: str
+    qr_checkin_url: Optional[str] = None
+    email_sent: Optional[bool] = None
+    email_error: Optional[str] = None
 
 
 class QRCheckin(BaseModel):

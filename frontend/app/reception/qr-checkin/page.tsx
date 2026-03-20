@@ -10,7 +10,7 @@ import AppDataGrid, {
   type GridRenderCellParams,
 } from "@/components/ui/app-data-grid";
 import { useToast } from "@/components/ui/toast";
-import { API_BASE_URL, apiFetch } from "@/lib/api";
+import {  apiFetch } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
@@ -369,32 +369,32 @@ export default function ReceptionQrCheckinPage() {
     return [...visitList]
       .sort((a, b) => b.visit_id - a.visit_id)
       .map((visit) => {
-      const emailSent = visit.approval_email_sent === true;
-      const emailNotSent = visit.approval_email_sent === false || Boolean(visit.approval_email_error);
-      const emailStatus = emailSent
-        ? "Email sent"
-        : emailNotSent
-        ? `Email not sent${visit.approval_email_error ? `: ${visit.approval_email_error}` : ""}`
-        : "Email pending";
-      const visitWithAliases = visit as VisitStatusRow & {
-        host?: { name?: string | null } | null;
-        hostName?: string | null;
-        host_employee_name?: string | null;
-        visitorName?: string | null;
-      };
-      return {
-        ...visit,
-        host_name:
-          visitWithAliases.host_name ??
-          visitWithAliases.hostName ??
-          visitWithAliases.host_employee_name ??
-          visitWithAliases.host?.name ??
-          "",
-        visitor_name: visitWithAliases.visitor_name ?? visitWithAliases.visitorName ?? "",
-        status_label: statusLabel(visit.status),
-        email_status: emailStatus,
-      };
-    });
+        const emailSent = visit.approval_email_sent === true;
+        const emailNotSent = visit.approval_email_sent === false || Boolean(visit.approval_email_error);
+        const emailStatus = emailSent
+          ? "Email sent"
+          : emailNotSent
+            ? `Email not sent${visit.approval_email_error ? `: ${visit.approval_email_error}` : ""}`
+            : "Email pending";
+        const visitWithAliases = visit as VisitStatusRow & {
+          host?: { name?: string | null } | null;
+          hostName?: string | null;
+          host_employee_name?: string | null;
+          visitorName?: string | null;
+        };
+        return {
+          ...visit,
+          host_name:
+            visitWithAliases.host_name ??
+            visitWithAliases.hostName ??
+            visitWithAliases.host_employee_name ??
+            visitWithAliases.host?.name ??
+            "",
+          visitor_name: visitWithAliases.visitor_name ?? visitWithAliases.visitorName ?? "",
+          status_label: statusLabel(visit.status),
+          email_status: emailStatus,
+        };
+      });
   }, [visitList, statusLabel]);
 
   const visitColumns: GridColDef<VisitStatusRow & { status_label?: string; email_status?: string }>[] = useMemo(
@@ -406,11 +406,11 @@ export default function ReceptionQrCheckinPage() {
         flex: 1,
         minWidth: 170,
         filterable: true,
-        valueGetter: ((params: { row: VisitStatusRow }) => {
+        valueGetter: (params: { row: VisitStatusRow }) => {
           const row = params?.row as VisitStatusRow & { visitorName?: string | null };
           const value = row?.visitor_name ?? row?.visitorName ?? "";
           return String(value ?? "").trim().toLowerCase();
-        }),
+        },
         getQuickFilterText: (params: { value?: unknown }) =>
           String(params?.value ?? "").toLowerCase(),
         renderCell: (params: GridRenderCellParams<VisitStatusRow>) => (
@@ -424,7 +424,7 @@ export default function ReceptionQrCheckinPage() {
         flex: 1,
         minWidth: 160,
         filterable: true,
-        valueGetter: ((params: { row: VisitStatusRow }) => {
+        valueGetter: (params: { row: VisitStatusRow }) => {
           const row = params?.row as VisitStatusRow & {
             hostName?: string | null;
             host_employee_name?: string | null;
@@ -437,9 +437,9 @@ export default function ReceptionQrCheckinPage() {
             row?.host?.name ??
             "";
           return String(value ?? "").trim().toLowerCase();
-        }),
-        valueFormatter: ((value, row) =>
-          String((row as VisitStatusRow | undefined)?.host_name ?? "Unknown")),
+        },
+        valueFormatter: (_value, row) =>
+          String((row as VisitStatusRow | undefined)?.host_name ?? "Unknown"),
         getApplyQuickFilterFn: (value) => {
           if (!value || !value.trim()) return null;
           const search = value.toLowerCase();
@@ -458,8 +458,8 @@ export default function ReceptionQrCheckinPage() {
         flex: 1,
         minWidth: 200,
         filterable: true,
-        valueFormatter: ((value) =>
-          statusLabel(String(value ?? ""))),
+        valueFormatter: (value) =>
+          statusLabel(String(value ?? "")),
         getQuickFilterText: (params: { row?: VisitStatusRow & { status_label?: string } }) => {
           const row = params?.row as VisitStatusRow & { status_label?: string };
           const raw = row?.status ?? "";
@@ -483,7 +483,7 @@ export default function ReceptionQrCheckinPage() {
         flex: 1,
         minWidth: 180,
         filterable: false,
-        valueGetter: ((params: { row: VisitStatusRow }) => params?.row?.email_status ?? "-"),
+        valueGetter: (params: { row: VisitStatusRow }) => params?.row?.email_status ?? "-",
       },
       {
         field: "created_at",
@@ -491,9 +491,9 @@ export default function ReceptionQrCheckinPage() {
         flex: 1,
         minWidth: 180,
         filterable: true,
-        valueGetter: ((params: { row: VisitStatusRow }) => params?.row?.created_at ?? null),
-        valueFormatter: ((value) =>
-          value ? new Date(value as string).toLocaleDateString() : "-"),
+        valueGetter: (params: { row: VisitStatusRow }) => params?.row?.created_at ?? null,
+        valueFormatter: (value) =>
+          value ? new Date(value as string).toLocaleDateString() : "-",
         renderCell: (params: GridRenderCellParams<VisitStatusRow>) => (
           <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleDateString() : "-"}</span>
         ),
@@ -536,7 +536,7 @@ export default function ReceptionQrCheckinPage() {
         },
       },
     ],
-    [handleLoadVisit, handleResendApprovalEmail, resendLoading, statusBadgeClass, statusLabel]
+    [handleLoadVisit, handleResendApprovalEmail, resendLoading]
   );
 
   useEffect(() => {
@@ -548,7 +548,8 @@ export default function ReceptionQrCheckinPage() {
     if (!user) return;
     const token = getAccessToken();
     if (!token) return;
-    const source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const source = new EventSource(`${baseUrl}/events/visits?token=${encodeURIComponent(token)}`);
     source.onmessage = () => {
       void fetchVisitList();
     };
@@ -577,8 +578,6 @@ export default function ReceptionQrCheckinPage() {
     <DashboardLayout user={user}>
       <DashboardPageHeader title="Check-in" subtitle="Scan or paste a QR code to complete a check-in." />
       <div className="space-y-6">
-        
-
         <Panel title="Check-in">
           <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleQrCheckin}>
             <input
@@ -668,8 +667,8 @@ export default function ReceptionQrCheckinPage() {
                   {visitorStatus === "approved"
                     ? "Approved by Host"
                     : visitorStatus === "rejected"
-                    ? "Rejected by Host"
-                    : "Pending Host Response"}
+                      ? "Rejected by Host"
+                      : "Pending Host Response"}
                 </span>
               </div>
               {visitorStatus === "rejected" ? (
