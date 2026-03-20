@@ -12,10 +12,13 @@ interface ToastItem {
   actionLabel?: string;
   onAction?: () => void;
   durationMs?: number;
+  timeoutMs: number;
 }
 
+type ToastInput = Omit<ToastItem, "id" | "timeoutMs">;
+
 interface ToastContextValue {
-  pushToast: (toast: Omit<ToastItem, "id">) => void;
+  pushToast: (toast: ToastInput) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -52,10 +55,10 @@ function ToastIcon({ variant }: { variant: ToastVariant }) {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const pushToast = useCallback((toast: Omit<ToastItem, "id">) => {
+  const pushToast = useCallback((toast: ToastInput) => {
     const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    setToasts((prev) => [...prev, { ...toast, id }]);
     const duration = toast.durationMs ?? (toast.actionLabel ? 8000 : 3500);
+    setToasts((prev) => [...prev, { ...toast, id, timeoutMs: duration }]);
     window.setTimeout(() => {
       setToasts((prev) => prev.filter((item) => item.id !== id));
     }, duration);
@@ -66,27 +69,56 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
+      <style jsx>{`
+        @keyframes toast-progress-shrink {
+          from {
+            transform: scaleX(1);
+          }
+          to {
+            transform: scaleX(0);
+          }
+        }
+      `}</style>
       <div className="pointer-events-none fixed right-6 top-6 z-[999] space-y-3">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className="pointer-events-auto flex w-[340px] gap-3 rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] px-4 py-3 shadow-[var(--shadow-1)] backdrop-blur"
+            className="pointer-events-auto w-[340px] overflow-hidden rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] shadow-[var(--shadow-1)] backdrop-blur"
           >
-            <ToastIcon variant={toast.variant} />
-            <div className="text-[15px] text-[var(--text-2)]">
-              <p className="font-semibold text-[var(--text-1)]">{toast.title}</p>
-              {toast.description ? <p className="mt-1 text-sm text-[var(--text-3)]">{toast.description}</p> : null}
-              {toast.actionLabel && toast.onAction ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    toast.onAction?.();
-                  }}
-                  className="mt-2 rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-2 py-1 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)]"
-                >
-                  {toast.actionLabel}
-                </button>
-              ) : null}
+            <div className="flex gap-3 px-4 py-3">
+              <ToastIcon variant={toast.variant} />
+              <div className="text-[15px] text-[var(--text-2)]">
+                <p className="font-semibold text-[var(--text-1)]">{toast.title}</p>
+                {toast.description ? <p className="mt-1 text-sm text-[var(--text-3)]">{toast.description}</p> : null}
+                {toast.actionLabel && toast.onAction ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toast.onAction?.();
+                    }}
+                    className="mt-2 rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-2 py-1 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)]"
+                  >
+                    {toast.actionLabel}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <div className="h-1 w-full bg-[var(--surface-2)]">
+              <div
+                className={`h-full origin-left ${
+                  toast.variant === "success"
+                    ? "bg-emerald-500"
+                    : toast.variant === "error"
+                    ? "bg-rose-500"
+                    : "bg-sky-500"
+                }`}
+                style={{
+                  animationName: "toast-progress-shrink",
+                  animationDuration: `${toast.timeoutMs}ms`,
+                  animationTimingFunction: "linear",
+                  animationFillMode: "forwards",
+                }}
+              />
             </div>
           </div>
         ))}

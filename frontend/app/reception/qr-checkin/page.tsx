@@ -5,13 +5,10 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { Panel } from "@/components/dashboard/panels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
-import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
-import AppDataGrid, { GridColDef } from "@/components/ui/app-data-grid";
-import type {
-  GridRenderCellParams,
-  GridValueFormatter,
-  GridValueGetter,
-} from "@mui/x-data-grid";
+import AppDataGrid, {
+  GridColDef,
+  type GridRenderCellParams,
+} from "@/components/ui/app-data-grid";
 import { useToast } from "@/components/ui/toast";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
@@ -91,7 +88,7 @@ export default function ReceptionQrCheckinPage() {
   const statusBadgeClass = (status: string) => {
     switch (status) {
       case "approved":
-        return "border-emerald-300/60 bg-emerald-500/15 text-emerald-400";
+        return "border-emerald-400/20 bg-emerald-500/10 text-emerald-300";
       case "pending":
         return "border-amber-300/60 bg-amber-500/15 text-amber-400";
       case "rejected":
@@ -369,7 +366,9 @@ export default function ReceptionQrCheckinPage() {
   );
 
   const visitRows = useMemo(() => {
-    return visitList.map((visit) => {
+    return [...visitList]
+      .sort((a, b) => b.visit_id - a.visit_id)
+      .map((visit) => {
       const emailSent = visit.approval_email_sent === true;
       const emailNotSent = visit.approval_email_sent === false || Boolean(visit.approval_email_error);
       const emailStatus = emailSent
@@ -406,11 +405,12 @@ export default function ReceptionQrCheckinPage() {
         type: "string",
         flex: 1,
         minWidth: 170,
+        filterable: true,
         valueGetter: ((params: { row: VisitStatusRow }) => {
           const row = params?.row as VisitStatusRow & { visitorName?: string | null };
           const value = row?.visitor_name ?? row?.visitorName ?? "";
           return String(value ?? "").trim().toLowerCase();
-        }) as GridValueGetter<VisitStatusRow>,
+        }),
         getQuickFilterText: (params: { value?: unknown }) =>
           String(params?.value ?? "").toLowerCase(),
         renderCell: (params: GridRenderCellParams<VisitStatusRow>) => (
@@ -423,6 +423,7 @@ export default function ReceptionQrCheckinPage() {
         type: "string",
         flex: 1,
         minWidth: 160,
+        filterable: true,
         valueGetter: ((params: { row: VisitStatusRow }) => {
           const row = params?.row as VisitStatusRow & {
             hostName?: string | null;
@@ -436,9 +437,9 @@ export default function ReceptionQrCheckinPage() {
             row?.host?.name ??
             "";
           return String(value ?? "").trim().toLowerCase();
-        }) as GridValueGetter<VisitStatusRow>,
+        }),
         valueFormatter: ((value, row) =>
-          String((row as VisitStatusRow | undefined)?.host_name ?? "Unknown")) as GridValueFormatter<VisitStatusRow>,
+          String((row as VisitStatusRow | undefined)?.host_name ?? "Unknown")),
         getApplyQuickFilterFn: (value) => {
           if (!value || !value.trim()) return null;
           const search = value.toLowerCase();
@@ -456,8 +457,9 @@ export default function ReceptionQrCheckinPage() {
         valueOptions: statusOptions,
         flex: 1,
         minWidth: 200,
+        filterable: true,
         valueFormatter: ((value) =>
-          statusLabel(String(value ?? ""))) as GridValueFormatter<VisitStatusRow>,
+          statusLabel(String(value ?? ""))),
         getQuickFilterText: (params: { row?: VisitStatusRow & { status_label?: string } }) => {
           const row = params?.row as VisitStatusRow & { status_label?: string };
           const raw = row?.status ?? "";
@@ -480,18 +482,20 @@ export default function ReceptionQrCheckinPage() {
         headerName: "Email Status",
         flex: 1,
         minWidth: 180,
-        valueGetter: ((params: { row: VisitStatusRow }) => params?.row?.email_status ?? "-") as GridValueGetter<VisitStatusRow>,
+        filterable: false,
+        valueGetter: ((params: { row: VisitStatusRow }) => params?.row?.email_status ?? "-"),
       },
       {
         field: "created_at",
         headerName: "Created",
         flex: 1,
         minWidth: 180,
-        valueGetter: ((params: { row: VisitStatusRow }) => params?.row?.created_at ?? null) as GridValueGetter<VisitStatusRow>,
+        filterable: true,
+        valueGetter: ((params: { row: VisitStatusRow }) => params?.row?.created_at ?? null),
         valueFormatter: ((value) =>
-          value ? new Date(value as string).toLocaleString() : "-") as GridValueFormatter<VisitStatusRow>,
+          value ? new Date(value as string).toLocaleDateString() : "-"),
         renderCell: (params: GridRenderCellParams<VisitStatusRow>) => (
-          <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleString() : "-"}</span>
+          <span>{params?.row?.created_at ? new Date(params.row.created_at).toLocaleDateString() : "-"}</span>
         ),
       },
       {
@@ -513,7 +517,7 @@ export default function ReceptionQrCheckinPage() {
                 type="button"
                 onClick={() => handleLoadVisit(row)}
                 disabled={row.status === "checked_in"}
-                className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
+                className="rounded-md border border-[var(--border-1)] bg-transparent px-3 py-1.5 text-xs font-semibold text-[var(--text-2)] transition hover:bg-[var(--surface-2)] hover:text-[var(--text-1)] disabled:opacity-60"
               >
                 Load
               </button>
@@ -573,9 +577,9 @@ export default function ReceptionQrCheckinPage() {
     <DashboardLayout user={user}>
       <DashboardPageHeader title="Check-in" subtitle="Scan or paste a QR code to complete a check-in." />
       <div className="space-y-6">
-        <EntryDeskHeader title="QR Fast Check-in" subtitle="Use QR codes for returning visitors and access passes." />
+        
 
-        <Panel title="QR Code">
+        <Panel title="Check-in">
           <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleQrCheckin}>
             <input
               className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"

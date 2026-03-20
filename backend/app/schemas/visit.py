@@ -43,6 +43,7 @@ class VisitCheckin(BaseModel):
 class VisitCheckout(BaseModel):
     visit_id: Optional[int] = None
     visitor_id: Optional[int] = None
+    id_number: Optional[str] = None
 
 
 class VisitOut(BaseModel):

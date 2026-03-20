@@ -12,6 +12,9 @@ export interface StatusItem {
   title: string;
   subtitle: string;
   status: string;
+  image?: string | null;
+  visit_id?: number;
+  visitor_id?: number;
 }
 
 interface StatGridProps {
@@ -22,6 +25,8 @@ interface PanelProps {
   title: string;
   children: ReactNode;
   action?: ReactNode;
+  className?: string;
+  contentClassName?: string;
 }
 
 interface SimpleTableProps {
@@ -31,6 +36,7 @@ interface SimpleTableProps {
 
 interface StatusListProps {
   items: StatusItem[];
+  onItemClick?: (item: StatusItem) => void;
 }
 
 interface ActionListProps {
@@ -58,14 +64,16 @@ export function StatGrid({ items }: StatGridProps) {
   );
 }
 
-export function Panel({ title, children, action }: PanelProps) {
+export function Panel({ title, children, action, className, contentClassName }: PanelProps) {
   return (
-    <section className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-1)]">
+    <section
+      className={`rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-1)] ${className ?? ""}`}
+    >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-[var(--text-1)]">{title}</h2>
         {action ?? <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />}
       </div>
-      <div className="mt-4">{children}</div>
+      <div className={`mt-4 ${contentClassName ?? ""}`}>{children}</div>
     </section>
   );
 }
@@ -102,19 +110,61 @@ export function SimpleTable({ headers, rows }: SimpleTableProps) {
   );
 }
 
-export function StatusList({ items }: StatusListProps) {
+export function StatusList({ items, onItemClick }: StatusListProps) {
   return (
     <div className="space-y-3 text-sm text-[var(--text-1)]">
       {items.map((item) => (
         <article
           key={item.title}
-          className="flex items-center justify-between rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-3 transition hover:bg-[var(--surface-3)]"
+          className="flex items-center justify-between rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-3 transition hover:-translate-y-0.5 hover:bg-[var(--surface-3)]"
+          role={onItemClick ? "button" : undefined}
+          tabIndex={onItemClick ? 0 : undefined}
+          onClick={onItemClick ? () => onItemClick(item) : undefined}
+          onKeyDown={
+            onItemClick
+              ? (event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onItemClick(item);
+                  }
+                }
+              : undefined
+          }
         >
-          <div>
-            <p className="font-semibold text-[var(--text-1)]">{item.title}</p>
-            <p className="text-xs text-[var(--text-3)]">{item.subtitle}</p>
+          <div className="flex items-center gap-3">
+            {item.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.image}
+                alt={item.title}
+                className="h-10 w-10 rounded-full border border-[var(--border-1)] object-cover"
+              />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-1)] bg-[var(--surface-3)] text-xs font-semibold text-[var(--text-1)]">
+                {item.title
+                  .split(" ")
+                  .map((part) => part[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase()}
+              </div>
+            )}
+            <div>
+              <p className="font-semibold text-[var(--text-1)]">{item.title}</p>
+              <p className="text-xs text-[var(--text-3)]">{item.subtitle}</p>
+            </div>
           </div>
-          <span className="rounded-full bg-[var(--nav-active-bg)] px-3 py-1 text-xs text-[var(--accent)]">
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+              item.status.toLowerCase().includes("approved")
+                ? "border-emerald-300/40 bg-emerald-500/15 text-emerald-300"
+                : item.status.toLowerCase().includes("pending")
+                ? "border-amber-300/40 bg-amber-500/15 text-amber-300"
+                : item.status.toLowerCase().includes("checked in")
+                ? "border-orange-300/40 bg-orange-500/15 text-orange-300"
+                : "border-slate-300/40 bg-slate-500/15 text-slate-300"
+            }`}
+          >
             {item.status}
           </span>
         </article>
