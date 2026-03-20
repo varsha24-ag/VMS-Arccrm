@@ -8,7 +8,7 @@ import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
 import FilterBar from "@/components/ui/filter-bar";
 import Pagination from "@/components/ui/pagination";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, resolveApiAssetUrl } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 interface VisitHistoryItem {
@@ -34,7 +34,6 @@ export default function ReceptionHistoryPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
   useEffect(() => {
     if (!user) return;
@@ -53,13 +52,9 @@ export default function ReceptionHistoryPage() {
   const historyWithPhotos = useMemo(() => {
     return history.map((item) => ({
       ...item,
-      photo: item.photo_url
-        ? item.photo_url.startsWith("http")
-          ? item.photo_url
-          : `${baseUrl}${item.photo_url}`
-        : null,
+      photo: resolveApiAssetUrl(item.photo_url),
     }));
-  }, [history, baseUrl]);
+  }, [history]);
 
   const filteredHistory = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -109,7 +104,7 @@ export default function ReceptionHistoryPage() {
           subtitle="Track check-ins and check-outs with captured photos."
         />
 
-        <Panel title="History (Photo)">
+        <Panel title="History">
           <div className="mb-4">
             <FilterBar
               searchValue={searchQuery}
@@ -197,6 +192,7 @@ export default function ReceptionHistoryPage() {
               </svg>
             </button>
             <div className="p-6">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={previewPhoto} alt="Visitor" className="h-full w-full rounded-xl object-cover" />
             </div>
           </div>

@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     SMTP_USE_TLS: bool = True
     APP_BASE_URL: Optional[str] = None
     RECEPTION_EMAIL: Optional[str] = None
+    BUSINESS_TIMEZONE: str = "Asia/Kolkata"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
