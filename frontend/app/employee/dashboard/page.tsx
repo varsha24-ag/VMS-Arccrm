@@ -33,15 +33,38 @@ const timelineItems = [
   "04:30 PM - Security sign-off"
 ];
 
+const passPurposeOptions = [
+  "Meeting",
+  "Interview",
+  "Delivery",
+  "Maintenance",
+  "Vendor Visit",
+  "Site Visit",
+];
+
+const initialPassPayload: AccessPassPayload = {
+  visitor_name: "",
+  phone: "",
+  email: "",
+  company: "",
+  purpose: "",
+  valid_from: "",
+  valid_to: "",
+};
+
 interface AccessPassPayload {
   visitor_name: string;
   phone?: string;
   email?: string;
   company?: string;
-  host_employee_id?: number | null;
+  purpose: string;
   valid_from: string;
   valid_to: string;
-  max_visits: number;
+}
+
+interface AccessPassResult {
+  email_sent?: boolean | null;
+  email_error?: string | null;
 }
 
 export default function EmployeeDashboard() {
@@ -51,16 +74,7 @@ export default function EmployeeDashboard() {
   const [approvalQuery, setApprovalQuery] = useState("");
   const [approvalPage, setApprovalPage] = useState(1);
   const [approvalPageSize, setApprovalPageSize] = useState(5);
-  const [passPayload, setPassPayload] = useState<AccessPassPayload>({
-    visitor_name: "",
-    phone: "",
-    email: "",
-    company: "",
-    host_employee_id: null,
-    valid_from: "",
-    valid_to: "",
-    max_visits: 10,
-  });
+  const [passPayload, setPassPayload] = useState<AccessPassPayload>(initialPassPayload);
 
   const filteredApprovalRows = useMemo(() => {
     const query = approvalQuery.trim().toLowerCase();
@@ -95,25 +109,20 @@ export default function EmployeeDashboard() {
     setMessage("");
     setLoading(true);
     try {
-      await apiFetch("/access-pass/create", {
+      const created = await apiFetch<AccessPassResult>("/access-pass/create", {
         method: "POST",
+        timeoutMs: 0,
         body: JSON.stringify({
           ...passPayload,
-          host_employee_id: passPayload.host_employee_id ? Number(passPayload.host_employee_id) : null,
-          max_visits: Number(passPayload.max_visits),
+          max_visits: 10,
         }),
       });
-      setMessage("Access pass created.");
-      setPassPayload({
-        visitor_name: "",
-        phone: "",
-        email: "",
-        company: "",
-        host_employee_id: null,
-        valid_from: "",
-        valid_to: "",
-        max_visits: 10,
-      });
+      setMessage(
+        created.email_sent === false
+          ? created.email_error ?? "Access pass created, but email was not sent."
+          : "Access pass created successfully. QR has been sent to the visitor email."
+      );
+      setPassPayload(initialPassPayload);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to create pass");
     } finally {
@@ -180,36 +189,41 @@ export default function EmployeeDashboard() {
               value={passPayload.company}
               onChange={(e) => setPassPayload((prev) => ({ ...prev, company: e.target.value }))}
             />
-            <input
-              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
-              placeholder="Host employee ID"
-              value={passPayload.host_employee_id ?? ""}
-              onChange={(e) => setPassPayload((prev) => ({ ...prev, host_employee_id: Number(e.target.value) || null }))}
-            />
-            <div className="grid gap-3 sm:grid-cols-2">
+            <select
+              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
+              value={passPayload.purpose}
+              onChange={(e) => setPassPayload((prev) => ({ ...prev, purpose: e.target.value }))}
+              required
+            >
+              <option value="" className="bg-[var(--surface-1)] text-[var(--text-1)]">
+                Select purpose
+              </option>
+              {passPurposeOptions.map((option) => (
+                <option key={option} value={option} className="bg-[var(--surface-1)] text-[var(--text-1)]">
+                  {option}
+                </option>
+              ))}
+            </select>
+            <label className="grid gap-2 text-sm text-[var(--text-2)]">
+              Valid From
               <input
-                type="date"
+                type="datetime-local"
                 className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
                 value={passPayload.valid_from}
                 onChange={(e) => setPassPayload((prev) => ({ ...prev, valid_from: e.target.value }))}
                 required
               />
+            </label>
+            <label className="grid gap-2 text-sm text-[var(--text-2)]">
+              Valid To
               <input
-                type="date"
+                type="datetime-local"
                 className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
                 value={passPayload.valid_to}
                 onChange={(e) => setPassPayload((prev) => ({ ...prev, valid_to: e.target.value }))}
                 required
               />
-            </div>
-            <input
-              type="number"
-              min={1}
-              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
-              placeholder="Max visits"
-              value={passPayload.max_visits}
-              onChange={(e) => setPassPayload((prev) => ({ ...prev, max_visits: Number(e.target.value) }))}
-            />
+            </label>
             <button
               type="submit"
               disabled={loading}

@@ -91,6 +91,25 @@ def repair_visit_schema() -> None:
         if "approval_email_last_attempt_at" not in columns:
             connection.execute(text("ALTER TABLE visits ADD COLUMN approval_email_last_attempt_at TIMESTAMPTZ"))
             columns.add("approval_email_last_attempt_at")
+        if "source" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN source VARCHAR DEFAULT 'manual'"))
+            columns.add("source")
+        if "qr_expiry" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN qr_expiry TIMESTAMPTZ"))
+            columns.add("qr_expiry")
+
+
+def repair_access_pass_schema() -> None:
+    inspector = inspect(engine)
+    if "visitor_access_passes" not in inspector.get_table_names():
+        return
+
+    columns = {col["name"] for col in inspector.get_columns("visitor_access_passes")}
+
+    with engine.begin() as connection:
+        if "purpose" not in columns:
+            connection.execute(text("ALTER TABLE visitor_access_passes ADD COLUMN purpose VARCHAR"))
+            columns.add("purpose")
 
 
 def seed_employees(db: Session) -> int:
@@ -187,6 +206,7 @@ def bootstrap_database() -> int:
     create_tables()
     repair_visitor_schema()
     repair_visit_schema()
+    repair_access_pass_schema()
     db = SessionLocal()
     try:
         create_admin_user(db)

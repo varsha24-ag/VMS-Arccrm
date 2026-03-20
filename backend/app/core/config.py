@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     SMTP_FROM: Optional[str] = None
     SMTP_USE_TLS: bool = True
     APP_BASE_URL: Optional[str] = None
+    FRONTEND_BASE_URL: Optional[str] = None
     RECEPTION_EMAIL: Optional[str] = None
     BUSINESS_TIMEZONE: str = "Asia/Kolkata"
 

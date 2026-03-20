@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, time, timedelta, timezone
 from typing import List, Optional
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -15,7 +15,10 @@ from app.models.visitor import Visitor
 from app.schemas.visit import (
     AccessPassCreate,
     AccessPassOut,
+    QRInviteCreate,
+    QRInviteOut,
     QRCheckin,
+    VisitDetailOut,
     VisitCheckin,
     VisitCheckout,
     VisitHistoryItem,
@@ -24,6 +27,9 @@ from app.schemas.visit import (
     VisitorOut,
 )
 from app.services.notification_service import send_host_notification
+from app.services.notification_service import send_visitor_access_pass
+
+VALIDITY_GRACE_PERIOD = timedelta(minutes=1)
 
 
 def _normalize_photo_url(photo_url: Optional[str]) -> Optional[str]:
@@ -41,17 +47,94 @@ def _normalize_photo_url(photo_url: Optional[str]) -> Optional[str]:
     return photo_url
 
 
-def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
+def normalize_datetime(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        local_tz = datetime.now().astimezone().tzinfo or timezone.utc
+        return value.replace(tzinfo=local_tz)
+    return value
+
+
+def evaluate_validity_window(valid_from: datetime | None, valid_to: datetime | None) -> tuple[bool, str | None]:
+    start = normalize_datetime(valid_from)
+    end = normalize_datetime(valid_to)
+    now = datetime.now((start or end or datetime.now().astimezone()).tzinfo or timezone.utc)
+
+    if start and end:
+        today = now.date()
+        if today < start.date() or today > end.date():
+            return False, "QR date is not valid for today"
+
+        window_start = start - VALIDITY_GRACE_PERIOD
+        window_end = end + VALIDITY_GRACE_PERIOD
+        if now < window_start:
+            return False, "QR is not active yet"
+        if now > window_end:
+            return False, "QR has expired"
+        return True, None
+
+    if start and now < (start - VALIDITY_GRACE_PERIOD):
+        return False, "QR is not active yet"
+    if end and now > (end + VALIDITY_GRACE_PERIOD):
+        return False, "QR has expired"
+    return True, None
+
+
+def create_qr_invite(db: Session, payload: QRInviteCreate) -> QRInviteOut:
+    host = db.query(Employee).filter(Employee.id == payload.host_employee_id).first()
+    if not host:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Host employee not found")
     visitor = Visitor(
         name=payload.name,
         phone=payload.phone,
         email=payload.email,
         company=payload.company,
-        visitor_type=payload.visitor_type,
-        status="pending",
-        approval_token=uuid4().hex,
+        visitor_type=payload.visitor_type or "invited",
+        status="approved",
         photo_url=_normalize_photo_url(payload.photo_url),
     )
+    db.add(visitor)
+    db.commit()
+    db.refresh(visitor)
+
+    visit = Visit(
+        visitor_id=visitor.id,
+        host_employee_id=payload.host_employee_id,
+        purpose=payload.purpose,
+        status="approved",
+        approved_at=datetime.now(timezone.utc),
+        qr_code=f"INVITE-{uuid4().hex}",
+        source="qr_invite",
+        qr_expiry=datetime.now(timezone.utc) + timedelta(hours=8),
+    )
+    db.add(visit)
+    db.commit()
+    db.refresh(visit)
+
+    return QRInviteOut(
+        visit_id=visit.id,
+        visitor_id=visitor.id,
+        qr_code=visit.qr_code or "",
+        created_at=visit.created_at,
+        qr_checkin_url=f"/qr-checkin?code={visit.qr_code}",
+    )
+
+
+def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
+    try:
+        visitor = Visitor(
+            name=payload.name,
+            phone=payload.phone,
+            email=payload.email,
+            company=payload.company,
+            visitor_type=payload.visitor_type,
+            status="pending",
+            approval_token=uuid4().hex,
+            photo_url=payload.photo_url,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     db.add(visitor)
     db.commit()
     db.refresh(visitor)
@@ -62,6 +145,7 @@ def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
         purpose=payload.purpose,
         status="pending",
         approval_token=uuid4().hex,
+        source="manual",
     )
     db.add(visit)
     db.commit()
@@ -144,12 +228,47 @@ def checkin_visit(db: Session, payload: VisitCheckin) -> VisitOut:
     if not visitor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visitor not found")
 
-    existing_visit = (
-        db.query(Visit)
-        .filter(Visit.visitor_id == payload.visitor_id)
-        .order_by(desc(Visit.id))
-        .first()
-    )
+    if payload.photo_url:
+        visitor.photo_url = payload.photo_url
+
+    access_pass = None
+    if payload.qr_code:
+        access_pass = (
+            db.query(VisitorAccessPass)
+            .filter(VisitorAccessPass.qr_code == payload.qr_code, VisitorAccessPass.visitor_id == payload.visitor_id)
+            .first()
+        )
+
+    existing_visit = None
+    if payload.visit_id is not None:
+        existing_visit = db.query(Visit).filter(Visit.id == payload.visit_id).first()
+        if not existing_visit:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
+        if existing_visit.visitor_id != payload.visitor_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Visit does not match visitor")
+    elif access_pass:
+        existing_visit = (
+            db.query(Visit)
+            .filter(Visit.visitor_id == payload.visitor_id, Visit.qr_code == access_pass.qr_code)
+            .order_by(desc(Visit.id))
+            .first()
+        )
+    else:
+        existing_visit = (
+            db.query(Visit)
+            .filter(Visit.visitor_id == payload.visitor_id)
+            .order_by(desc(Visit.id))
+            .first()
+        )
+    now = datetime.now(timezone.utc)
+
+    if existing_visit and existing_visit.source == "qr_invite":
+        if existing_visit.qr_expiry and now >= existing_visit.qr_expiry:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="QR Expired")
+        if existing_visit.status == "checked_in" and existing_visit.checkout_time is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Visitor already checked in")
+        if existing_visit.status in {"checked_out", "auto_checked_out"}:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invite already closed")
 
     if existing_visit and existing_visit.status in {"pending", "approved", "rejected"}:
         if existing_visit.status == "pending":
@@ -168,22 +287,45 @@ def checkin_visit(db: Session, payload: VisitCheckin) -> VisitOut:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Host employee not found")
 
     if existing_visit and existing_visit.status == "approved":
-        existing_visit.checkin_time = datetime.now(timezone.utc)
+        existing_visit.checkin_time = now
         existing_visit.status = "checked_in"
         existing_visit.policy_accepted = bool(payload.policy_accepted)
         existing_visit.qr_code = payload.qr_code
         db.commit()
         db.refresh(existing_visit)
         visit = existing_visit
+    elif access_pass:
+        if access_pass.valid_from > now or access_pass.valid_to < now:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Access pass expired")
+        if access_pass.remaining_visits <= 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Visit limit exceeded")
+        if existing_visit and existing_visit.status == "checked_in" and existing_visit.checkout_time is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Visitor already checked in")
+
+        visit = Visit(
+            visitor_id=payload.visitor_id,
+            host_employee_id=access_pass.host_employee_id,
+            purpose=access_pass.purpose or "Recurring visitor access",
+            checkin_time=now,
+            status="checked_in",
+            policy_accepted=bool(payload.policy_accepted),
+            qr_code=access_pass.qr_code,
+            source="access_pass",
+        )
+        db.add(visit)
+        access_pass.remaining_visits -= 1
+        db.commit()
+        db.refresh(visit)
     else:
         visit = Visit(
             visitor_id=payload.visitor_id,
             host_employee_id=payload.host_employee_id,
             purpose=payload.purpose,
-            checkin_time=datetime.now(timezone.utc),
+            checkin_time=now,
             status="checked_in",
             policy_accepted=bool(payload.policy_accepted),
             qr_code=payload.qr_code,
+            source="manual",
         )
         db.add(visit)
         db.commit()
@@ -199,6 +341,8 @@ def checkin_visit(db: Session, payload: VisitCheckin) -> VisitOut:
         status=visit.status,
         policy_accepted=visit.policy_accepted,
         qr_code=visit.qr_code,
+        source=visit.source,
+        qr_expiry=visit.qr_expiry,
     )
 
 
@@ -251,6 +395,8 @@ def checkout_visit(db: Session, payload: VisitCheckout) -> VisitOut:
         status=visit.status,
         policy_accepted=visit.policy_accepted,
         qr_code=visit.qr_code,
+        source=visit.source,
+        qr_expiry=visit.qr_expiry,
     )
 
 
@@ -281,10 +427,92 @@ def get_visit_history(db: Session) -> List[VisitHistoryItem]:
                 checkout_time=visit.checkout_time,
                 status=visit.status,
                 qr_code=visit.qr_code,
+                source=visit.source,
+                qr_expiry=visit.qr_expiry,
             )
         )
 
     return history
+
+
+def get_visit_detail(db: Session, visit_id: int) -> VisitDetailOut:
+    visit = db.query(Visit).filter(Visit.id == visit_id).first()
+    if not visit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
+
+    visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
+    if not visitor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visitor not found")
+
+    host_name = None
+    if visit.host_employee_id:
+        host = db.query(Employee).filter(Employee.id == visit.host_employee_id).first()
+        host_name = host.name if host else None
+
+    valid_from = visit.created_at
+    valid_to = visit.qr_expiry
+    is_currently_valid, validity_error = evaluate_validity_window(valid_from, valid_to)
+
+    return VisitDetailOut(
+        visit_id=visit.id,
+        visitor_id=visitor.id,
+        visitor_name=visitor.name,
+        phone=visitor.phone,
+        email=visitor.email,
+        company=visitor.company,
+        purpose=visit.purpose,
+        host_name=host_name,
+        photo_url=visitor.photo_url,
+        status=visit.status,
+        created_at=visit.created_at,
+        qr_code=visit.qr_code,
+        valid_from=valid_from,
+        is_currently_valid=is_currently_valid,
+        validity_error=validity_error,
+        source=visit.source,
+        qr_expiry=visit.qr_expiry,
+    )
+
+
+def get_qr_visitor_detail(db: Session, qr_code: str) -> VisitDetailOut:
+    visit = db.query(Visit).filter(Visit.qr_code == qr_code).order_by(desc(Visit.id)).first()
+    if visit:
+        return get_visit_detail(db, visit.id)
+
+    access_pass = db.query(VisitorAccessPass).filter(VisitorAccessPass.qr_code == qr_code).first()
+    if not access_pass:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
+
+    visitor = db.query(Visitor).filter(Visitor.id == access_pass.visitor_id).first()
+    if not visitor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visitor not found")
+
+    host_name = None
+    if access_pass.host_employee_id:
+        host = db.query(Employee).filter(Employee.id == access_pass.host_employee_id).first()
+        host_name = host.name if host else None
+
+    is_currently_valid, validity_error = evaluate_validity_window(access_pass.valid_from, access_pass.valid_to)
+
+    return VisitDetailOut(
+        visit_id=None,
+        visitor_id=visitor.id,
+        visitor_name=visitor.name,
+        phone=visitor.phone,
+        email=visitor.email,
+        company=visitor.company,
+        purpose=access_pass.purpose or "Recurring visitor access",
+        host_name=host_name,
+        photo_url=visitor.photo_url,
+        status="approved",
+        created_at=access_pass.created_at,
+        qr_code=access_pass.qr_code,
+        valid_from=access_pass.valid_from,
+        is_currently_valid=is_currently_valid,
+        validity_error=validity_error,
+        source="access_pass",
+        qr_expiry=access_pass.valid_to,
+    )
 
 
 def assign_id_card(db: Session, visitor: Visitor, id_number: str) -> None:
@@ -310,14 +538,32 @@ def assign_id_card(db: Session, visitor: Visitor, id_number: str) -> None:
     visitor.id_number = clean_number
 
 
-def create_access_pass(db: Session, payload: AccessPassCreate) -> AccessPassOut:
-    visitor = Visitor(
-        name=payload.visitor_name,
-        phone=payload.phone,
-        email=payload.email,
-        company=payload.company,
-        visitor_type="recurring",
-    )
+def create_access_pass(
+    db: Session,
+    payload: AccessPassCreate,
+    default_host_employee_id: int | None = None,
+) -> AccessPassOut:
+    host_employee_id = payload.host_employee_id or default_host_employee_id
+    valid_from = payload.valid_from or datetime.now(timezone.utc)
+    valid_to = payload.valid_to
+    if (
+        valid_to.hour == 0
+        and valid_to.minute == 0
+        and valid_to.second == 0
+        and valid_to.microsecond == 0
+    ):
+        valid_to = datetime.combine(valid_to.date(), time.max, tzinfo=valid_to.tzinfo or timezone.utc)
+
+    try:
+        visitor = Visitor(
+            name=payload.visitor_name,
+            phone=payload.phone,
+            email=payload.email,
+            company=payload.company,
+            visitor_type="recurring",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     db.add(visitor)
     db.commit()
     db.refresh(visitor)
@@ -325,9 +571,10 @@ def create_access_pass(db: Session, payload: AccessPassCreate) -> AccessPassOut:
     qr_code = f"PASS-{uuid4().hex}"
     access_pass = VisitorAccessPass(
         visitor_id=visitor.id,
-        host_employee_id=payload.host_employee_id,
-        valid_from=payload.valid_from,
-        valid_to=payload.valid_to,
+        host_employee_id=host_employee_id,
+        purpose=payload.purpose,
+        valid_from=valid_from,
+        valid_to=valid_to,
         max_visits=payload.max_visits,
         remaining_visits=payload.max_visits,
         qr_code=qr_code,
@@ -345,10 +592,47 @@ def create_access_pass(db: Session, payload: AccessPassCreate) -> AccessPassOut:
         max_visits=access_pass.max_visits,
         remaining_visits=access_pass.remaining_visits,
         qr_code=access_pass.qr_code,
+        qr_checkin_url=f"/qr-checkin?code={access_pass.qr_code}",
+        email_sent=None,
+        email_error=None,
     )
 
 
 def qr_checkin(db: Session, payload: QRCheckin) -> VisitOut:
+    invite_visit = (
+        db.query(Visit)
+        .filter(Visit.qr_code == payload.qr_code, Visit.source == "qr_invite")
+        .first()
+    )
+    if invite_visit:
+        now = datetime.now(timezone.utc)
+        if invite_visit.qr_expiry and now >= invite_visit.qr_expiry:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="QR Expired")
+        if invite_visit.status == "checked_in" and invite_visit.checkout_time is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Visitor already checked in")
+        if invite_visit.status in {"checked_out", "auto_checked_out"}:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invite already closed")
+
+        invite_visit.checkin_time = now
+        invite_visit.status = "checked_in"
+        invite_visit.policy_accepted = bool(payload.policy_accepted)
+        db.commit()
+        db.refresh(invite_visit)
+
+        return VisitOut(
+            id=invite_visit.id,
+            visitor_id=invite_visit.visitor_id,
+            host_employee_id=invite_visit.host_employee_id,
+            purpose=invite_visit.purpose,
+            checkin_time=invite_visit.checkin_time,
+            checkout_time=invite_visit.checkout_time,
+            status=invite_visit.status,
+            policy_accepted=invite_visit.policy_accepted,
+            qr_code=invite_visit.qr_code,
+            source=invite_visit.source,
+            qr_expiry=invite_visit.qr_expiry,
+        )
+
     access_pass = (
         db.query(VisitorAccessPass)
         .filter(VisitorAccessPass.qr_code == payload.qr_code)
@@ -372,6 +656,7 @@ def qr_checkin(db: Session, payload: QRCheckin) -> VisitOut:
         status="checked_in",
         policy_accepted=bool(payload.policy_accepted),
         qr_code=access_pass.qr_code,
+        source="access_pass",
     )
     db.add(visit)
     access_pass.remaining_visits -= 1
@@ -388,4 +673,31 @@ def qr_checkin(db: Session, payload: QRCheckin) -> VisitOut:
         status=visit.status,
         policy_accepted=visit.policy_accepted,
         qr_code=visit.qr_code,
+        source=visit.source,
+        qr_expiry=visit.qr_expiry,
     )
+
+
+def auto_checkout_expired_qr_invites(db: Session) -> int:
+    now = datetime.now(timezone.utc)
+    visits = (
+        db.query(Visit)
+        .filter(
+            Visit.source == "qr_invite",
+            Visit.qr_expiry.is_not(None),
+            Visit.qr_expiry < now,
+            Visit.checkout_time.is_(None),
+        )
+        .all()
+    )
+
+    updated = 0
+    for visit in visits:
+        visit.checkout_time = visit.qr_expiry
+        visit.status = "auto_checked_out"
+        updated += 1
+
+    if updated:
+        db.commit()
+
+    return updated

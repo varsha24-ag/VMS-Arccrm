@@ -18,4 +18,6 @@ class Visit(Base):
     rejected_at = Column(DateTime(timezone=True), nullable=True)
     policy_accepted = Column(Boolean, nullable=False, default=False)
     qr_code = Column(String, nullable=True)
+    source = Column(String, nullable=False, default="manual", server_default="manual")
+    qr_expiry = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
