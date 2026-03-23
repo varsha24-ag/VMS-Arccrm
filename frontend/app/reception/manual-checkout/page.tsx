@@ -148,7 +148,7 @@ export default function ManualCheckoutPage() {
             onClick={() => setIdCardNumber(String(params.row.id_number ?? ""))}
             className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1 text-xs text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
           >
-            Checkout
+            Load
           </button>
         ),
       },

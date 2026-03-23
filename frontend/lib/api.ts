@@ -1,4 +1,4 @@
-import { getAccessToken } from "./auth";
+import { clearAuthSession, getAccessToken } from "./auth";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const DEFAULT_TIMEOUT_MS = 15000;
@@ -95,6 +95,9 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAuthSession();
+    }
     const error = await response.json().catch(() => ({}));
     throw new Error(error.detail ?? `Request failed (${response.status})`);
   }
@@ -114,6 +117,9 @@ export async function uploadVisitorPhoto(file: File): Promise<{ photo_url: strin
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAuthSession();
+    }
     const error = await response.json().catch(() => ({}));
     throw new Error(error.detail ?? `Photo upload failed (${response.status})`);
   }
