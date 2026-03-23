@@ -147,6 +147,23 @@ class AccessPassOut(BaseModel):
     email_error: Optional[str] = None
 
 
+class AccessPassListItem(BaseModel):
+    id: int
+    visitor_id: int
+    visitor_name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    company: Optional[str] = None
+    purpose: Optional[str] = None
+    valid_from: datetime
+    valid_to: datetime
+    created_at: datetime
+    max_visits: int
+    remaining_visits: int
+    status: str
+    qr_code: str
+
+
 class QRCheckin(BaseModel):
     qr_code: str
     policy_accepted: Optional[bool] = False

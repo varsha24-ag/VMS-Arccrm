@@ -93,7 +93,7 @@ function TableColumnToggle({ columns, visibleColumns, defaultVisibleColumns, onT
     <div className="relative" ref={ref}>
       <button
         type="button"
-        className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
+        className={`min-h-[42px] rounded-full border px-4 py-2 text-xs font-semibold transition ${
           isActive
             ? "border-[var(--accent)] bg-[var(--nav-active-bg)] text-[var(--accent)] shadow-[0_0_0_1px_var(--accent)]"
             : "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)] hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
@@ -103,7 +103,7 @@ function TableColumnToggle({ columns, visibleColumns, defaultVisibleColumns, onT
         Columns
       </button>
       {open ? (
-        <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)]/100 p-2 shadow-[0_18px_45px_rgba(15,23,42,0.42)] backdrop-blur-xl">
+        <div className="absolute right-0 top-full z-20 mt-2 w-[min(16rem,calc(100vw-2rem))] rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)]/100 p-2 shadow-[0_18px_45px_rgba(15,23,42,0.42)] backdrop-blur-xl">
           <div className="mb-2 px-2 pt-1 text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">
             Visible columns
           </div>
@@ -488,7 +488,7 @@ function ReceptionVisitorsContent() {
   return (
     <DashboardLayout user={user}>
       <DashboardPageHeader title="Visitor List" subtitle="Front desk queue and full visitor history." />
-      <section className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-1)]">
+      <section className="overflow-hidden rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-4 shadow-[var(--shadow-1)] sm:p-5">
         <div className="relative">
           {isLoading ? (
             <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-[var(--surface-1)]/70 text-[var(--text-1)] backdrop-blur-sm">

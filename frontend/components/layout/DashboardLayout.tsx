@@ -3,7 +3,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AuthUser, clearAuthSession } from "@/lib/auth";
 import { getAccessToken } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/api";
@@ -15,12 +15,13 @@ interface DashboardLayoutProps {
   children: ReactNode;
   user: AuthUser;
 }
-
 export function DashboardLayout({ children, user }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const modules = getModulesForRole(user.role);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const { pushToast } = useToast();
 
   useEffect(() => {
@@ -66,22 +67,59 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
     router.push("/auth/login");
   };
 
+  const handleToggleNavigation = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setIsMobileNavOpen((prev) => !prev);
+      return;
+    }
+    setIsSidebarOpen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [pathname, searchParams]);
+
+  const currentRoute = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+
   return (
     <div className="flex min-h-screen text-[var(--text-1)]">
+      {isMobileNavOpen ? (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setIsMobileNavOpen(false)}
+          className="fixed inset-0 z-40 bg-slate-950/45 lg:hidden"
+        />
+      ) : null}
+
       {/* Sidebar */}
       <aside
-        className={`${isSidebarOpen ? "w-64" : "w-20"} sticky top-0 h-screen flex flex-col border-r border-[var(--border-1)] bg-[var(--surface-1)] backdrop-blur-xl transition-all duration-300 z-50`}
+        className={`${isSidebarOpen ? "lg:w-64" : "lg:w-20"} fixed inset-y-0 left-0 z-50 flex h-screen w-72 flex-col border-r border-[var(--border-1)] bg-[var(--surface-1)] backdrop-blur-xl transition-transform duration-300 lg:sticky lg:top-0 lg:translate-x-0 ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"} `}
       >
-        <div className="h-16 px-6 flex items-center gap-3 border-b border-[var(--border-1)] overflow-hidden">
+        <div className="flex h-16 items-center gap-3 overflow-hidden border-b border-[var(--border-1)] px-5 lg:px-6">
           <Image src="/arc-logo.svg" alt="Logo" width={32} height={32} className="shrink-0" />
-          {isSidebarOpen && (
+          {(isSidebarOpen || isMobileNavOpen) && (
             <span className="font-bold text-lg text-[var(--text-1)] whitespace-nowrap">ArcCRM</span>
           )}
+          <button
+            type="button"
+            aria-label="Close menu"
+            onClick={() => setIsMobileNavOpen(false)}
+            className="ml-auto rounded-lg p-2 text-[var(--text-2)] hover:bg-[var(--nav-hover-bg)] lg:hidden"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {modules.map((module) => {
-            const isActive = pathname === module.path;
+            const isBasePathModule = module.path === pathname && !module.path.includes("?");
+            const isFilteredEmployeeVisitorsRoute = pathname === "/employee/visitors" && searchParams.has("view");
+            const isActive =
+              currentRoute === module.path ||
+              (isBasePathModule && !(module.path === "/employee/visitors" && isFilteredEmployeeVisitorsRoute));
             return (
               <Link
                 key={module.id}
@@ -97,7 +135,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                     isActive ? "bg-[var(--accent)]" : "bg-transparent"
                   } shrink-0`}
                 />
-                {isSidebarOpen && <span className="text-sm font-medium whitespace-nowrap">{module.label}</span>}
+                {(isSidebarOpen || isMobileNavOpen) && <span className="text-sm font-medium whitespace-nowrap">{module.label}</span>}
               </Link>
             );
           })}
@@ -108,7 +146,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             <div className="w-8 h-8 rounded-full bg-[var(--accent)] flex items-center justify-center text-[var(--accent-fg)] text-xs font-bold shrink-0">
               {user.name.charAt(0).toUpperCase()}
             </div>
-            {isSidebarOpen && (
+            {(isSidebarOpen || isMobileNavOpen) && (
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-[var(--text-1)] truncate">{user.name}</p>
                 <p className="text-[10px] text-[var(--text-3)] capitalize">{user.role}</p>
@@ -127,16 +165,16 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                 d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
               />
             </svg>
-            {isSidebarOpen && <span className="text-sm font-medium">Logout</span>}
+            {(isSidebarOpen || isMobileNavOpen) && <span className="text-sm font-medium">Logout</span>}
           </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-40 h-16 border-b border-[var(--border-1)] bg-[var(--surface-1)] backdrop-blur-md px-8 flex items-center justify-between">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[var(--border-1)] bg-[var(--surface-1)] px-4 backdrop-blur-md sm:px-6 lg:px-8">
           <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            onClick={handleToggleNavigation}
             className="p-2 -ml-2 rounded-lg hover:bg-[var(--nav-hover-bg)] text-[var(--text-2)]"
             aria-label="Toggle sidebar"
           >
@@ -145,15 +183,15 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             </svg>
           </button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
-            <div className="px-3 py-1 rounded-full border border-[var(--border-1)] bg-[var(--surface-2)] text-[10px] font-bold text-[var(--text-3)] uppercase tracking-wider">
+            <div className="hidden rounded-full border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--text-3)] sm:block">
               {user.role} workspace
             </div>
           </div>
         </header>
 
-        <main className="flex-1 p-8 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>

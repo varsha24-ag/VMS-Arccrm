@@ -16,6 +16,7 @@ from app.models.visit import Visit
 from app.models.visitor import Visitor
 from app.schemas.visit import (
     AccessPassCreate,
+    AccessPassListItem,
     AccessPassOut,
     QRInviteCreate,
     QRInviteOut,
@@ -620,6 +621,77 @@ def create_access_pass(
         email_sent=None,
         email_error=None,
     )
+
+
+def get_employee_visit_history(db: Session, host_employee_id: int) -> List[VisitHistoryItem]:
+    visits = (
+        db.query(Visit, Visitor)
+        .join(Visitor, Visitor.id == Visit.visitor_id)
+        .filter(Visit.host_employee_id == host_employee_id)
+        .order_by(desc(Visit.checkin_time), desc(Visit.created_at), desc(Visit.id))
+        .all()
+    )
+
+    history: List[VisitHistoryItem] = []
+    for visit, visitor in visits:
+        history.append(
+            VisitHistoryItem(
+                visit_id=visit.id,
+                visitor_id=visitor.id,
+                visitor_name=visitor.name,
+                id_number=visitor.id_number,
+                visitor_phone=visitor.phone,
+                visitor_email=visitor.email,
+                company=visitor.company,
+                photo_url=visitor.photo_url,
+                host_employee_id=visit.host_employee_id,
+                purpose=visit.purpose,
+                created_at=visit.created_at,
+                checkin_time=visit.checkin_time,
+                checkout_time=visit.checkout_time,
+                status=visit.status,
+                qr_code=visit.qr_code,
+                source=visit.source,
+                qr_expiry=visit.qr_expiry,
+            )
+        )
+
+    return history
+
+
+def get_employee_access_passes(db: Session, host_employee_id: int) -> List[AccessPassListItem]:
+    now = datetime.now(timezone.utc)
+    access_passes = (
+        db.query(VisitorAccessPass, Visitor)
+        .join(Visitor, Visitor.id == VisitorAccessPass.visitor_id)
+        .filter(VisitorAccessPass.host_employee_id == host_employee_id)
+        .order_by(desc(VisitorAccessPass.created_at), desc(VisitorAccessPass.id))
+        .all()
+    )
+
+    rows: List[AccessPassListItem] = []
+    for access_pass, visitor in access_passes:
+        is_expired = access_pass.valid_to < now or access_pass.remaining_visits <= 0
+        rows.append(
+            AccessPassListItem(
+                id=access_pass.id,
+                visitor_id=visitor.id,
+                visitor_name=visitor.name,
+                phone=visitor.phone,
+                email=visitor.email,
+                company=visitor.company,
+                purpose=access_pass.purpose,
+                valid_from=access_pass.valid_from,
+                valid_to=access_pass.valid_to,
+                created_at=access_pass.created_at,
+                max_visits=access_pass.max_visits,
+                remaining_visits=access_pass.remaining_visits,
+                status="expired" if is_expired else "active",
+                qr_code=access_pass.qr_code,
+            )
+        )
+
+    return rows
 
 
 def qr_checkin(db: Session, payload: QRCheckin) -> VisitOut:

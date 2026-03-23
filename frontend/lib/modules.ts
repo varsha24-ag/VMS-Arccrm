@@ -29,6 +29,11 @@ export const MODULES: ModuleConfig[] = [
 
   // Employee Modules
   { id: "employee-dashboard", label: "Dashboard", path: "/employee/dashboard", role: ["employee", "admin"] },
+  { id: "employee-visitors", label: "My Visitor", path: "/employee/visitors", role: ["employee", "admin"] },
+  { id: "employee-pending-approvals", label: "Pending Approvals", path: "/employee/visitors?view=pending", role: ["employee", "admin"] },
+  { id: "employee-approved", label: "Approved", path: "/employee/visitors?view=approved", role: ["employee", "admin"] },
+  { id: "employee-missed", label: "Missed", path: "/employee/visitors?view=missed", role: ["employee", "admin"] },
+  { id: "employee-passes", label: "Generate Visitor Pass", path: "/employee/passes", role: ["employee", "admin"] },
 ];
 
 export function getModulesForRole(role: UserRole): ModuleConfig[] {

@@ -243,7 +243,7 @@ export default function ReceptionHistoryPage() {
           subtitle="Track check-ins and check-outs with captured photos."
         />
 
-        <Panel title="History (Photo)">
+        <Panel title="History (Photo)" className="overflow-hidden">
           <AppDataGrid
             rows={historyWithPhotos}
             columns={columns}
