@@ -9,7 +9,7 @@ import { Panel } from "@/components/dashboard/panels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import { useToast } from "@/components/ui/toast";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, resolveApiAssetUrl } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 type VisitDetail = {
@@ -160,7 +160,7 @@ export default function ReceptionQrVisitorPage() {
           status: detailData.status,
           created_at: detailData.created_at,
         });
-        setPhotoUrl(detailData.photo_url ?? "");
+        setPhotoUrl(resolveApiAssetUrl(detailData.photo_url) ?? "");
         if (detailData.visit_id) {
           router.replace(`/reception/qr-visitor?visit_id=${detailData.visit_id}`);
         } else {
@@ -197,7 +197,7 @@ export default function ReceptionQrVisitorPage() {
         status: detailData.status,
         created_at: detailData.created_at,
       });
-      setPhotoUrl(detailData.photo_url ?? "");
+      setPhotoUrl(resolveApiAssetUrl(detailData.photo_url) ?? "");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load visitor details";
       setError(message);

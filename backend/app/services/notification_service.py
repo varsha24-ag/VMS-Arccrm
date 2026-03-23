@@ -37,6 +37,12 @@ def get_frontend_qr_checkin_url(qr_code: str) -> str:
     return f"{frontend_base_url}/qr-checkin?code={qr_code}"
 
 
+def get_frontend_visit_action_url(visit_id: int, action: str, token: str | None) -> str:
+    frontend_base_url = settings.FRONTEND_BASE_URL or "http://localhost:3000"
+    token_query = f"?token={token}" if token else ""
+    return f"{frontend_base_url}/visits/{visit_id}/{action}{token_query}"
+
+
 def send_host_notification(
     host_email: str,
     host_name: str,
@@ -52,9 +58,9 @@ def send_host_notification(
         logger.warning("SMTP not configured. Email not sent.")
         return False
 
-    base_url = settings.APP_BASE_URL or "http://localhost:8000"
-    approve_link = f"{base_url}/visits/{visit_id}/approve?token={approval_token}"
-    reject_link = f"{base_url}/visits/{visit_id}/reject?token={approval_token}"
+    base_url = settings.APP_BASE_URL or "http://localhost:8005"
+    approve_link = get_frontend_visit_action_url(visit_id, "approve", approval_token)
+    reject_link = get_frontend_visit_action_url(visit_id, "reject", approval_token)
 
     subject = f"Visitor arrival: {visitor_name}"
     photo_link = photo_url

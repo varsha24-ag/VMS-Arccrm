@@ -548,7 +548,7 @@ export default function ReceptionQrCheckinPage() {
     if (!user) return;
     const token = getAccessToken();
     if (!token) return;
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
     const source = new EventSource(`${baseUrl}/events/visits?token=${encodeURIComponent(token)}`);
     source.onmessage = () => {
       void fetchVisitList();

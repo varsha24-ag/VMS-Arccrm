@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from sqlalchemy import inspect, or_, text
 from sqlalchemy.orm import Session
 
@@ -112,6 +114,34 @@ def repair_access_pass_schema() -> None:
             columns.add("purpose")
 
 
+def normalize_photo_url(value: str | None) -> str | None:
+    if not value:
+        return value
+    if value.startswith("/uploads/"):
+        return value
+    if value.startswith("http://") or value.startswith("https://"):
+        try:
+            parsed = urlparse(value)
+            if parsed.path.startswith("/uploads/"):
+                return parsed.path
+        except Exception:
+            return value
+    return value
+
+
+def normalize_visitor_photo_urls(db: Session) -> int:
+    visitors = db.query(Visitor).filter(Visitor.photo_url.isnot(None)).all()
+    updated = 0
+    for visitor in visitors:
+        normalized = normalize_photo_url(visitor.photo_url)
+        if normalized != visitor.photo_url:
+            visitor.photo_url = normalized
+            updated += 1
+    if updated:
+        db.commit()
+    return updated
+
+
 def seed_employees(db: Session) -> int:
     seed_users = [
         {
@@ -212,6 +242,7 @@ def bootstrap_database() -> int:
         create_admin_user(db)
         created_employees = seed_employees(db)
         created_cards = seed_id_cards(db)
+        normalize_visitor_photo_urls(db)
         return created_employees + created_cards
     finally:
         db.close()

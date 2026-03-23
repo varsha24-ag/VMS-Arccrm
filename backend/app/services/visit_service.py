@@ -153,7 +153,7 @@ def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
             visitor_type=payload.visitor_type,
             status="pending",
             approval_token=uuid4().hex,
-            photo_url=payload.photo_url,
+            photo_url=_normalize_photo_url(payload.photo_url),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -251,7 +251,7 @@ def checkin_visit(db: Session, payload: VisitCheckin) -> VisitOut:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visitor not found")
 
     if payload.photo_url:
-        visitor.photo_url = payload.photo_url
+        visitor.photo_url = _normalize_photo_url(payload.photo_url)
 
     access_pass = None
     if payload.qr_code:
