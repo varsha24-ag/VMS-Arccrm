@@ -1,10 +1,12 @@
 from pathlib import Path
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
+from fastapi import status
 from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
@@ -51,6 +53,7 @@ from app.services.notification_service import send_visitor_access_pass
 router = APIRouter(tags=["visits"])
 # Keep uploads path aligned with app.mount("/uploads", ...).
 UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads" / "visitors"
+event_bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def normalize_scanned_code(raw_code: str) -> str:
@@ -364,14 +367,22 @@ def available_id_cards(
     return [IdCardOut(id=card.id, id_number=card.id_number, status=card.status) for card in cards]
 @router.get("/events/visits")
 async def visit_events(
-    token: str,
+    token: str | None = None,
+    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(event_bearer_scheme)] = None,
     db: Session = Depends(get_db),
 ):
-    user = get_user_from_token(token, db)
-    if user.role.lower() not in {"receptionist", "admin"}:
-        raise HTTPException(status_code=403, detail="Unauthorized access")
+    current_user: Employee
+    if credentials and credentials.scheme.lower() == "bearer":
+        current_user = get_user_from_token(credentials.credentials, db)
+    elif token:
+        current_user = get_user_from_token(token, db)
+    else:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized access")
+
+    if current_user.role.lower() not in {"receptionist", "admin", "employee"}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized access")
     return StreamingResponse(
-        event_stream(),
+        event_stream(current_user.id),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )

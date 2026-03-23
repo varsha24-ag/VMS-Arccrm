@@ -6,7 +6,9 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
+import anyio
 
+from app.core.realtime import publish_event
 from app.models.access_pass import VisitorAccessPass
 from app.models.employee import Employee
 from app.models.id_card import IdCard
@@ -30,6 +32,26 @@ from app.services.notification_service import send_host_notification
 from app.services.notification_service import send_visitor_access_pass
 
 VALIDITY_GRACE_PERIOD = timedelta(minutes=1)
+
+
+def _emit_host_qr_checkin_event(
+    visit: Visit,
+    visitor: Visitor | None,
+) -> None:
+    if not visit.host_employee_id:
+        return
+    anyio.from_thread.run(
+        publish_event,
+        {
+            "type": "host_qr_checkin",
+            "visit_id": visit.id,
+            "visitor_id": visit.visitor_id,
+            "visitor_name": visitor.name if visitor else "Visitor",
+            "host_employee_id": visit.host_employee_id,
+            "status": visit.status,
+            "target_user_ids": [visit.host_employee_id],
+        },
+    )
 
 
 def _normalize_photo_url(photo_url: Optional[str]) -> Optional[str]:
@@ -331,6 +353,8 @@ def checkin_visit(db: Session, payload: VisitCheckin) -> VisitOut:
         db.commit()
         db.refresh(visit)
 
+    _emit_host_qr_checkin_event(visit, visitor)
+
     return VisitOut(
         id=visit.id,
         visitor_id=visit.visitor_id,
@@ -618,6 +642,8 @@ def qr_checkin(db: Session, payload: QRCheckin) -> VisitOut:
         invite_visit.policy_accepted = bool(payload.policy_accepted)
         db.commit()
         db.refresh(invite_visit)
+        visitor = db.query(Visitor).filter(Visitor.id == invite_visit.visitor_id).first()
+        _emit_host_qr_checkin_event(invite_visit, visitor)
 
         return VisitOut(
             id=invite_visit.id,
@@ -662,6 +688,8 @@ def qr_checkin(db: Session, payload: QRCheckin) -> VisitOut:
     access_pass.remaining_visits -= 1
     db.commit()
     db.refresh(visit)
+    visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
+    _emit_host_qr_checkin_event(visit, visitor)
 
     return VisitOut(
         id=visit.id,

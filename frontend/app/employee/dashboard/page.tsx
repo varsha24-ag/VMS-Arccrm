@@ -7,7 +7,9 @@ import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import { Panel, SimpleTable, StatGrid, TextList } from "@/components/dashboard/panels";
 import FilterBar from "@/components/ui/filter-bar";
 import Pagination from "@/components/ui/pagination";
-import { apiFetch } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 const stats = [
@@ -69,12 +71,12 @@ interface AccessPassResult {
 
 export default function EmployeeDashboard() {
   const user = useAuthGuard({ allowedRoles: ["employee"] });
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [approvalQuery, setApprovalQuery] = useState("");
   const [approvalPage, setApprovalPage] = useState(1);
   const [approvalPageSize, setApprovalPageSize] = useState(5);
   const [passPayload, setPassPayload] = useState<AccessPassPayload>(initialPassPayload);
+  const { pushToast } = useToast();
 
   const filteredApprovalRows = useMemo(() => {
     const query = approvalQuery.trim().toLowerCase();
@@ -104,9 +106,41 @@ export default function EmployeeDashboard() {
     }
   }, [approvalPage, approvalTotalPages]);
 
+  useEffect(() => {
+    if (!user) return;
+    const token = getAccessToken();
+    if (!token) return;
+
+    const source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);
+    source.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data) as {
+          type?: string;
+          host_employee_id?: number;
+          visitor_name?: string;
+        };
+        if (payload.type !== "host_qr_checkin") return;
+        if (payload.host_employee_id !== user.id) return;
+        pushToast({
+          title: "Visitor checked in",
+          description: `${payload.visitor_name ?? "A visitor"} completed QR check-in.`,
+          variant: "success",
+          durationMs: 5000,
+        });
+      } catch {
+        // Ignore malformed realtime events.
+      }
+    };
+    source.onerror = () => {
+      source.close();
+    };
+    return () => {
+      source.close();
+    };
+  }, [pushToast, user]);
+
   async function handleCreatePass(e: FormEvent) {
     e.preventDefault();
-    setMessage("");
     setLoading(true);
     try {
       const created = await apiFetch<AccessPassResult>("/access-pass/create", {
@@ -117,14 +151,24 @@ export default function EmployeeDashboard() {
           max_visits: 10,
         }),
       });
-      setMessage(
+      const description =
         created.email_sent === false
           ? created.email_error ?? "Access pass created, but email was not sent."
-          : "Access pass created successfully. QR has been sent to the visitor email."
-      );
+          : "Access pass created successfully. QR has been sent to the visitor email.";
+      pushToast({
+        title: created.email_sent === false ? "Pass created" : "Access pass created",
+        description,
+        variant: created.email_sent === false ? "info" : "success",
+        durationMs: 5000,
+      });
       setPassPayload(initialPassPayload);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Failed to create pass");
+      pushToast({
+        title: "Failed to create pass",
+        description: err instanceof Error ? err.message : "Failed to create pass",
+        variant: "error",
+        durationMs: 5000,
+      });
     } finally {
       setLoading(false);
     }
@@ -231,7 +275,6 @@ export default function EmployeeDashboard() {
             >
               {loading ? "Creating..." : "Create Pass"}
             </button>
-            {message ? <p className="text-xs text-[var(--text-2)]">{message}</p> : null}
           </form>
         </Panel>
       </div>
