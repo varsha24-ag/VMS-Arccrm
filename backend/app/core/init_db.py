@@ -2,6 +2,7 @@ from urllib.parse import urlparse
 
 from sqlalchemy import inspect, or_, text
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.core.db import Base, SessionLocal, engine
 from app.core.security import get_password_hash
@@ -114,7 +115,7 @@ def repair_access_pass_schema() -> None:
             columns.add("purpose")
 
 
-def normalize_photo_url(value: str | None) -> str | None:
+def normalize_photo_url(value: Optional[str]) -> Optional[str]:
     if not value:
         return value
     if value.startswith("/uploads/"):

@@ -367,7 +367,7 @@ def available_id_cards(
     return [IdCardOut(id=card.id, id_number=card.id_number, status=card.status) for card in cards]
 @router.get("/events/visits")
 async def visit_events(
-    token: str | None = None,
+    token: Optional[str] = None,
     credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(event_bearer_scheme)] = None,
     db: Session = Depends(get_db),
 ):

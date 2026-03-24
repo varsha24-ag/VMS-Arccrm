@@ -37,7 +37,7 @@ VALIDITY_GRACE_PERIOD = timedelta(minutes=1)
 
 def _emit_host_qr_checkin_event(
     visit: Visit,
-    visitor: Visitor | None,
+    visitor: Optional[Visitor],
 ) -> None:
     if not visit.host_employee_id:
         return
@@ -70,7 +70,7 @@ def _normalize_photo_url(photo_url: Optional[str]) -> Optional[str]:
     return photo_url
 
 
-def normalize_datetime(value: datetime | None) -> datetime | None:
+def normalize_datetime(value: Optional[datetime]) -> Optional[datetime]:
     if value is None:
         return None
     if value.tzinfo is None:
@@ -79,7 +79,7 @@ def normalize_datetime(value: datetime | None) -> datetime | None:
     return value
 
 
-def evaluate_validity_window(valid_from: datetime | None, valid_to: datetime | None) -> tuple[bool, str | None]:
+def evaluate_validity_window(valid_from: Optional[datetime], valid_to: Optional[datetime]) -> tuple[bool, Optional[str]]:
     start = normalize_datetime(valid_from)
     end = normalize_datetime(valid_to)
     now = datetime.now((start or end or datetime.now().astimezone()).tzinfo or timezone.utc)
@@ -566,7 +566,7 @@ def assign_id_card(db: Session, visitor: Visitor, id_number: str) -> None:
 def create_access_pass(
     db: Session,
     payload: AccessPassCreate,
-    default_host_employee_id: int | None = None,
+    default_host_employee_id: Optional[int] = None,
 ) -> AccessPassOut:
     host_employee_id = payload.host_employee_id or default_host_employee_id
     valid_from = payload.valid_from or datetime.now(timezone.utc)

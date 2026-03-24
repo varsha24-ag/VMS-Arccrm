@@ -37,7 +37,7 @@ def get_frontend_qr_checkin_url(qr_code: str) -> str:
     return f"{frontend_base_url}/qr-checkin?code={qr_code}"
 
 
-def get_frontend_visit_action_url(visit_id: int, action: str, token: str | None) -> str:
+def get_frontend_visit_action_url(visit_id: int, action: str, token: Optional[str]) -> str:
     frontend_base_url = settings.FRONTEND_BASE_URL or "http://localhost:3000"
     token_query = f"?token={token}" if token else ""
     return f"{frontend_base_url}/visits/{visit_id}/{action}{token_query}"
