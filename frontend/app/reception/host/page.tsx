@@ -21,7 +21,7 @@ export default function ReceptionHostPage() {
         title="Host Selection"
         subtitle="Search and select the employee who will host the visitor."
       />
-      <div className="space-y-6">
+      <div className="space-y-3">
         <EntryDeskHeader
           title="Host Directory"
           subtitle="Type a name or department to find a host."

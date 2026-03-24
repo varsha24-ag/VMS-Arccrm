@@ -35,7 +35,7 @@ export default function FilterBar({
           value={searchValue}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder={searchPlaceholder}
-          className="w-full bg-transparent text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] focus:outline-none"
+          className="w-full !border-none bg-transparent text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] !outline-none !ring-0"
         />
       </div>
       {selectOptions && onSelectChange ? (
