@@ -79,13 +79,13 @@ export function StatGrid({ items }: StatGridProps) {
 export function Panel({ title, children, action, className, contentClassName }: PanelProps) {
   return (
     <section
-      className={`overflow-hidden rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-4 shadow-[var(--shadow-1)] sm:p-5 ${className ?? ""}`}
+      className={`overflow-hidden rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-4 shadow-[var(--shadow-1)] ${className ?? ""}`}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-base font-semibold text-[var(--text-1)] sm:text-lg">{title}</h2>
         {action ?? <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />}
       </div>
-      <div className={`mt-4 ${contentClassName ?? ""}`}>{children}</div>
+      <div className={`mt-3 ${contentClassName ?? ""}`}>{children}</div>
     </section>
   );
 }
@@ -166,19 +166,23 @@ export function StatusList({ items, onItemClick }: StatusListProps) {
               <p className="truncate text-xs text-[var(--text-3)]">{item.subtitle}</p>
             </div>
           </div>
-          <span
-            className={`inline-flex w-fit rounded-full border px-3 py-1 text-xs font-semibold ${
-              item.status.toLowerCase().includes("approved")
-                ? "border-emerald-300/40 bg-emerald-500/15 text-emerald-300"
-                : item.status.toLowerCase().includes("pending")
-                ? "border-amber-300/40 bg-amber-500/15 text-amber-300"
-                : item.status.toLowerCase().includes("checked in")
-                ? "border-orange-300/40 bg-orange-500/15 text-orange-300"
-                : "border-slate-300/40 bg-slate-500/15 text-slate-300"
-            }`}
-          >
-            {item.status}
-          </span>
+          <div className="min-w-0">
+            <span
+              className={`inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap capitalize ${
+                item.status === "approved" || item.status.toLowerCase().includes("approved")
+                  ? "border-emerald-300/60 bg-emerald-500/15 text-emerald-400"
+                  : item.status === "pending" || item.status.toLowerCase().includes("pending")
+                    ? "border-amber-300/60 bg-amber-500/15 text-amber-400"
+                    : item.status === "rejected" || item.status.toLowerCase().includes("rejected")
+                      ? "border-red-300/60 bg-red-500/15 text-red-400"
+                      : item.status === "checked_in" || item.status.toLowerCase().includes("checked in")
+                        ? "border-orange-300/60 bg-orange-500/15 text-orange-400"
+                        : "border-slate-300/60 bg-slate-500/15 text-slate-400"
+              }`}
+            >
+              <span className="truncate">{item.status.replace(/_/g, " ")}</span>
+            </span>
+          </div>
         </article>
       ))}
     </div>

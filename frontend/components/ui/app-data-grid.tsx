@@ -224,11 +224,14 @@ function AppGridFilterPanel<R>({
           }}
         >
           <option value="">All {label}</option>
-          {(isSingleSelect ? (column.valueOptions as string[]) : purposeOptions).map((option) => (
-            <option key={option} value={option}>
-              {String(option).replace(/_/g, " ")}
-            </option>
-          ))}
+          {(isSingleSelect ? (column.valueOptions as string[]) : purposeOptions).map((option) => {
+            const val = String(option).trim().toLowerCase().replace(/\s+/g, "_");
+            return (
+              <option key={val} value={val}>
+                {String(option).replace(/_/g, " ")}
+              </option>
+            );
+          })}
         </select>
       );
     }
@@ -310,9 +313,9 @@ export default function AppDataGrid<R extends object>({
   localeText,
 }: AppDataGridProps<R>) {
   const headerCellClass =
-    "overflow-hidden border-b border-[var(--border-1)] px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-2)]";
+    "overflow-hidden border-b border-[var(--border-1)] px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-2)]";
   const bodyCellClass =
-    "overflow-hidden px-6 py-4 align-middle text-sm leading-6 text-[var(--text-1)]";
+    "overflow-hidden px-6 py-3 align-middle text-sm leading-6 text-[var(--text-1)]";
   const stateCellClass = "px-6 py-10 text-center text-sm text-[var(--text-3)]";
   const toolbarButtonClass =
     "rounded-full border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-xs font-semibold text-[var(--text-2)] transition hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]";
@@ -656,7 +659,7 @@ export default function AppDataGrid<R extends object>({
       panelWidth={activePanelWidth}
       table={
         <div
-          className={`flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] ${autoHeight ? "" : "h-full"}`}
+          className={`flex min-w-0 flex-1 flex-col overflow-hidden ${autoHeight ? "" : "h-full"}`}
           style={sx}
         >
           {(title || headerAction || showSearch || showColumns || showFilters || showExport) ? (
@@ -688,7 +691,7 @@ export default function AppDataGrid<R extends object>({
                         })
                       }
                       placeholder={searchPlaceholder}
-                      className="w-full bg-transparent text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] focus:outline-none"
+                      className="w-full !border-none bg-transparent text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] !outline-none !ring-0"
                     />
                   </div>
                 ) : null}
