@@ -10,7 +10,7 @@ import AppDataGrid, {
   GridColDef,
   type GridRenderCellParams,
 } from "@/components/ui/app-data-grid";
-import { API_BASE_URL, apiFetch, resolveApiAssetUrl } from "@/lib/api";
+import { apiFetch, resolveApiAssetUrl } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 interface VisitHistoryItem {
