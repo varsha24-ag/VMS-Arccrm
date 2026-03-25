@@ -21,6 +21,14 @@ cp .env.example .env
 
 Update `.env` values for your ARC CRM PostgreSQL database and JWT secret.
 
+For local development, you can also use SQLite by setting:
+
+```bash
+DATABASE_URL=sqlite:///./vms_arccrm.db
+```
+
+When `DATABASE_URL` points to SQLite, the backend starts without needing PostgreSQL on `localhost:5432`.
+
 ### 4. Run API
 
 ```bash
