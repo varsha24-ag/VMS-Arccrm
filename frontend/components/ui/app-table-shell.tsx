@@ -16,8 +16,8 @@ export default function AppTableShell({
   table,
 }: AppTableShellProps) {
   return (
-    <div className="w-full overflow-hidden rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)]">
-      <div className="flex w-full items-stretch">
+    <div className="h-full w-full overflow-hidden rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)]">
+      <div className="flex h-full w-full items-stretch">
         <div className="min-w-0 flex-1 transition-all duration-300 ease-in-out">
           {table}
         </div>
