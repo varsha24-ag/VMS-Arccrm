@@ -9,7 +9,7 @@ import AppDataGrid, {
   GridColDef,
   type GridRenderCellParams,
 } from "@/components/ui/app-data-grid";
-import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { API_BASE_URL, apiFetch, resolveApiAssetUrl } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 type VisitHistoryItem = {
@@ -198,12 +198,7 @@ function ReceptionVisitorsContent() {
           ...item,
           host_name: item.host_employee_id ? nextHostMap[item.host_employee_id] ?? "Unknown" : "Unassigned",
           status_label: statusLabel(item.status),
-          photo:
-            item.photo_url
-              ? item.photo_url.startsWith("http")
-                ? item.photo_url
-                : `${API_BASE_URL}${item.photo_url}`
-              : null,
+          photo: resolveApiAssetUrl(item.photo_url),
         }));
 
       setRows(enrichedRows);
@@ -540,7 +535,7 @@ function ReceptionVisitorsContent() {
               pagination: {
                 paginationModel: {
                   page: 0,
-                  pageSize: 10,
+                  pageSize: 5,
                 },
               },
             }}

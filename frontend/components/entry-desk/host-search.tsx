@@ -148,14 +148,13 @@ export default function HostSearch({ value, onChange, onSelectHost }: HostSearch
   return (
     <div className="space-y-4">
       {error ? <div className="rounded-md border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">{error}</div> : null}
-      <div className="h-[420px]">
+      <div>
         <AppDataGrid
           rows={hosts}
           columns={columns}
           getRowId={(row) => row.id}
           loading={loading}
-          autoHeight={false}
-          sx={{ height: "100%" }}
+          autoHeight={true}
           searchPlaceholder="Search host by name, department, or email..."
           initialState={{
             columns: { columnVisibilityModel: { email: true } },

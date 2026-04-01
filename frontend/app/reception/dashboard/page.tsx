@@ -8,7 +8,7 @@ import { Panel, StatGrid, StatusList } from "@/components/dashboard/panels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import Pagination from "@/components/ui/pagination";
-import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { API_BASE_URL, apiFetch, resolveApiAssetUrl } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
@@ -130,19 +130,10 @@ export default function ReceptionDashboard() {
         title: item.visitor_name,
         subtitle: `${item.purpose ?? "Visit"} · Host: ${item.host_employee_id ? hostMap[item.host_employee_id] ?? "Unknown" : "Unassigned"
           }`,
-        image: item.photo_url
-          ? item.photo_url.startsWith("http")
-            ? item.photo_url
-            : `${API_BASE_URL}${item.photo_url}`
-          : null,
+        image: resolveApiAssetUrl(item.photo_url),
         visit_id: item.visit_id,
         visitor_id: item.visitor_id,
-        status:
-          item.status === "approved"
-            ? "Approved"
-            : item.status === "pending"
-              ? "Pending"
-              : item.status,
+        status: item.status,
       }));
   }, [history, hostMap]);
 

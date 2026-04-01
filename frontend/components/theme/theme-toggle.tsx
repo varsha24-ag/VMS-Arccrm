@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useTheme } from "@/components/theme/theme-provider";
 
 function SunIcon() {
@@ -35,6 +36,23 @@ function MoonIcon() {
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <button
+        type="button"
+        aria-label="Toggle theme"
+        className="rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] p-2 text-[var(--text-2)] transition hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
+      >
+        <span className="inline-block h-5 w-5 opacity-0" />
+      </button>
+    );
+  }
 
   const isDark = theme === "dark";
   const label = isDark ? "Switch to light theme" : "Switch to dark theme";

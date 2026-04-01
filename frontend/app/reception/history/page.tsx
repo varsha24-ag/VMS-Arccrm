@@ -10,7 +10,7 @@ import AppDataGrid, {
   GridColDef,
   type GridRenderCellParams,
 } from "@/components/ui/app-data-grid";
-import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { API_BASE_URL, apiFetch, resolveApiAssetUrl } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 interface VisitHistoryItem {
@@ -79,13 +79,9 @@ export default function ReceptionHistoryPage() {
     return [...history]
       .sort((a, b) => b.visit_id - a.visit_id)
       .map((item) => ({
-      ...item,
-      photo: item.photo_url
-        ? item.photo_url.startsWith("http")
-          ? item.photo_url
-          : `${API_BASE_URL}${item.photo_url}`
-        : null,
-    }));
+        ...item,
+        photo: resolveApiAssetUrl(item.photo_url),
+      }));
   }, [history]);
 
   const columns: GridColDef<VisitHistoryItem & { photo?: string | null }>[] = [
@@ -237,13 +233,13 @@ export default function ReceptionHistoryPage() {
   return (
     <DashboardLayout user={user}>
       <DashboardPageHeader title="Visit History" subtitle="Review recent visits with timestamps and photos." />
-      <div className="space-y-6">
+      <div className="space-y-3">
         <EntryDeskHeader
           title="Visit History"
           subtitle="Track check-ins and check-outs with captured photos."
         />
 
-        <Panel title="History (Photo)">
+        <Panel title="History">
           <AppDataGrid
             rows={historyWithPhotos}
             columns={columns}

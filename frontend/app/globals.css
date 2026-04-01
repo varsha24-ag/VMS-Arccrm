@@ -77,9 +77,9 @@ select:focus,
 select:focus-visible,
 textarea:focus,
 textarea:focus-visible {
-  border-color: var(--focus-accent) !important;
-  box-shadow: 0 0 0 3px var(--focus-ring) !important;
-  outline: none !important;
+  border-color: var(--focus-accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  outline: none;
 }
 
 @keyframes fade-in {

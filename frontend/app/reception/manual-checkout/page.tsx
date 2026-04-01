@@ -174,7 +174,7 @@ export default function ManualCheckoutPage() {
   return (
     <DashboardLayout user={user}>
       <DashboardPageHeader title="Checkout" subtitle="Check out visitors by ID card when needed." />
-      <div className="space-y-6">
+      <div className="space-y-3">
         <EntryDeskHeader
           title="Checkout"
           subtitle="Use the assigned ID card number to complete check-out quickly."

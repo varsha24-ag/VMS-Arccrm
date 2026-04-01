@@ -29,7 +29,7 @@ def build_approval_page(
     reject_link: str,
     action_taken: bool,
 ) -> str:
-    base_url = settings.APP_BASE_URL or "http://localhost:8000"
+    base_url = settings.APP_BASE_URL or "http://localhost:8005"
     photo_link = photo_url
     if photo_url and not photo_url.startswith("http"):
         photo_link = f"{base_url}{photo_url}"
@@ -102,7 +102,7 @@ def approve_visit(
         raise HTTPException(status_code=404, detail="Invalid or expired approval link.")
     if visit.status in {"approved", "rejected"}:
         visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
-        base_url = settings.APP_BASE_URL or "http://localhost:8000"
+        base_url = settings.APP_BASE_URL or "http://localhost:8005"
         approve_link = f"{base_url}/visits/{visit_id}/approve?token={token}"
         reject_link = f"{base_url}/visits/{visit_id}/reject?token={token}"
         return HTMLResponse(
@@ -134,7 +134,7 @@ def approve_visit(
         {"type": "visit_status", "visit_id": visit.id, "status": "approved", "visitor_id": visit.visitor_id},
     )
 
-    base_url = settings.APP_BASE_URL or "http://localhost:8000"
+    base_url = settings.APP_BASE_URL or "http://localhost:8005"
     approve_link = f"{base_url}/visits/{visit_id}/approve?token={token}"
     reject_link = f"{base_url}/visits/{visit_id}/reject?token={token}"
     return HTMLResponse(
@@ -165,7 +165,7 @@ def reject_visit(
         raise HTTPException(status_code=404, detail="Invalid or expired approval link.")
     if visit.status in {"approved", "rejected"}:
         visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
-        base_url = settings.APP_BASE_URL or "http://localhost:8000"
+        base_url = settings.APP_BASE_URL or "http://localhost:8005"
         approve_link = f"{base_url}/visits/{visit_id}/approve?token={token}"
         reject_link = f"{base_url}/visits/{visit_id}/reject?token={token}"
         return HTMLResponse(
@@ -197,7 +197,7 @@ def reject_visit(
         {"type": "visit_status", "visit_id": visit.id, "status": "rejected", "visitor_id": visit.visitor_id},
     )
 
-    base_url = settings.APP_BASE_URL or "http://localhost:8000"
+    base_url = settings.APP_BASE_URL or "http://localhost:8005"
     approve_link = f"{base_url}/visits/{visit_id}/approve?token={token}"
     reject_link = f"{base_url}/visits/{visit_id}/reject?token={token}"
     return HTMLResponse(
