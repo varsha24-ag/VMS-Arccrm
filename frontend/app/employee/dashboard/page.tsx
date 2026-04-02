@@ -102,10 +102,12 @@ export default function EmployeeDashboard() {
           type?: string;
           host_employee_id?: number;
           visitor_name?: string;
+          visit_id?: number;
         };
         if (payload.type !== "host_qr_checkin") return;
         if (payload.host_employee_id !== user.id) return;
         pushToast({
+          id: `sse-checkin-${payload.visit_id ?? Date.now()}`,
           title: "Visitor checked in",
           description: `${payload.visitor_name ?? "A visitor"} completed QR check-in.`,
           variant: "success",

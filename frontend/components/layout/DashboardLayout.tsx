@@ -28,7 +28,9 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
     if (!user || !["receptionist", "admin"].includes(user.role)) return;
     const token = getAccessToken();
     if (!token) return;
-    const source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);
+    const source = new EventSource(
+      `${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`,
+    );
     source.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data) as {
@@ -42,13 +44,21 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
           payload.status === "approved"
             ? "Approved by host"
             : payload.status === "rejected"
-            ? "Rejected by host"
-            : "Status updated";
-        const visitLabel = payload.visit_id ? `Visit #${payload.visit_id}` : "Visit update";
+              ? "Rejected by host"
+              : "Status updated";
+        const visitLabel = payload.visit_id
+          ? `Visit #${payload.visit_id}`
+          : "Visit update";
         pushToast({
+          id: `sse-visit-${payload.visit_id}-${payload.status}`,
           title: statusLabel,
           description: `${visitLabel} · Receptionist notification`,
-          variant: payload.status === "approved" ? "success" : payload.status === "rejected" ? "error" : "info",
+          variant:
+            payload.status === "approved"
+              ? "success"
+              : payload.status === "rejected"
+                ? "error"
+                : "info",
         });
       } catch {
         // ignore malformed events
@@ -97,9 +107,17 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
         className={`${isSidebarOpen ? "lg:w-64" : "lg:w-20"} fixed inset-y-0 left-0 z-50 flex h-screen w-72 flex-col border-r border-[var(--border-1)] bg-[var(--surface-1)] backdrop-blur-xl transition-transform duration-300 lg:sticky lg:top-0 lg:translate-x-0 ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"} `}
       >
         <div className="flex h-16 items-center gap-3 overflow-hidden border-b border-[var(--border-1)] px-5 lg:px-6">
-          <Image src="/arc-logo.svg" alt="Logo" width={32} height={32} className="shrink-0" />
+          <Image
+            src="/arc-logo.svg"
+            alt="Logo"
+            width={32}
+            height={32}
+            className="shrink-0"
+          />
           {(isSidebarOpen || isMobileNavOpen) && (
-            <span className="font-bold text-lg text-[var(--text-1)] whitespace-nowrap">ArcCRM</span>
+            <span className="font-bold text-lg text-[var(--text-1)] whitespace-nowrap">
+              ArcCRM
+            </span>
           )}
           <button
             type="button"
@@ -107,19 +125,35 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             onClick={() => setIsMobileNavOpen(false)}
             className="ml-auto rounded-lg p-2 text-[var(--text-2)] hover:bg-[var(--nav-hover-bg)] lg:hidden"
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {modules.map((module) => {
-            const isBasePathModule = module.path === pathname && !module.path.includes("?");
-            const isFilteredEmployeeVisitorsRoute = pathname === "/employee/visitors" && searchParams.has("view");
+            const isBasePathModule =
+              module.path === pathname && !module.path.includes("?");
+            const isFilteredEmployeeVisitorsRoute =
+              pathname === "/employee/visitors" && searchParams.has("view");
             const isActive =
               currentRoute === module.path ||
-              (isBasePathModule && !(module.path === "/employee/visitors" && isFilteredEmployeeVisitorsRoute));
+              (isBasePathModule &&
+                !(
+                  module.path === "/employee/visitors" &&
+                  isFilteredEmployeeVisitorsRoute
+                ));
             return (
               <Link
                 key={module.id}
@@ -135,7 +169,11 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                     isActive ? "bg-[var(--accent)]" : "bg-transparent"
                   } shrink-0`}
                 />
-                {(isSidebarOpen || isMobileNavOpen) && <span className="text-sm font-medium whitespace-nowrap">{module.label}</span>}
+                {(isSidebarOpen || isMobileNavOpen) && (
+                  <span className="text-sm font-medium whitespace-nowrap">
+                    {module.label}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -148,8 +186,12 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             </div>
             {(isSidebarOpen || isMobileNavOpen) && (
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-[var(--text-1)] truncate">{user.name}</p>
-                <p className="text-[10px] text-[var(--text-3)] capitalize">{user.role}</p>
+                <p className="text-xs font-semibold text-[var(--text-1)] truncate">
+                  {user.name}
+                </p>
+                <p className="text-[10px] text-[var(--text-3)] capitalize">
+                  {user.role}
+                </p>
               </div>
             )}
           </div>
@@ -157,7 +199,12 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-[var(--text-2)] hover:bg-[var(--nav-hover-bg)] hover:text-[var(--text-1)] transition-all group"
           >
-            <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg
+              className="w-5 h-5 shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -165,7 +212,9 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                 d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
               />
             </svg>
-            {(isSidebarOpen || isMobileNavOpen) && <span className="text-sm font-medium">Logout</span>}
+            {(isSidebarOpen || isMobileNavOpen) && (
+              <span className="text-sm font-medium">Logout</span>
+            )}
           </button>
         </div>
       </aside>
@@ -178,8 +227,18 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             className="p-2 -ml-2 rounded-lg hover:bg-[var(--nav-hover-bg)] text-[var(--text-2)]"
             aria-label="Toggle sidebar"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
             </svg>
           </button>
 
@@ -191,7 +250,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>

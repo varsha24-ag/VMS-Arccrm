@@ -4,12 +4,13 @@ from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 from fastapi import status
-from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile, HTTPException, Request
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
+from app.core.utils import get_dynamic_frontend_url
 from app.core.security import get_current_user, get_user_from_token
 from app.core.realtime import event_stream
 from app.models.employee import Employee
@@ -71,10 +72,12 @@ def normalize_scanned_code(raw_code: str) -> str:
 @router.post("/visitor/create", response_model=VisitorOut)
 def create_visitor_route(
     payload: VisitorCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Annotated[Employee, Depends(get_current_user)] = None,
 ):
-    return create_visitor(db, payload)
+    dynamic_url = get_dynamic_frontend_url(request)
+    return create_visitor(db, payload, dynamic_url)
 
 
 @router.post("/visit/invite", response_model=QRInviteOut)
@@ -300,6 +303,7 @@ def upload_photo(
 def access_pass_route(
     payload: AccessPassCreate,
     background_tasks: BackgroundTasks,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Annotated[Employee, Depends(get_current_user)] = None,
 ):
@@ -309,6 +313,7 @@ def access_pass_route(
         default_host_employee_id=current_user.id if current_user else None,
     )
     if payload.email:
+        dynamic_url = get_dynamic_frontend_url(request)
         background_tasks.add_task(
             send_visitor_access_pass,
             payload.email,
@@ -317,6 +322,7 @@ def access_pass_route(
             access_pass.qr_code,
             access_pass.valid_to.isoformat(),
             access_pass.max_visits,
+            dynamic_url,
         )
     return access_pass
 
@@ -324,11 +330,13 @@ def access_pass_route(
 @router.post("/visitor/resend-approval", response_model=EmailResendOut)
 def resend_approval_email(
     payload: EmailResendRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Annotated[Employee, Depends(get_current_user)] = None,
 ):
     try:
-        sent = resend_host_notification(db, payload.visit_id)
+        dynamic_url = get_dynamic_frontend_url(request)
+        sent = resend_host_notification(db, payload.visit_id, dynamic_url)
         return EmailResendOut(sent=sent)
     except HTTPException:
         raise

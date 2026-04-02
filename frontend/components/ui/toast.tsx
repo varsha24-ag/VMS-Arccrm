@@ -15,7 +15,7 @@ interface ToastItem {
   timeoutMs: number;
 }
 
-type ToastInput = Omit<ToastItem, "id" | "timeoutMs">;
+type ToastInput = Omit<ToastItem, "id" | "timeoutMs"> & { id?: string };
 
 interface ToastContextValue {
   pushToast: (toast: ToastInput) => void;
@@ -56,9 +56,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const pushToast = useCallback((toast: ToastInput) => {
-    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const id = toast.id ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const duration = toast.durationMs ?? (toast.actionLabel ? 8000 : 3500);
-    setToasts((prev) => [...prev, { ...toast, id, timeoutMs: duration }]);
+    setToasts((prev) => {
+      if (prev.some((t) => t.id === id)) return prev;
+      return [...prev, { ...toast, id, timeoutMs: duration }];
+    });
     window.setTimeout(() => {
       setToasts((prev) => prev.filter((item) => item.id !== id));
     }, duration);

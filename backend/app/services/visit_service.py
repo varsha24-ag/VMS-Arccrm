@@ -144,7 +144,7 @@ def create_qr_invite(db: Session, payload: QRInviteCreate) -> QRInviteOut:
     )
 
 
-def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
+def create_visitor(db: Session, payload: VisitorCreate, dynamic_url: Optional[str] = None) -> VisitorOut:
     try:
         visitor = Visitor(
             name=payload.name,
@@ -189,6 +189,7 @@ def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
                 visitor.photo_url,
                 visit.approval_token,
                 visit.id,
+                dynamic_url,
             )
             email_sent = sent
             if not sent:
@@ -214,7 +215,7 @@ def create_visitor(db: Session, payload: VisitorCreate) -> VisitorOut:
     )
 
 
-def resend_host_notification(db: Session, visit_id: int) -> bool:
+def resend_host_notification(db: Session, visit_id: int, dynamic_url: Optional[str] = None) -> bool:
     visit = db.query(Visit).filter(Visit.id == visit_id).first()
     if not visit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
@@ -240,6 +241,7 @@ def resend_host_notification(db: Session, visit_id: int) -> bool:
         visitor.photo_url,
         visit.approval_token,
         visit.id,
+        dynamic_url,
     )
     if not sent:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Email send failed")
