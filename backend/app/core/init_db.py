@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from sqlalchemy import inspect, or_, text
 from sqlalchemy.orm import Session
 
@@ -91,6 +93,53 @@ def repair_visit_schema() -> None:
         if "approval_email_last_attempt_at" not in columns:
             connection.execute(text("ALTER TABLE visits ADD COLUMN approval_email_last_attempt_at TIMESTAMPTZ"))
             columns.add("approval_email_last_attempt_at")
+        if "source" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN source VARCHAR DEFAULT 'manual'"))
+            columns.add("source")
+        if "qr_expiry" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN qr_expiry TIMESTAMPTZ"))
+            columns.add("qr_expiry")
+
+
+def repair_access_pass_schema() -> None:
+    inspector = inspect(engine)
+    if "visitor_access_passes" not in inspector.get_table_names():
+        return
+
+    columns = {col["name"] for col in inspector.get_columns("visitor_access_passes")}
+
+    with engine.begin() as connection:
+        if "purpose" not in columns:
+            connection.execute(text("ALTER TABLE visitor_access_passes ADD COLUMN purpose VARCHAR"))
+            columns.add("purpose")
+
+
+def normalize_photo_url(value: str | None) -> str | None:
+    if not value:
+        return value
+    if value.startswith("/uploads/"):
+        return value
+    if value.startswith("http://") or value.startswith("https://"):
+        try:
+            parsed = urlparse(value)
+            if parsed.path.startswith("/uploads/"):
+                return parsed.path
+        except Exception:
+            return value
+    return value
+
+
+def normalize_visitor_photo_urls(db: Session) -> int:
+    visitors = db.query(Visitor).filter(Visitor.photo_url.isnot(None)).all()
+    updated = 0
+    for visitor in visitors:
+        normalized = normalize_photo_url(visitor.photo_url)
+        if normalized != visitor.photo_url:
+            visitor.photo_url = normalized
+            updated += 1
+    if updated:
+        db.commit()
+    return updated
 
 
 def seed_employees(db: Session) -> int:
@@ -187,11 +236,13 @@ def bootstrap_database() -> int:
     create_tables()
     repair_visitor_schema()
     repair_visit_schema()
+    repair_access_pass_schema()
     db = SessionLocal()
     try:
         create_admin_user(db)
         created_employees = seed_employees(db)
         created_cards = seed_id_cards(db)
+        normalize_visitor_photo_urls(db)
         return created_employees + created_cards
     finally:
         db.close()

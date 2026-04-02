@@ -3,7 +3,7 @@ import { ReactNode } from "react";
 export function DashboardPageHeader({
   title,
   subtitle,
-  actions
+  actions,
 }: {
   title: string;
   subtitle?: string;
@@ -12,11 +12,20 @@ export function DashboardPageHeader({
   return (
     <header className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold tracking-tight text-[var(--text-1)]">{title}</h1>
-        {subtitle ? <p className="mt-1 text-sm text-[var(--text-3)]">{subtitle}</p> : null}
+        <h1 className="text-xl font-bold tracking-tight text-[var(--text-1)] sm:text-2xl lg:text-3xl">
+          {title}
+        </h1>
+        {subtitle ? (
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--text-3)] sm:text-[15px]">
+            {subtitle}
+          </p>
+        ) : null}
       </div>
-      {actions ? <div className="shrink-0">{actions}</div> : null}
+      {actions ? (
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
+          {actions}
+        </div>
+      ) : null}
     </header>
   );
 }
-

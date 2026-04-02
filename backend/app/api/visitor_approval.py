@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.models.visit import Visit
 from app.models.visitor import Visitor
-from app.services.notification_service import send_reception_notification
+from app.services.notification_service import get_frontend_visit_action_url, send_reception_notification
 from app.core.config import settings
 from app.core.realtime import publish_event
 
@@ -81,7 +81,7 @@ def build_approval_page(
             <a href="{reject_link}" style="background:#ef4444;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700;{disabled_style}">Reject</a>
           </div>
           <p style="margin-top:14px;color:#94a3b8;font-size:12px;">
-            { "Action recorded. This link works only once." if action_taken else "Click Accept or Reject to respond." }
+            {"Action recorded. This link works only once." if action_taken else "Click Accept or Reject to respond."}
           </p>
         </div>
       </body>
@@ -97,12 +97,15 @@ def approve_visit(
 ):
     visit = db.query(Visit).filter(Visit.id == visit_id).first()
     if not visit:
-        raise HTTPException(status_code=404, detail="Invalid or expired approval link.")
+        raise HTTPException(
+            status_code=404, detail="Invalid or expired approval link.")
     if visit.approval_token != token:
-        raise HTTPException(status_code=404, detail="Invalid or expired approval link.")
+        raise HTTPException(
+            status_code=404, detail="Invalid or expired approval link.")
     if visit.status in {"approved", "rejected"}:
-        visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
-        base_url = settings.APP_BASE_URL or "http://localhost:8005"
+        visitor = db.query(Visitor).filter(
+            Visitor.id == visit.visitor_id).first()
+        base_url = settings.APP_BASE_URL or "http://localhost:8000"
         approve_link = f"{base_url}/visits/{visit_id}/approve?token={token}"
         reject_link = f"{base_url}/visits/{visit_id}/reject?token={token}"
         return HTMLResponse(
@@ -128,13 +131,15 @@ def approve_visit(
         visitor.status = "approved"
         db.commit()
         if settings.RECEPTION_EMAIL:
-            send_reception_notification(settings.RECEPTION_EMAIL, visitor.name, "approved")
+            send_reception_notification(
+                settings.RECEPTION_EMAIL, visitor.name, "approved")
     anyio.from_thread.run(
         publish_event,
-        {"type": "visit_status", "visit_id": visit.id, "status": "approved", "visitor_id": visit.visitor_id},
+        {"type": "visit_status", "visit_id": visit.id,
+            "status": "approved", "visitor_id": visit.visitor_id},
     )
 
-    base_url = settings.APP_BASE_URL or "http://localhost:8005"
+    base_url = settings.APP_BASE_URL or "http://localhost:8000"
     approve_link = f"{base_url}/visits/{visit_id}/approve?token={token}"
     reject_link = f"{base_url}/visits/{visit_id}/reject?token={token}"
     return HTMLResponse(
@@ -160,12 +165,15 @@ def reject_visit(
 ):
     visit = db.query(Visit).filter(Visit.id == visit_id).first()
     if not visit:
-        raise HTTPException(status_code=404, detail="Invalid or expired approval link.")
+        raise HTTPException(
+            status_code=404, detail="Invalid or expired approval link.")
     if visit.approval_token != token:
-        raise HTTPException(status_code=404, detail="Invalid or expired approval link.")
+        raise HTTPException(
+            status_code=404, detail="Invalid or expired approval link.")
     if visit.status in {"approved", "rejected"}:
-        visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
-        base_url = settings.APP_BASE_URL or "http://localhost:8005"
+        visitor = db.query(Visitor).filter(
+            Visitor.id == visit.visitor_id).first()
+        base_url = settings.APP_BASE_URL or "http://localhost:8000"
         approve_link = f"{base_url}/visits/{visit_id}/approve?token={token}"
         reject_link = f"{base_url}/visits/{visit_id}/reject?token={token}"
         return HTMLResponse(
@@ -191,13 +199,15 @@ def reject_visit(
         visitor.status = "rejected"
         db.commit()
         if settings.RECEPTION_EMAIL:
-            send_reception_notification(settings.RECEPTION_EMAIL, visitor.name, "rejected")
+            send_reception_notification(
+                settings.RECEPTION_EMAIL, visitor.name, "rejected")
     anyio.from_thread.run(
         publish_event,
-        {"type": "visit_status", "visit_id": visit.id, "status": "rejected", "visitor_id": visit.visitor_id},
+        {"type": "visit_status", "visit_id": visit.id,
+            "status": "rejected", "visitor_id": visit.visitor_id},
     )
 
-    base_url = settings.APP_BASE_URL or "http://localhost:8005"
+    base_url = settings.APP_BASE_URL or "http://localhost:8000"
     approve_link = f"{base_url}/visits/{visit_id}/approve?token={token}"
     reject_link = f"{base_url}/visits/{visit_id}/reject?token={token}"
     return HTMLResponse(

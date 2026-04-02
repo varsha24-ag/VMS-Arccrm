@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { ReactNode } from "react";
 
 export interface StatItem {
   label: string;
   value: string;
   delta: string;
+  href?: string;
 }
 
 export interface StatusItem {
@@ -53,24 +55,50 @@ export function StatGrid({ items }: StatGridProps) {
       {items.map((item) => (
         <article
           key={item.label}
-          className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-4 shadow-[var(--shadow-1)] transition hover:-translate-y-0.5"
+          className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-4 shadow-[var(--shadow-1)] transition hover:-translate-y-0.5 sm:p-5"
         >
-          <p className="text-xs uppercase tracking-[0.15em] text-[var(--text-3)]">{item.label}</p>
-          <p className="mt-2 text-3xl font-semibold text-[var(--text-1)]">{item.value}</p>
-          <p className="mt-1 text-sm text-[var(--accent)]">{item.delta}</p>
+          {item.href ? (
+            <Link href={item.href} className="block">
+              <p className="text-xs uppercase tracking-[0.15em] text-[var(--text-3)]">
+                {item.label}
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--text-1)] sm:text-3xl">
+                {item.value}
+              </p>
+              <p className="mt-1 text-sm text-[var(--accent)]">{item.delta}</p>
+            </Link>
+          ) : (
+            <>
+              <p className="text-xs uppercase tracking-[0.15em] text-[var(--text-3)]">
+                {item.label}
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--text-1)] sm:text-3xl">
+                {item.value}
+              </p>
+              <p className="mt-1 text-sm text-[var(--accent)]">{item.delta}</p>
+            </>
+          )}
         </article>
       ))}
     </div>
   );
 }
 
-export function Panel({ title, children, action, className, contentClassName }: PanelProps) {
+export function Panel({
+  title,
+  children,
+  action,
+  className,
+  contentClassName,
+}: PanelProps) {
   return (
     <section
       className={`rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-4 shadow-[var(--shadow-1)] ${className ?? ""}`}
     >
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-[var(--text-1)]">{title}</h2>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-base font-semibold text-[var(--text-1)] sm:text-lg">
+          {title}
+        </h2>
         {action ?? <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />}
       </div>
       <div className={`mt-3 ${contentClassName ?? ""}`}>{children}</div>
@@ -116,7 +144,7 @@ export function StatusList({ items, onItemClick }: StatusListProps) {
       {items.map((item) => (
         <article
           key={item.title}
-          className="flex items-center justify-between rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-3 transition hover:-translate-y-0.5 hover:bg-[var(--surface-3)]"
+          className="flex flex-col gap-3 rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-3 transition hover:-translate-y-0.5 hover:bg-[var(--surface-3)] sm:flex-row sm:items-center sm:justify-between"
           role={onItemClick ? "button" : undefined}
           tabIndex={onItemClick ? 0 : undefined}
           onClick={onItemClick ? () => onItemClick(item) : undefined}
@@ -131,7 +159,7 @@ export function StatusList({ items, onItemClick }: StatusListProps) {
               : undefined
           }
         >
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             {item.image ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -149,9 +177,13 @@ export function StatusList({ items, onItemClick }: StatusListProps) {
                   .toUpperCase()}
               </div>
             )}
-            <div>
-              <p className="font-semibold text-[var(--text-1)]">{item.title}</p>
-              <p className="text-xs text-[var(--text-3)]">{item.subtitle}</p>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-[var(--text-1)]">
+                {item.title}
+              </p>
+              <p className="truncate text-xs text-[var(--text-3)]">
+                {item.subtitle}
+              </p>
             </div>
           </div>
           <div className="min-w-0">

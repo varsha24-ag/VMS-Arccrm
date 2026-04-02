@@ -9,6 +9,7 @@ class VisitorAccessPass(Base):
     id = Column(Integer, primary_key=True, index=True)
     visitor_id = Column(Integer, ForeignKey("visitors.id"), nullable=False, index=True)
     host_employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True, index=True)
+    purpose = Column(String, nullable=True)
     valid_from = Column(DateTime(timezone=True), nullable=False)
     valid_to = Column(DateTime(timezone=True), nullable=False)
     max_visits = Column(Integer, nullable=False)
