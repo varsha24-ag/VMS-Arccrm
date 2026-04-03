@@ -9,7 +9,7 @@ import AppDataGrid, {
   GridColDef,
   type GridRenderCellParams,
 } from "@/components/ui/app-data-grid";
-import { apiFetch, resolveApiAssetUrl } from "@/lib/api";
+import { API_BASE_URL, apiFetch, resolveApiAssetUrl } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 type VisitHistoryItem = {

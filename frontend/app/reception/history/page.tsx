@@ -10,7 +10,7 @@ import AppDataGrid, {
   GridColDef,
   type GridRenderCellParams,
 } from "@/components/ui/app-data-grid";
-import { apiFetch, resolveApiAssetUrl } from "@/lib/api";
+import { API_BASE_URL, apiFetch, resolveApiAssetUrl } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 interface VisitHistoryItem {
@@ -54,7 +54,13 @@ export default function ReceptionHistoryPage() {
     }
   };
   const statusLabel = (status: string) => status.replace(/_/g, " ");
-  const statusOptions = ["approved", "pending", "rejected", "checked_in", "checked_out"];
+  const statusOptions = [
+    "approved",
+    "pending",
+    "rejected",
+    "checked_in",
+    "checked_out",
+  ];
 
   useEffect(() => {
     if (!user) return;
@@ -91,7 +97,11 @@ export default function ReceptionHistoryPage() {
       width: 104,
       sortable: false,
       filterable: false,
-      renderCell: (params: GridRenderCellParams<VisitHistoryItem & { photo?: string | null }>) =>
+      renderCell: (
+        params: GridRenderCellParams<
+          VisitHistoryItem & { photo?: string | null }
+        >,
+      ) =>
         params.value ? (
           // eslint-disable-next-line @next/next/no-img-element
           <button
@@ -124,10 +134,14 @@ export default function ReceptionHistoryPage() {
       type: "string",
       flex: 1,
       minWidth: 160,
-      valueGetter: ((params: VisitHistoryValueGetterParams) =>
-        String(params?.row?.purpose ?? "").trim().toLowerCase()),
+      valueGetter: (params: VisitHistoryValueGetterParams) =>
+        String(params?.row?.purpose ?? "")
+          .trim()
+          .toLowerCase(),
       renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
-        <span className="block truncate">{String(params?.row?.purpose ?? "").trim() || "-"}</span>
+        <span className="block truncate">
+          {String(params?.row?.purpose ?? "").trim() || "-"}
+        </span>
       ),
     },
     {
@@ -138,11 +152,12 @@ export default function ReceptionHistoryPage() {
       width: 150,
       minWidth: 150,
       filterable: true,
-      valueFormatter: ((value) =>
-        statusLabel(String(value ?? ""))),
+      valueFormatter: (value) => statusLabel(String(value ?? "")),
       renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
         <div className="min-w-0">
-          <span className={`inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap ${statusBadgeClass(params?.row?.status ?? "")}`}>
+          <span
+            className={`inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap ${statusBadgeClass(params?.row?.status ?? "")}`}
+          >
             <span className="truncate">
               {statusLabel(String(params?.row?.status ?? "-"))}
             </span>
@@ -156,12 +171,15 @@ export default function ReceptionHistoryPage() {
       flex: 1,
       minWidth: 180,
       filterable: false,
-      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.checkin_time ?? null),
-      valueFormatter: ((value) =>
-        value ? new Date(value as string).toLocaleString() : "-"),
+      valueGetter: (params: VisitHistoryValueGetterParams) =>
+        params?.row?.checkin_time ?? null,
+      valueFormatter: (value) =>
+        value ? new Date(value as string).toLocaleString() : "-",
       renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
         <span className="block truncate">
-          {params?.row?.checkin_time ? new Date(params.row.checkin_time).toLocaleString() : "-"}
+          {params?.row?.checkin_time
+            ? new Date(params.row.checkin_time).toLocaleString()
+            : "-"}
         </span>
       ),
     },
@@ -171,12 +189,15 @@ export default function ReceptionHistoryPage() {
       flex: 1,
       minWidth: 180,
       filterable: false,
-      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.checkout_time ?? null),
-      valueFormatter: ((value) =>
-        value ? new Date(value as string).toLocaleString() : "-"),
+      valueGetter: (params: VisitHistoryValueGetterParams) =>
+        params?.row?.checkout_time ?? null,
+      valueFormatter: (value) =>
+        value ? new Date(value as string).toLocaleString() : "-",
       renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
         <span className="block truncate">
-          {params?.row?.checkout_time ? new Date(params.row.checkout_time).toLocaleString() : "-"}
+          {params?.row?.checkout_time
+            ? new Date(params.row.checkout_time).toLocaleString()
+            : "-"}
         </span>
       ),
     },
@@ -186,11 +207,16 @@ export default function ReceptionHistoryPage() {
       width: 140,
       minWidth: 140,
       filterable: true,
-      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.created_at ?? null),
-      valueFormatter: ((value) =>
-        value ? new Date(value as string).toLocaleDateString() : "-"),
+      valueGetter: (params: VisitHistoryValueGetterParams) =>
+        params?.row?.created_at ?? null,
+      valueFormatter: (value) =>
+        value ? new Date(value as string).toLocaleDateString() : "-",
       renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
-        <span className="block truncate">{params?.row?.created_at ? new Date(params.row.created_at).toLocaleDateString() : "-"}</span>
+        <span className="block truncate">
+          {params?.row?.created_at
+            ? new Date(params.row.created_at).toLocaleDateString()
+            : "-"}
+        </span>
       ),
     },
     {
@@ -199,9 +225,12 @@ export default function ReceptionHistoryPage() {
       flex: 1,
       minWidth: 150,
       filterable: false,
-      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.company ?? "-"),
+      valueGetter: (params: VisitHistoryValueGetterParams) =>
+        params?.row?.company ?? "-",
       renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
-        <span className="block truncate">{String(params.row.company ?? "-")}</span>
+        <span className="block truncate">
+          {String(params.row.company ?? "-")}
+        </span>
       ),
     },
     {
@@ -210,9 +239,12 @@ export default function ReceptionHistoryPage() {
       flex: 1,
       minWidth: 210,
       filterable: false,
-      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_email ?? "-"),
+      valueGetter: (params: VisitHistoryValueGetterParams) =>
+        params?.row?.visitor_email ?? "-",
       renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
-        <span className="block truncate">{String(params.row.visitor_email ?? "-")}</span>
+        <span className="block truncate">
+          {String(params.row.visitor_email ?? "-")}
+        </span>
       ),
     },
     {
@@ -221,9 +253,12 @@ export default function ReceptionHistoryPage() {
       width: 140,
       minWidth: 140,
       filterable: false,
-      valueGetter: ((params: VisitHistoryValueGetterParams) => params?.row?.visitor_phone ?? "-"),
+      valueGetter: (params: VisitHistoryValueGetterParams) =>
+        params?.row?.visitor_phone ?? "-",
       renderCell: (params: GridRenderCellParams<VisitHistoryItem>) => (
-        <span className="block truncate">{String(params.row.visitor_phone ?? "-")}</span>
+        <span className="block truncate">
+          {String(params.row.visitor_phone ?? "-")}
+        </span>
       ),
     },
   ];
@@ -232,14 +267,17 @@ export default function ReceptionHistoryPage() {
 
   return (
     <DashboardLayout user={user}>
-      <DashboardPageHeader title="Visit History" subtitle="Review recent visits with timestamps and photos." />
+      <DashboardPageHeader
+        title="Visit History"
+        subtitle="Review recent visits with timestamps and photos."
+      />
       <div className="space-y-3">
         <EntryDeskHeader
           title="Visit History"
           subtitle="Track check-ins and check-outs with captured photos."
         />
 
-        <Panel title="History (Photo)" className="overflow-hidden">
+        <Panel title="History">
           <AppDataGrid
             rows={historyWithPhotos}
             columns={columns}
@@ -273,12 +311,26 @@ export default function ReceptionHistoryPage() {
               className="absolute right-4 top-4 rounded-full border border-[var(--border-1)] bg-[var(--surface-2)] p-2 text-[var(--text-2)] transition hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
               aria-label="Close"
             >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-                <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <svg
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M6 6l12 12M18 6l-12 12"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
               </svg>
             </button>
             <div className="p-6">
-              <img src={previewPhoto} alt="Visitor" className="h-full w-full rounded-xl object-cover" />
+              <img
+                src={previewPhoto}
+                alt="Visitor"
+                className="h-full w-full rounded-xl object-cover"
+              />
             </div>
           </div>
         </div>

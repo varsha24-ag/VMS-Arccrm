@@ -32,13 +32,13 @@ def build_qr_png(payload: str) -> tuple[Optional[bytes], Optional[str]]:
     return buffer.getvalue(), "image/png"
 
 
-def get_frontend_qr_checkin_url(qr_code: str) -> str:
-    frontend_base_url = settings.FRONTEND_BASE_URL or "http://localhost:3000"
+def get_frontend_qr_checkin_url(qr_code: str, dynamic_url: Optional[str] = None) -> str:
+    frontend_base_url = dynamic_url or settings.FRONTEND_BASE_URL or "http://localhost:3000"
     return f"{frontend_base_url}/qr-checkin?code={qr_code}"
 
 
-def get_frontend_visit_action_url(visit_id: int, action: str, token: Optional[str]) -> str:
-    frontend_base_url = settings.FRONTEND_BASE_URL or "http://localhost:3000"
+def get_frontend_visit_action_url(visit_id: int, action: str, token: str | None, dynamic_url: Optional[str] = None) -> str:
+    frontend_base_url = dynamic_url or settings.FRONTEND_BASE_URL or "http://localhost:3000"
     token_query = f"?token={token}" if token else ""
     return f"{frontend_base_url}/visits/{visit_id}/{action}{token_query}"
 
@@ -53,14 +53,15 @@ def send_host_notification(
     photo_url: Optional[str],
     approval_token: Optional[str],
     visit_id: int,
+    dynamic_url: Optional[str] = None,
 ) -> bool:
     if not settings.SMTP_HOST or not settings.SMTP_FROM:
         logger.warning("SMTP not configured. Email not sent.")
         return False
 
     base_url = settings.APP_BASE_URL or "http://localhost:8005"
-    approve_link = get_frontend_visit_action_url(visit_id, "approve", approval_token)
-    reject_link = get_frontend_visit_action_url(visit_id, "reject", approval_token)
+    approve_link = get_frontend_visit_action_url(visit_id, "approve", approval_token, dynamic_url)
+    reject_link = get_frontend_visit_action_url(visit_id, "reject", approval_token, dynamic_url)
 
     subject = f"Visitor arrival: {visitor_name}"
     photo_link = photo_url
@@ -192,12 +193,13 @@ def send_visitor_access_pass(
     qr_code: str,
     valid_to: str,
     max_visits: int,
+    dynamic_url: Optional[str] = None,
 ) -> bool:
     if not settings.SMTP_HOST or not settings.SMTP_FROM:
         logger.warning("SMTP not configured. Access pass email not sent.")
         return False
 
-    qr_checkin_url = get_frontend_qr_checkin_url(qr_code)
+    qr_checkin_url = get_frontend_qr_checkin_url(qr_code, dynamic_url)
     qr_png, qr_mime = build_qr_png(qr_checkin_url)
     qr_cid = make_msgid(domain="vms.local")[1:-1] if qr_png else None
     subject = f"Visitor access pass for {visitor_name}"
