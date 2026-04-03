@@ -17,7 +17,7 @@ def list_hosts(
     db: Session = Depends(get_db),
     current_user: Annotated[Employee, Depends(get_current_user)] = None,
 ) -> List[dict]:
-    employees = db.query(Employee).all()
+    employees = db.query(Employee).filter(Employee.is_active == True).all()
     return [
         {
             "id": emp.id,
@@ -25,6 +25,7 @@ def list_hosts(
             "department": emp.department or "General",
             "email": emp.email,
             "phone": emp.phone,
+            "project": emp.project,
             "role": emp.role,
         }
         for emp in employees

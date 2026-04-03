@@ -9,7 +9,7 @@ from alembic import op
 
 
 revision = "20260312_add_id_cards"
-down_revision = "20260311_add_id_number"
+down_revision = "20260311_visit_approval_fields"
 branch_labels = None
 depends_on = None
 

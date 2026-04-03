@@ -9,7 +9,7 @@ from alembic import op
 
 
 revision = "20260310_visitor_schema_fix"
-down_revision = None
+down_revision = "20260309_create_base_schema"
 branch_labels = None
 depends_on = None
 

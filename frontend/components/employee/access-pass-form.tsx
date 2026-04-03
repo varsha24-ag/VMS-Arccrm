@@ -67,6 +67,15 @@ export function AccessPassForm({
     setPassPayload(mergedInitialValues);
   }, [mergedInitialValues]);
 
+  function normalizeOptionalField(value?: string) {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : undefined;
+  }
+
+  function toIsoDateTime(value: string) {
+    return new Date(value).toISOString();
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -75,7 +84,13 @@ export function AccessPassForm({
         method: "POST",
         timeoutMs: 0,
         body: JSON.stringify({
-          ...passPayload,
+          visitor_name: passPayload.visitor_name.trim(),
+          phone: normalizeOptionalField(passPayload.phone),
+          email: normalizeOptionalField(passPayload.email),
+          company: normalizeOptionalField(passPayload.company),
+          purpose: normalizeOptionalField(passPayload.purpose),
+          valid_from: toIsoDateTime(passPayload.valid_from),
+          valid_to: toIsoDateTime(passPayload.valid_to),
           max_visits: 10,
         }),
       });

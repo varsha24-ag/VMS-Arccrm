@@ -36,7 +36,7 @@ from app.schemas.visit import (
 )
 from app.schemas.id_card import IdCardOut
 from app.schemas.visit_status import VisitStatusOut
-from app.services.notification_service import get_frontend_qr_checkin_url
+from app.services.notification_service import build_qr_png, get_frontend_qr_checkin_url
 from app.services.visit_service import (
     checkin_visit,
     checkout_visit,
@@ -92,6 +92,14 @@ def create_qr_invite_route(
 @router.get("/qr-checkin")
 def qr_checkin_redirect(code: str):
     return RedirectResponse(url=get_frontend_qr_checkin_url(code), status_code=307)
+
+
+@router.get("/qr-image")
+def qr_image(code: str):
+    qr_png, qr_mime = build_qr_png(get_frontend_qr_checkin_url(code))
+    if not qr_png or not qr_mime:
+        raise HTTPException(status_code=500, detail="Unable to generate QR image")
+    return StreamingResponse(iter([qr_png]), media_type=qr_mime)
 
 
 @router.get("/visitor/{visitor_id}", response_model=VisitorOut)
@@ -375,7 +383,7 @@ def available_id_cards(
     return [IdCardOut(id=card.id, id_number=card.id_number, status=card.status) for card in cards]
 @router.get("/events/visits")
 async def visit_events(
-    token: str | None = None,
+    token: Optional[str] = None,
     credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(event_bearer_scheme)] = None,
     db: Session = Depends(get_db),
 ):

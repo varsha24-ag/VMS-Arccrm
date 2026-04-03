@@ -39,12 +39,18 @@ class Settings(BaseSettings):
     RECEPTION_EMAIL: Optional[str] = None
     BUSINESS_TIMEZONE: str = "Asia/Kolkata"
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
+    # CRM Integration Settings
+    EMPLOYEE_API_URL: Optional[str] = None
+    EMPLOYEE_APP_ID: Optional[str] = None
+
+    model_config = SettingsConfigDict(
+        env_file=".env", case_sensitive=False, extra="ignore")
 
     @property
     def sqlalchemy_database_url(self) -> str:
-        if self.DATABASE_URL:
-            return self.DATABASE_URL
+        url = self.DATABASE_URL
+        if url:
+            return url
         encoded_user = quote_plus(self.DB_USER)
         encoded_password = quote_plus(self.DB_PASSWORD)
         auth = f"{encoded_user}:{encoded_password}" if self.DB_PASSWORD else encoded_user

@@ -214,17 +214,17 @@ def send_visitor_access_pass(
 
     html_body = f"""
     <html>
-      <body style="margin:0;padding:0;background:#f4f6fb;font-family:Arial,sans-serif;">
-        <div style="max-width:620px;margin:24px auto;background:#0b2239;border-radius:18px;padding:24px;color:#e2e8f0;">
-          <h2 style="margin:0 0 18px 0;color:#ffffff;font-size:20px;">Visitor access pass</h2>
-          <p style="margin:0 0 8px 0;color:#cbd5f5;">Hello {visitor_name},</p>
-          <p style="margin:0 0 16px 0;color:#cbd5f5;">{host_name} has created your visitor access pass.</p>
-          <div style="background:#102a43;border-radius:14px;padding:18px;">
-            <p style="margin:0 0 8px 0;color:#ffffff;font-size:16px;font-weight:700;">QR Code</p>
-            <p style="margin:0 0 14px 0;color:#f8fafc;font-family:monospace;font-size:18px;">{qr_code}</p>
-            {f'<img src="cid:{qr_cid}" alt="Access pass QR" width="180" height="180" style="display:block;margin:0 0 14px 0;border-radius:12px;background:#ffffff;padding:10px;" />' if qr_cid else ''}
-            <p style="margin:0 0 8px 0;color:#cbd5f5;">Valid until: {valid_to}</p>
-            <p style="margin:0;color:#cbd5f5;">Max visits: {max_visits}</p>
+      <body style="margin:0;padding:24px;background:#eef2ff;font-family:Arial,sans-serif;">
+        <div style="max-width:620px;margin:0 auto;background:#dbe4ff;border-radius:28px;padding:28px;color:#1f2937;">
+          <h2 style="margin:0 0 22px 0;color:#111827;font-size:28px;line-height:1.2;font-weight:700;">Visitor access pass</h2>
+          <p style="margin:0 0 14px 0;color:#374151;font-size:18px;">Hello {visitor_name},</p>
+          <p style="margin:0 0 24px 0;color:#4b5563;font-size:18px;">{host_name} has created your visitor access pass.</p>
+          <div style="background:#cfdbf8;border-radius:22px;padding:24px;">
+            <p style="margin:0 0 10px 0;color:#111827;font-size:20px;font-weight:700;">QR Code</p>
+            <p style="margin:0 0 18px 0;color:#111827;font-family:Menlo,Consolas,monospace;font-size:18px;line-height:1.35;word-break:break-word;">{qr_code}</p>
+            {f'<img src="cid:{qr_cid}" alt="Access pass QR" width="260" height="260" style="display:block;margin:0 0 22px 0;border-radius:18px;background:#ffffff;padding:16px;border:1px solid #d1d5db;" />' if qr_cid else ""}
+            <p style="margin:0 0 10px 0;color:#4b5563;font-size:16px;">Valid until: {valid_to}</p>
+            <p style="margin:0;color:#4b5563;font-size:16px;">Max visits: {max_visits}</p>
           </div>
         </div>
       </body>
@@ -241,6 +241,7 @@ def send_visitor_access_pass(
         html_part = message.get_payload()[-1]
         maintype, subtype = qr_mime.split("/", 1)
         html_part.add_related(qr_png, maintype=maintype, subtype=subtype, cid=qr_cid)
+        message.add_attachment(qr_png, maintype=maintype, subtype=subtype, filename=f"access-pass-{qr_code}.png")
 
     try:
         with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:

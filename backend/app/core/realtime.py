@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import AsyncGenerator, Dict, Set
+from typing import AsyncGenerator, Dict, Set, Optional
 
 SubscriberQueue = asyncio.Queue[Dict[str, object]]
 
@@ -14,7 +14,7 @@ async def publish_event(event: Dict[str, object]) -> None:
         await queue.put(event)
 
 
-async def event_stream(user_id: int | None = None) -> AsyncGenerator[str, None]:
+async def event_stream(user_id: Optional[int] = None) -> AsyncGenerator[str, None]:
     queue: SubscriberQueue = asyncio.Queue()
     _subscribers.add(queue)
     try:
