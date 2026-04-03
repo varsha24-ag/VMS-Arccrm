@@ -13,6 +13,8 @@ export interface HostEmployee {
   name: string;
   department: string;
   email?: string | null;
+  phone?: string | null;
+  project?: string | null;
 }
 
 interface HostSearchProps {
@@ -123,6 +125,34 @@ export default function HostSearch({ value, onChange, onSelectHost }: HostSearch
           };
           const value = row?.department ?? row?.department_name ?? row?.dept ?? "";
           return <span>{String(value ?? "").trim() || "-"}</span>;
+        },
+      },
+      {
+        field: "project",
+        headerName: "Project",
+        type: "string",
+        flex: 1,
+        minWidth: 160,
+        filterable: true,
+        valueGetter: ((params: HostValueGetterParams) => {
+          return String(params?.row?.project ?? "").trim();
+        }),
+        renderCell: (params: GridRenderCellParams<HostEmployee>) => {
+          return <span>{params?.row?.project || "-"}</span>;
+        },
+      },
+      {
+        field: "phone",
+        headerName: "Phone",
+        type: "string",
+        flex: 1,
+        minWidth: 140,
+        filterable: true,
+        valueGetter: ((params: HostValueGetterParams) => {
+          return String(params?.row?.phone ?? "").trim();
+        }),
+        renderCell: (params: GridRenderCellParams<HostEmployee>) => {
+          return <span>{params?.row?.phone || "-"}</span>;
         },
       },
       {
