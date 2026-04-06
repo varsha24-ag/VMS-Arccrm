@@ -13,8 +13,8 @@ export const MODULES: ModuleConfig[] = [
   { id: "reports", label: "Reports", path: "/admin/reports", role: ["admin"] },
   { id: "users", label: "User Management", path: "/admin/users", role: ["admin"] },
   { id: "admin-visitors", label: "Visitors", path: "/reception/visitors", role: ["admin"] },
+  { id: "admin-passes", label: "Visitor Access Pass", path: "/admin/passes", role: ["admin"] },
   { id: "settings", label: "System Settings", path: "/admin/settings", role: ["admin"] },
-  { id: "audit", label: "Audit Logs", path: "/admin/audit", role: ["admin"] },
 
   // Receptionist Modules
   { id: "reception-dashboard", label: "Dashboard", path: "/reception/dashboard", role: ["receptionist"] },
@@ -34,7 +34,7 @@ export const MODULES: ModuleConfig[] = [
   { id: "employee-pending-approvals", label: "Pending Approvals", path: "/employee/visitors?view=pending", role: ["employee"] },
   { id: "employee-approved", label: "Approved", path: "/employee/visitors?view=approved", role: ["employee"] },
   { id: "employee-missed", label: "Missed", path: "/employee/visitors?view=missed", role: ["employee"] },
-  { id: "employee-passes", label: "Generate Visitor Pass", path: "/employee/passes", role: ["employee"] },
+  { id: "employee-passes", label: "Visitor Access Pass", path: "/employee/passes", role: ["employee"] },
 ];
 
 export function getModulesForRole(role: UserRole): ModuleConfig[] {
