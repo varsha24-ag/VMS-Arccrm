@@ -233,8 +233,58 @@ def seed_id_cards(db: Session) -> int:
     return len(seed_cards)
 
 
+def repair_employee_schema() -> None:
+    inspector = inspect(engine)
+    if "employees" not in inspector.get_table_names():
+        return
+
+    columns = {col["name"] for col in inspector.get_columns("employees")}
+
+    with engine.begin() as connection:
+        if "resource_id" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN resource_id INTEGER"))
+            columns.add("resource_id")
+        if "employee_code" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN employee_code VARCHAR"))
+            columns.add("employee_code")
+        if "is_current_employee" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN is_current_employee VARCHAR"))
+            columns.add("is_current_employee")
+        if "father_name" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN father_name VARCHAR"))
+            columns.add("father_name")
+        if "mother_name" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN mother_name VARCHAR"))
+            columns.add("mother_name")
+        if "dob" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN dob VARCHAR"))
+            columns.add("dob")
+        if "graduation" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN graduation VARCHAR"))
+            columns.add("graduation")
+        if "doj" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN doj VARCHAR"))
+            columns.add("doj")
+        if "expected_joining_date" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN expected_joining_date VARCHAR"))
+            columns.add("expected_joining_date")
+        if "designation" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN designation VARCHAR"))
+            columns.add("designation")
+        if "project" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN project VARCHAR"))
+            columns.add("project")
+        if "project_lead" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN project_lead VARCHAR"))
+            columns.add("project_lead")
+        if "shift" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN shift VARCHAR"))
+            columns.add("shift")
+
+
 def bootstrap_database() -> int:
     create_tables()
+    repair_employee_schema()
     repair_visitor_schema()
     repair_visit_schema()
     repair_access_pass_schema()
