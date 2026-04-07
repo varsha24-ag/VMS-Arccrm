@@ -11,3 +11,5 @@ python-multipart==0.0.9
 alembic==1.13.3
 APScheduler==3.10.4
 qrcode[pil]==7.4.2
+apscheduler==3.11.2
+requests==2.32.5
