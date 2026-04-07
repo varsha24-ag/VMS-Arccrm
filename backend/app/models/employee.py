@@ -14,6 +14,20 @@ class Employee(Base):
     password_hash = Column(String, nullable=False)
     role = Column(String, nullable=False)
     department = Column(String, nullable=True)
+    
+    resource_id = Column(Integer, nullable=True)
+    employee_code = Column(String, nullable=True)
+    is_current_employee = Column(String, nullable=True)  # Keeping as String/Boolean
+    father_name = Column(String, nullable=True)
+    mother_name = Column(String, nullable=True)
+    dob = Column(String, nullable=True)
+    graduation = Column(String, nullable=True)
+    doj = Column(String, nullable=True)
+    expected_joining_date = Column(String, nullable=True)
+    designation = Column(String, nullable=True)
+    project = Column(String, nullable=True)
+    project_lead = Column(String, nullable=True)
+    shift = Column(String, nullable=True)
 
     @validates("phone")
     def validate_phone(self, key, value):
