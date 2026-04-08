@@ -176,7 +176,7 @@ function AppGridFilterPanel<R>({
     const isSingleSelect = column.type === "singleSelect" && Array.isArray(column.valueOptions);
     const isPurposeField = column.field === "purpose";
     const purposeOptions = isPurposeField ? valueOptionsMap[column.field] ?? [] : [];
-    const isDateField = column.field.toLowerCase().includes("created");
+    const isDateField = column.field.toLowerCase().includes("date") || column.field.toLowerCase().includes("time") || column.field.toLowerCase().includes("created") || ["valid_from", "valid_to"].includes(column.field);
 
     if (isDateField) {
       const hasFrom = Boolean(filters.dateFrom[column.field]);
@@ -461,7 +461,7 @@ export default function AppDataGrid<R extends object>({
         const rawValue = getRawValue(column, row, id);
         const cellValue = normalizeValue(rawValue);
         const filterValue = normalizeValue(panelFilters.fields[field]);
-        const isDateField = field.toLowerCase().includes("created");
+        const isDateField = field.toLowerCase().includes("date") || field.toLowerCase().includes("time") || field.toLowerCase().includes("created") || ["valid_from", "valid_to"].includes(field);
 
         if (isDateField) {
           const from = parseDateInput(panelFilters.dateFrom[field] ?? "");

@@ -1,7 +1,7 @@
 import { clearAuthSession, getAccessToken } from "./auth";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
-const DEFAULT_TIMEOUT_MS = 15000;
+const DEFAULT_TIMEOUT_MS = 30000;
 
 export function resolveApiAssetUrl(value?: string | null): string | null {
   if (!value) return null;
@@ -89,7 +89,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     );
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("Request timed out. Please wait and try again.");
+      throw new Error(`Request timed out for ${path}. Please wait and try again.`);
     }
     if (error instanceof TypeError) {
       throw new Error(`Unable to reach the server at ${API_BASE_URL}. Make sure the backend is running and reachable.`);
