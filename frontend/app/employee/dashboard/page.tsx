@@ -80,13 +80,13 @@ export default function EmployeeDashboard() {
   const stats = useMemo(() => {
     const pendingCount = visitorRows.filter((row) => row.status === "pending").length;
     const approvedCount = visitorRows.filter((row) => row.status === "approved").length;
-    const missedCount = visitorRows.filter((row) => ["checked_out", "auto_checked_out", "rejected"].includes(row.status)).length;
+    const rejectedCount = visitorRows.filter((row) => row.status === "rejected").length;
 
     return [
       { label: "My Visitors", value: String(visitorRows.length), delta: "Open full list", href: "/employee/visitors" },
       { label: "Pending Approvals", value: String(pendingCount), delta: "Needs action", href: "/employee/visitors?view=pending" },
       { label: "Approved", value: String(approvedCount), delta: "Approved visitors", href: "/employee/visitors?view=approved" },
-      { label: "Missed", value: String(missedCount), delta: "Closed or rejected", href: "/employee/visitors?view=missed" },
+      { label: "Rejected", value: String(rejectedCount), delta: "Rejected visitors", href: "/employee/visitors?view=rejected" },
     ];
   }, [visitorRows]);
 

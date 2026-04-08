@@ -401,6 +401,16 @@ def checkout_visit(db: Session, payload: VisitCheckout) -> VisitOut:
     visit.checkout_time = datetime.now(timezone.utc)
     visit.status = "checked_out"
 
+    # If this was an access pass visit, expire the pass immediately
+    if visit.qr_code and visit.source == "access_pass":
+        access_pass = (
+            db.query(VisitorAccessPass)
+            .filter(VisitorAccessPass.qr_code == visit.qr_code)
+            .first()
+        )
+        if access_pass:
+            access_pass.remaining_visits = 0
+
     visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
     if visitor and visitor.id_number:
         card = db.query(IdCard).filter(IdCard.id_number == visitor.id_number).first()
@@ -671,7 +681,8 @@ def get_employee_access_passes(db: Session, host_employee_id: int) -> List[Acces
 
     rows: List[AccessPassListItem] = []
     for access_pass, visitor in access_passes:
-        is_expired = access_pass.valid_to < now or access_pass.remaining_visits <= 0
+        # Status is now strictly event-based (remaining_visits is zeroed on checkout)
+        is_expired = access_pass.remaining_visits <= 0
         rows.append(
             AccessPassListItem(
                 id=access_pass.id,
@@ -739,10 +750,7 @@ def qr_checkin(db: Session, payload: QRCheckin) -> VisitOut:
     if not access_pass:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Access pass not found")
 
-    now = datetime.now(timezone.utc)
-    if access_pass.valid_from > now or access_pass.valid_to < now:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Access pass expired")
-
+    # Logic now only relies on remaining_visits, time checks removed as per strict requirements
     if access_pass.remaining_visits <= 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Visit limit exceeded")
 
