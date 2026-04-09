@@ -294,7 +294,7 @@ export default function ReceptionRegisterPage() {
                     onChange={(e) => {
                       const value = e.target.value;
                       setPurposeOption(value);
-                      if (value !== "Other") {
+                      if (value !== "Custom") {
                         setCustomPurpose("");
                         setRegister((prev) => ({ ...prev, purpose: value }));
                       } else {
@@ -302,7 +302,7 @@ export default function ReceptionRegisterPage() {
                       }
                     }}
                   >
-                    {["Meeting", "Interview", "Delivery", "Maintenance", "Vendor", "Other"].map((option) => (
+                    {["Meeting", "Interview", "Delivery", "Maintenance", "Vendor", "Custom"].map((option) => (
                       <option key={option} value={option} className="bg-[var(--surface-1)] text-[var(--text-1)]">
                         {option}
                       </option>
@@ -310,7 +310,7 @@ export default function ReceptionRegisterPage() {
                   </select>
                   {formErrors.purpose ? <p className="mt-1 text-xs text-red-400">{formErrors.purpose}</p> : null}
                 </label>
-                {purposeOption === "Other" ? (
+                {purposeOption === "Custom" ? (
                   <label className="text-sm text-[var(--text-2)] md:col-span-2">
                     Custom Purpose
                     <input
