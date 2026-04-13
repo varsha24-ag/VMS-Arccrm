@@ -124,14 +124,19 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
               <Link
                 key={module.id}
                 href={module.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${
+                className={`flex items-center justify-between px-3 py-2.5 rounded-lg transition-all group ${
                   isActive
                     ? "bg-[var(--nav-active-bg)] text-[var(--accent)]"
                     : "text-[var(--text-2)] hover:bg-[var(--nav-hover-bg)] hover:text-[var(--text-1)]"
                 }`}
               >
-
                 {(isSidebarOpen || isMobileNavOpen) && <span className="text-sm font-medium whitespace-nowrap">{module.label}</span>}
+                
+                {isActive && (isSidebarOpen || isMobileNavOpen) && (
+                  <svg className="w-4 h-4 shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                )}
               </Link>
             );
           })}
