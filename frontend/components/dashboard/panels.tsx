@@ -83,7 +83,7 @@ export function Panel({ title, children, action, className, contentClassName }: 
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-base font-semibold text-[var(--text-1)] sm:text-lg">{title}</h2>
-        {action ?? <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />}
+        {action}
       </div>
       <div className={`mt-3 ${contentClassName ?? ""}`}>{children}</div>
     </section>
