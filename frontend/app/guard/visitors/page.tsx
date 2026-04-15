@@ -135,7 +135,7 @@ function TableColumnToggle({ columns, visibleColumns, defaultVisibleColumns, onT
 }
 
 function ReceptionVisitorsContent() {
-  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
+  const user = useAuthGuard({ allowedRoles: ["guard", "admin"] });
   const searchParams = useSearchParams();
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [selectedVisitId, setSelectedVisitId] = useState<number | null>(null);

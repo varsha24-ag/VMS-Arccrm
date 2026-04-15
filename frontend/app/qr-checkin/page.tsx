@@ -10,10 +10,10 @@ export default function PublicQrCheckinPage() {
   useEffect(() => {
     const code = searchParams.get("code");
     if (code) {
-      router.replace(`/reception/qr-visitor?code=${encodeURIComponent(code)}`);
+      router.replace(`/guard/qr-visitor?code=${encodeURIComponent(code)}`);
       return;
     }
-    router.replace("/reception/qr-visitor");
+    router.replace("/guard/qr-visitor");
   }, [router, searchParams]);
 
   return null;

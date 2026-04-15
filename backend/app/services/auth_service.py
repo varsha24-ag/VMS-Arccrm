@@ -1,60 +1,71 @@
-import re
+import requests
 from typing import Optional
 
-from sqlalchemy import func, or_
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.security import create_access_token, verify_password
+from app.core.security import create_access_token
 from app.models.employee import Employee
 from app.schemas.auth import LoginRequest, LoginResponse, UserOut
-
-EMAIL_REGEX = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
-PHONE_REGEX = re.compile(r"^[0-9]{10}$")
+from app.core.config import settings
 
 
-def find_user_by_identifier(db: Session, identifier: str) -> Optional[Employee]:
+def find_user_by_email_and_resource_id(db: Session, email: str, resource_id: int) -> Optional[Employee]:
     """
-    Finds a user by email or phone number.
-    Ensures case-insensitive search for email and clean lookup for phone.
+    Finds a user by email and resource_id in the local DB.
     """
-    clean_id = identifier.strip()
-    
-    # Try email lookup if it looks like an email
-    if EMAIL_REGEX.match(clean_id):
-        return db.query(Employee).filter(func.lower(Employee.email) == clean_id.lower()).first()
-    
-    # Try phone lookup if it looks like a phone number (possibly with formatting)
-    digits = "".join(filter(str.isdigit, clean_id))
-    if len(digits) == 10 and PHONE_REGEX.match(digits):
-        return db.query(Employee).filter(Employee.phone == digits).first()
-    
-    # Fallback to combined search if format is ambiguous
     return db.query(Employee).filter(
-        or_(
-            func.lower(Employee.email) == clean_id.lower(),
-            Employee.phone == digits if len(digits) == 10 else Employee.phone == clean_id
-        )
+        func.lower(Employee.email) == email.strip().lower(),
+        Employee.resource_id == int(resource_id)
     ).first()
 
 
 def login_employee(db: Session, data: LoginRequest) -> LoginResponse:
     """
-    Core login logic. Validates credentials and returns JWT session.
+    Core login logic. Validates credentials against ARCCRM API and returns JWT session.
     """
-    user = find_user_by_identifier(db, data.identifier)
+    app_id = settings.APP_ID or ""
+    api_url = f"{settings.THIRD_PARTY_API_DOMAIN}/api/SignIn/AppSignIn/validate"
+
+    payload = {
+        "EMail": data.email,
+        "Password": data.password,
+        "AppId": app_id
+    }
+
+    try:
+        response = requests.post(api_url, json=payload, timeout=10)
+        response.raise_for_status()
+        api_data = response.json()
+    except Exception:
+        raise ValueError("Login failed")
+
+    auth_status = str(api_data.get("Authentication_status")).lower()
+    if auth_status != "true":
+        raise ValueError("Login failed")
+
+    resource_id = api_data.get("ResourceID")
+    login_role = api_data.get("LoginRole")
+
+    if not resource_id or not login_role:
+        raise ValueError("Login failed")
+
+    # Role mapping update
+    if login_role.lower() in ["receptionist", "reception"]:
+        login_role = "guard"
+
+    user = find_user_by_email_and_resource_id(db, data.email, resource_id)
+    # print(user)
     
     if not user:
-        raise ValueError("Invalid user or credentials")
+        raise ValueError("Login failed")
 
-    if not verify_password(data.password, user.password_hash):
-        raise ValueError("Invalid user or credentials")
-
-    token = create_access_token(user_id=user.id, role=user.role)
+    token = create_access_token(user_id=resource_id, role=user.role)
     
     return LoginResponse(
         access_token=token,
         user=UserOut(
-            id=user.id, 
+            id=resource_id, 
             name=user.name, 
             role=user.role
         ),

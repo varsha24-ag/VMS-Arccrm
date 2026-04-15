@@ -43,7 +43,7 @@ function normalizeQrInput(rawValue: string) {
 }
 
 export default function ReceptionQrScannerPage() {
-  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
+  const user = useAuthGuard({ allowedRoles: ["guard", "admin"] });
   const router = useRouter();
   const { pushToast } = useToast();
 
@@ -130,10 +130,10 @@ export default function ReceptionQrScannerPage() {
         lastSuccessAtRef.current = Date.now();
         window.setTimeout(() => {
           if (resolution.kind === "visit") {
-            router.push(`/reception/qr-visitor?visit_id=${resolution.visitId}`);
+            router.push(`/guard/qr-visitor?visit_id=${resolution.visitId}`);
             return;
           }
-          router.push(`/reception/qr-visitor?code=${encodeURIComponent(resolution.code)}`);
+          router.push(`/guard/qr-visitor?code=${encodeURIComponent(resolution.code)}`);
         }, 1200);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Invalid QR";

@@ -57,7 +57,7 @@ def get_current_user(
     except JWTError as exc:
         raise TokenError("Unauthorized access") from exc
 
-    user = db.query(Employee).filter(Employee.id == int(user_id)).first()
+    user = db.query(Employee).filter(Employee.resource_id == int(user_id)).first()
     if not user:
         raise TokenError("User not found")
 
@@ -74,7 +74,7 @@ def get_user_from_token(token: str, db: Session) -> Employee:
     except JWTError as exc:
         raise TokenError("Unauthorized access") from exc
 
-    user = db.query(Employee).filter(Employee.id == int(user_id)).first()
+    user = db.query(Employee).filter(Employee.resource_id == int(user_id)).first()
     if not user:
         raise TokenError("User not found")
 

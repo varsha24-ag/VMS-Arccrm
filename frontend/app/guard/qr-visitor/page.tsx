@@ -104,7 +104,7 @@ function getStatusTone(detail: VisitDetail | null) {
 }
 
 export default function ReceptionQrVisitorPage() {
-  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
+  const user = useAuthGuard({ allowedRoles: ["guard", "admin"] });
   const router = useRouter();
   const searchParams = useSearchParams();
   const { pushToast } = useToast();
@@ -162,7 +162,7 @@ export default function ReceptionQrVisitorPage() {
         });
         setPhotoUrl(resolveApiAssetUrl(detailData.photo_url) ?? "");
         if (detailData.visit_id) {
-          router.replace(`/reception/qr-visitor?visit_id=${detailData.visit_id}`);
+          router.replace(`/guard/qr-visitor?visit_id=${detailData.visit_id}`);
         } else {
           setLoading(false);
         }
@@ -242,7 +242,7 @@ export default function ReceptionQrVisitorPage() {
         description: `${detail.visitor_name} has been checked in.`,
         variant: "success",
       });
-      router.push("/reception/qr-checkin");
+      router.push("/guard/qr-checkin");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Check-in failed";
       pushToast({ title: "Check-in failed", description: message, variant: "error" });
@@ -380,7 +380,7 @@ export default function ReceptionQrVisitorPage() {
 
               <div className="flex flex-wrap items-center gap-3">
                 <Link
-                  href="/reception/qr-checkin"
+                  href="/guard/qr-checkin"
                   className="rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)]"
                 >
                   Back To Scan
