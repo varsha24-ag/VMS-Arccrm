@@ -14,13 +14,13 @@ import { ThemeToggle } from "@/components/theme/theme-toggle";
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface FormState {
-  identifier: string;
+  email: string;
   password: string;
   staySignedIn: boolean;
 }
 
 interface FormErrors {
-  identifier?: string;
+  email?: string;
   password?: string;
   general?: string;
 }
@@ -28,7 +28,7 @@ interface FormErrors {
 export default function LoginPage() {
   const router = useRouter();
   const [form, setForm] = useState<FormState>({
-    identifier: "",
+    email: "",
     password: "",
     staySignedIn: false
   });
@@ -37,17 +37,14 @@ export default function LoginPage() {
 
   function validate(): boolean {
     const newErrors: FormErrors = {};
-    const cleanId = form.identifier.trim();
+    const cleanId = form.email.trim();
 
     if (!cleanId) {
-      newErrors.identifier = "Email or phone number is required";
+      newErrors.email = "Email is required";
     } else {
       const isEmail = emailRegex.test(cleanId);
-      const digitsOnly = cleanId.replace(/\D/g, "");
-      const isPhone = digitsOnly.length === 10;
-
-      if (!isEmail && !isPhone) {
-        newErrors.identifier = "Enter a valid email or 10-digit phone number";
+      if (!isEmail) {
+        newErrors.email = "Enter a valid email address";
       }
     }
 
@@ -71,7 +68,7 @@ export default function LoginPage() {
 
     try {
       const response = await loginApi({
-        identifier: form.identifier.trim(),
+        email: form.email.trim(),
         password: form.password
       });
 
@@ -179,13 +176,13 @@ export default function LoginPage() {
 
             <form className="space-y-6" onSubmit={handleSubmit}>
               <Input
-                label="User Name"
-                id="identifier"
-                type="text"
-                value={form.identifier}
-                onChange={(e) => setForm((prev) => ({ ...prev, identifier: e.target.value }))}
+                label="Email Address"
+                id="email"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
                 placeholder="name@company.com"
-                error={errors.identifier}
+                error={errors.email}
                 required
               />
 

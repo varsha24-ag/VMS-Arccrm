@@ -179,7 +179,7 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-bold text-[var(--text-1)]">Recent Visitors</h3>
             <Link
-              href="/reception/visitors"
+              href="/guard/visitors"
               className="text-sm font-semibold text-[var(--accent)] hover:brightness-95"
             >
               View all

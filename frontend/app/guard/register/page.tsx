@@ -56,7 +56,7 @@ function StepIndicator({ stepIndex, current }: { stepIndex: number; current: num
 }
 
 export default function ReceptionRegisterPage() {
-  const user = useAuthGuard({ allowedRoles: ["receptionist"] });
+  const user = useAuthGuard({ allowedRoles: ["guard"] });
   const router = useRouter();
   const { pushToast } = useToast();
   const [step, setStep] = useState(0);
@@ -171,7 +171,7 @@ export default function ReceptionRegisterPage() {
       setVisitorTypeOption("Guest");
       setCustomVisitorType("");
       setStep(0);
-      router.push("/reception/qr-checkin");
+      router.push("/guard/qr-checkin");
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Registration failed";
       pushToast({
