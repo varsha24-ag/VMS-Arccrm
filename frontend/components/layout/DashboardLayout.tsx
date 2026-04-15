@@ -130,11 +130,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                     : "text-[var(--text-2)] hover:bg-[var(--nav-hover-bg)] hover:text-[var(--text-1)]"
                 }`}
               >
-                <div
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    isActive ? "bg-[var(--accent)]" : "bg-transparent"
-                  } shrink-0`}
-                />
+
                 {(isSidebarOpen || isMobileNavOpen) && <span className="text-sm font-medium whitespace-nowrap">{module.label}</span>}
               </Link>
             );

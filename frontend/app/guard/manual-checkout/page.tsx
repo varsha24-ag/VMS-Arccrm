@@ -37,6 +37,7 @@ export default function ManualCheckoutPage() {
   }, [user]);
 
   async function loadHistory() {
+    setLoading(true);
     try {
       const data = await apiFetch<VisitHistoryItem[]>("/visit/history");
       setHistory(data);
@@ -46,6 +47,8 @@ export default function ManualCheckoutPage() {
         description: err instanceof Error ? err.message : "Failed to load history",
         variant: "error",
       });
+    } finally {
+      setLoading(false);
     }
   }
 

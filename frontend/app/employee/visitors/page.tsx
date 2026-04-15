@@ -133,15 +133,7 @@ function EmployeeVisitorsContent() {
   const [visibleColumns, setVisibleColumns] = useState<string[]>(defaultVisibleColumns);
   const currentView = searchParams.get("view") ?? "all";
 
-  const getDisplayStatus = useCallback(
-    (status: string) => {
-      if (currentView === "missed" && ["checked_out", "auto_checked_out", "rejected"].includes(status)) {
-        return "missed";
-      }
-      return status;
-    },
-    [currentView]
-  );
+  const getDisplayStatus = useCallback((status: string) => status, []);
 
   const statusBadgeClass = (status: string) => {
     switch (status) {
@@ -149,8 +141,6 @@ function EmployeeVisitorsContent() {
         return "border-emerald-300/60 bg-emerald-500/15 text-emerald-400";
       case "pending":
         return "border-amber-300/60 bg-amber-500/15 text-amber-400";
-      case "missed":
-        return "border-yellow-700/70 bg-yellow-900/25 text-yellow-300";
       case "rejected":
         return "border-red-300/60 bg-red-500/15 text-red-400";
       case "checked_in":
@@ -203,12 +193,12 @@ function EmployeeVisitorsContent() {
           noRowsLabel: "No approved visitors found.",
           statuses: ["approved"],
         };
-      case "missed":
+      case "rejected":
         return {
-          title: "Missed Visitors",
-          subtitle: "Review closed or rejected visitors assigned to you.",
-          noRowsLabel: "No missed visitors found.",
-          statuses: ["checked_out", "auto_checked_out", "rejected"],
+          title: "Rejected Visitors",
+          subtitle: "Review rejected visitors assigned to you.",
+          noRowsLabel: "No rejected visitors found.",
+          statuses: ["rejected"],
         };
       default:
         return {

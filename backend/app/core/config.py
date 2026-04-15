@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     RECEPTION_EMAIL: Optional[str] = None
     BUSINESS_TIMEZONE: str = "Asia/Kolkata"
 
+    # Missing fields from .env
+    EMPLOYEE_API_URL: Optional[str] = None
+    EMPLOYEE_APP_ID: Optional[str] = None
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
     @property

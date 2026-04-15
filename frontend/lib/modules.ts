@@ -33,7 +33,7 @@ export const MODULES: ModuleConfig[] = [
   { id: "employee-visitors", label: "My Visitor", path: "/employee/visitors", role: ["employee"] },
   { id: "employee-pending-approvals", label: "Pending Approvals", path: "/employee/visitors?view=pending", role: ["employee"] },
   { id: "employee-approved", label: "Approved", path: "/employee/visitors?view=approved", role: ["employee"] },
-  { id: "employee-missed", label: "Missed", path: "/employee/visitors?view=missed", role: ["employee"] },
+  { id: "employee-rejected", label: "Rejected", path: "/employee/visitors?view=rejected", role: ["employee"] },
   { id: "employee-passes", label: "Visitor Access Pass", path: "/employee/passes", role: ["employee"] },
 ];
 
