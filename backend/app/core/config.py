@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     APP_BASE_URL: Optional[str] = None
     FRONTEND_BASE_URL: Optional[str] = None
     THIRD_PARTY_API_DOMAIN: Optional[str] = None
+    ARCCRM_API_URL: Optional[str] = None
+    APP_ID: Optional[str] = None
     RECEPTION_EMAIL: Optional[str] = None
     BUSINESS_TIMEZONE: str = "Asia/Kolkata"
 

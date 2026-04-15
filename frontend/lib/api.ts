@@ -40,7 +40,7 @@ async function fetchWithTimeout(input: RequestInfo, init: RequestInit = {}, time
 }
 
 export interface LoginRequest {
-  identifier: string;
+  email: string;
   password: string;
 }
 
