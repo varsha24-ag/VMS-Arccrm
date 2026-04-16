@@ -420,6 +420,17 @@ def checkout_visit(db: Session, payload: VisitCheckout) -> VisitOut:
     db.commit()
     db.refresh(visit)
 
+    # Emit status update event for real-time synchronization
+    anyio.from_thread.run(
+        publish_event,
+        {
+            "type": "visit_status",
+            "visit_id": visit.id,
+            "visitor_id": visit.visitor_id,
+            "status": visit.status,
+        },
+    )
+
     return VisitOut(
         id=visit.id,
         visitor_id=visit.visitor_id,

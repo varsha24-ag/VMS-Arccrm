@@ -117,7 +117,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
   const { pushToast } = useToast();
 
   useEffect(() => {
-    if (!user || !["guard", "admin"].includes(user.role)) return;
+    if (!user || !["guard", "admin", "employee"].includes(user.role)) return;
     const token = getAccessToken();
     if (!token) return;
     const source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);
@@ -130,12 +130,16 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
           visitor_id?: number;
         };
         if (payload?.type !== "visit_status" || !payload.status) return;
+
+        // Broadcast a global event so other pages can refresh automatically
+        window.dispatchEvent(new CustomEvent("visitor-status-updated", { detail: payload }));
+
         const statusLabel =
           payload.status === "approved"
             ? "Approved by host"
             : payload.status === "rejected"
-            ? "Rejected by host"
-            : "Status updated";
+              ? "Rejected by host"
+              : "Status updated";
         const visitLabel = payload.visit_id ? `Visit #${payload.visit_id}` : "Visit update";
         pushToast({
           title: statusLabel,
