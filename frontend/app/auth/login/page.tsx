@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 
 import { loginApi } from "@/lib/api";
 import { getRoleRedirectPath, normalizeRole, setAuthSession } from "@/lib/auth";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Checkbox } from "@/components/ui/Checkbox";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

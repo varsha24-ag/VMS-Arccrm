@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     EMPLOYEE_API_URL: Optional[str] = None
     EMPLOYEE_APP_ID: Optional[str] = None
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
     @property
     def sqlalchemy_database_url(self) -> str:

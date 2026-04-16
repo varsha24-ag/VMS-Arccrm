@@ -1,4 +1,4 @@
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -15,9 +15,13 @@ router = APIRouter(prefix="/employees", tags=["employees"])
 @router.get("/hosts")
 def list_hosts(
     db: Session = Depends(get_db),
+    exclude_role: Optional[str] = None,
     current_user: Annotated[Employee, Depends(get_current_user)] = None,
 ) -> List[dict]:
-    employees = db.query(Employee).all()
+    query = db.query(Employee)
+    if exclude_role:
+        query = query.filter(Employee.role != exclude_role)
+    employees = query.all()
     return [
         {
             "id": emp.id,
