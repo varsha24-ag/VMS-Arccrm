@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -73,3 +73,18 @@ def get_admin_dashboard_summary(
         pending_approvals=pending_approvals,
         recent_visits=recent_visits,
     )
+
+
+@router.post("/promote/{employee_id}")
+def promote_to_admin(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(require_roles("admin"))] = None,
+):
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    emp.role = "admin"
+    db.commit()
+    return {"status": "success", "message": f"{emp.name} is now an admin"}

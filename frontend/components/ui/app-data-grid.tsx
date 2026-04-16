@@ -288,7 +288,7 @@ function DataGridToolbarButton({
   onClick: () => void;
   children: ReactNode;
 }) {
-  const baseClass = "inline-flex items-center justify-center w-[110px] h-[40px] m-0 p-0 box-border rounded-full border border-solid text-xs font-semibold leading-none transition-all focus:outline-none";
+  const baseClass = "inline-flex shrink-0 items-center justify-center w-[110px] h-[40px] m-0 p-0 box-border rounded-full border border-solid text-xs font-semibold leading-none transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]";
   const className = active
     ? `${baseClass} border-[var(--accent)] bg-[var(--nav-active-bg)] text-[var(--accent)] shadow-[0_0_0_1px_var(--accent)]`
     : `${baseClass} border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)] hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]`;

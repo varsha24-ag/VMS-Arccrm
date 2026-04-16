@@ -32,14 +32,10 @@ def sync_employees(db: Session) -> None:
         return
 
     api_url = f"{settings.THIRD_PARTY_API_DOMAIN.rstrip('/')}/api/v1/Common/Common/EmployeeInformation"
-    payload = {
-        "ResourceID": 0,
-        "EmpUniqueID": "",
-        "IsCurrentEmployee": 1
-    }
+    payload = {}
     
     try:
-        response = requests.post(api_url, json=payload, timeout=30)
+        response = requests.post(api_url, json=payload, timeout=60)
         response.raise_for_status()
         api_data = response.json()
     except Exception as e:
@@ -56,19 +52,34 @@ def sync_employees(db: Session) -> None:
     db_emp_by_phone = {emp.phone: emp for emp in existing_employees if emp.phone}
     
     api_rids = set()
+    processed_emails = set()
+    processed_phones = set()
     new_inserts = 0
     updated_count = 0
     default_password_hash = get_password_hash("Employee@123")
     
     for api_emp in api_data:
+        # Filter for current employees only
+        is_current = api_emp.get("IsCurrentEmployee")
+        if not is_current or str(is_current).lower() not in ["true", "1", "yes"]:
+            continue
+            
         rid = api_emp.get("ResourceID")
-        email = api_emp.get("Email")
+        email_raw = api_emp.get("Email")
+        email = email_raw.strip().lower() if email_raw and email_raw.strip() else None
         
         if not rid and not email:
             continue
             
         if rid:
+            if rid in api_rids:
+                continue
             api_rids.add(rid)
+            
+        if email:
+            if email in processed_emails:
+                continue
+            processed_emails.add(email)
             
         phone_raw = api_emp.get("Phone_M")
         phone = None
@@ -76,21 +87,25 @@ def sync_employees(db: Session) -> None:
             digits = "".join(filter(str.isdigit, str(phone_raw)))
             if 10 <= len(digits) <= 15:
                 phone = str(phone_raw)
+                if phone in processed_phones:
+                    phone = None # Avoid duplicate phone in the same batch
+                else:
+                    processed_phones.add(phone)
                 
         # Find existing employee safely
         match = None
         if rid and rid in db_emp_by_rid:
             match = db_emp_by_rid[rid]
-        elif email and email.lower() in db_emp_by_email:
-            match = db_emp_by_email[email.lower()]
+        elif email and email in db_emp_by_email:
+            match = db_emp_by_email[email]
         elif phone and phone in db_emp_by_phone:
             match = db_emp_by_phone[phone]
             
         if match:
             # Check collisions on phone or email with ANOTHER user logic
-            if phone and phone != match.phone and phone in db_emp_by_phone:
+            if phone and match.phone != phone and phone in db_emp_by_phone:
                 phone = None # Avoid unique constraint collision
-            if email and email.lower() != (match.email or "").lower() and email.lower() in db_emp_by_email:
+            if email and (match.email or "").lower() != email and email in db_emp_by_email:
                 email = None
                 
             match.name = api_emp.get("EmployeeName", match.name)
@@ -120,7 +135,7 @@ def sync_employees(db: Session) -> None:
         else:
             if phone and phone in db_emp_by_phone:
                 phone = None
-            if email and email.lower() in db_emp_by_email:
+            if email and email in db_emp_by_email:
                 continue # Edge case, totally skip
                 
             new_emp = Employee(
@@ -146,7 +161,7 @@ def sync_employees(db: Session) -> None:
             )
             db.add(new_emp)
             if rid: db_emp_by_rid[rid] = new_emp
-            if email: db_emp_by_email[email.lower()] = new_emp
+            if email: db_emp_by_email[email] = new_emp
             if phone: db_emp_by_phone[phone] = new_emp
             new_inserts += 1
 

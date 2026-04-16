@@ -129,3 +129,8 @@ export async function uploadVisitorPhoto(file: File): Promise<{ photo_url: strin
 
   return response.json();
 }
+export async function promoteToAdmin(employeeId: number): Promise<{ status: string; message: string }> {
+  return apiFetch(`/admin/promote/${employeeId}`, {
+    method: "POST",
+  });
+}
