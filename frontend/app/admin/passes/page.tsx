@@ -96,6 +96,17 @@ export default function AdminPassesPage() {
     };
   }, [fetchPasses, pushToast, user]);
 
+  // Real-time update listener for checkouts and status changes
+  useEffect(() => {
+    const handleUpdate = () => {
+      void fetchPasses().then((data) => {
+        setRows(data ?? []);
+      });
+    };
+    window.addEventListener("visitor-status-updated", handleUpdate);
+    return () => window.removeEventListener("visitor-status-updated", handleUpdate);
+  }, [fetchPasses]);
+
   const filteredRows = useMemo(
     () => (statusFilter === "all" ? rows : rows.filter((row) => row.status === statusFilter)),
     [rows, statusFilter]

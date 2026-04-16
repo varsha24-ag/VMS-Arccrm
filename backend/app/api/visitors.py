@@ -172,6 +172,11 @@ def get_visit_status_by_code(
                 .first()
             )
     if not visit:
+        # Check by assigned ID card number
+        visitor = db.query(Visitor).filter(Visitor.id_number == code).order_by(Visitor.id.desc()).first()
+        if visitor:
+            visit = db.query(Visit).filter(Visit.visitor_id == visitor.id).order_by(Visit.id.desc()).first()
+    if not visit:
         raise HTTPException(status_code=404, detail="Visit not found")
 
     host_name = None
@@ -387,7 +392,7 @@ async def visit_events(
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized access")
 
-    if current_user.role.lower() not in {"receptionist", "admin", "employee"}:
+    if current_user.role.lower() not in {"receptionist", "admin", "employee", "guard"}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized access")
     return StreamingResponse(
         event_stream(current_user.id),

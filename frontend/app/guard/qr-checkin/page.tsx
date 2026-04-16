@@ -572,6 +572,15 @@ export default function ReceptionQrCheckinPage() {
     setResolvedVisitorId(null);
   }, [qrCode]);
 
+  // Listen for real-time status updates from DashboardLayout
+  useEffect(() => {
+    const handleUpdate = () => {
+      void fetchVisitList();
+    };
+    window.addEventListener("visitor-status-updated", handleUpdate);
+    return () => window.removeEventListener("visitor-status-updated", handleUpdate);
+  }, [fetchVisitList]);
+
   if (!user) return null;
 
   return (
