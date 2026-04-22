@@ -35,7 +35,7 @@ def sync_employees(db: Session) -> None:
     payload = {}
     
     try:
-        response = requests.post(api_url, json=payload, timeout=60)
+        response = requests.post(api_url, json=payload, timeout=300)
         response.raise_for_status()
         api_data = response.json()
     except Exception as e:
@@ -92,6 +92,10 @@ def sync_employees(db: Session) -> None:
                 else:
                     processed_phones.add(phone)
                 
+        # Determine role from PersonRole field
+        api_role = str(api_emp.get("PersonRole", "")).lower()
+        target_role = "guard" if "guard" in api_role else "employee"
+                
         # Find existing employee safely
         match = None
         if rid and rid in db_emp_by_rid:
@@ -125,6 +129,7 @@ def sync_employees(db: Session) -> None:
             match.project = api_emp.get("Project", match.project)
             match.project_lead = api_emp.get("ProjectLead", match.project_lead)
             match.shift = api_emp.get("Shift", match.shift)
+            match.role = target_role
             
             # Re-register local maps
             if match.resource_id: db_emp_by_rid[match.resource_id] = match
@@ -143,7 +148,7 @@ def sync_employees(db: Session) -> None:
                 email=email,
                 phone=phone,
                 password_hash=default_password_hash,
-                role="employee",
+                role=target_role,
                 department=api_emp.get("DepartmentName", "General"),
                 resource_id=rid,
                 employee_code=api_emp.get("EmployeeCode"),

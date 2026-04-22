@@ -75,16 +75,22 @@ def get_admin_dashboard_summary(
     )
 
 
-@router.post("/promote/{employee_id}")
-def promote_to_admin(
+@router.post("/assign-role/{employee_id}")
+def assign_role(
     employee_id: int,
+    role: str,
     db: Session = Depends(get_db),
     current_user: Annotated[Employee, Depends(require_roles("admin"))] = None,
 ):
+    valid_roles = ["admin", "guard", "employee"]
+    target_role = role.lower()
+    if target_role not in valid_roles:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}")
+
     emp = db.query(Employee).filter(Employee.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    emp.role = "admin"
+    emp.role = target_role
     db.commit()
-    return {"status": "success", "message": f"{emp.name} is now an admin"}
+    return {"status": "success", "message": f"{emp.name} is now assigned the '{target_role}' role"}
