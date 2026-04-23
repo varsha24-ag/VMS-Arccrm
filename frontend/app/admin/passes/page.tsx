@@ -54,7 +54,7 @@ function createRecreatePayload(row: AccessPassRow): AccessPassPayload {
 }
 
 export default function AdminPassesPage() {
-  const user = useAuthGuard({ allowedRoles: ["admin"] });
+  const user = useAuthGuard({ allowedRoles: ["admin", "superadmin"] });
   const { pushToast } = useToast();
   const [statusFilter, setStatusFilter] = useState<PassStatus>("all");
   const [recreateTarget, setRecreateTarget] = useState<AccessPassRow | null>(null);

@@ -46,7 +46,7 @@ function statusBadgeClass(status: string) {
 }
 
 export default function AdminDashboard() {
-  const user = useAuthGuard({ allowedRoles: ["admin"] });
+  const user = useAuthGuard({ allowedRoles: ["admin", "superadmin"] });
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);

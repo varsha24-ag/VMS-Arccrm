@@ -20,7 +20,7 @@ type EmployeeRow = {
 };
 
 export default function UserManagementPage() {
-  const user = useAuthGuard({ allowedRoles: ["admin"] });
+  const user = useAuthGuard({ allowedRoles: ["admin", "superadmin"] });
   const [rows, setRows] = useState<EmployeeRow[]>([]);
   const [loading, setLoading] = useState(false);
 

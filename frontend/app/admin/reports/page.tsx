@@ -31,7 +31,7 @@ function isToday(value?: string | null) {
 }
 
 export default function ReportsPage() {
-    const user = useAuthGuard({ allowedRoles: ["admin"] });
+    const user = useAuthGuard({ allowedRoles: ["admin", "superadmin"] });
     const [history, setHistory] = useState<VisitHistoryItem[]>([]);
     const [employees, setEmployees] = useState<EmployeeRow[]>([]);
     const [loading, setLoading] = useState(false);

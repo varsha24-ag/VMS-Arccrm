@@ -9,12 +9,12 @@ export interface ModuleConfig {
 
 export const MODULES: ModuleConfig[] = [
   // Admin Modules
-  { id: "admin-dashboard", label: "Dashboard", path: "/admin/dashboard", role: ["admin"] },
-  { id: "reports", label: "Reports", path: "/admin/reports", role: ["admin"] },
-  { id: "users", label: "User Management", path: "/admin/users", role: ["admin"] },
-  { id: "admin-visitors", label: "Visitors", path: "/guard/visitors", role: ["admin"] },
-  { id: "admin-passes", label: "Visitor Access Pass", path: "/admin/passes", role: ["admin"] },
-  { id: "settings", label: "System Settings", path: "/admin/settings", role: ["admin"] },
+  { id: "admin-dashboard", label: "Dashboard", path: "/admin/dashboard", role: ["admin", "superadmin"] },
+  { id: "reports", label: "Reports", path: "/admin/reports", role: ["admin", "superadmin"] },
+  { id: "users", label: "User Management", path: "/admin/users", role: ["admin", "superadmin"] },
+  { id: "admin-visitors", label: "Visitors", path: "/guard/visitors", role: ["admin", "superadmin"] },
+  { id: "admin-passes", label: "Visitor Access Pass", path: "/admin/passes", role: ["admin", "superadmin"] },
+  { id: "settings", label: "System Settings", path: "/admin/settings", role: ["admin", "superadmin"] },
 
   // Receptionist Modules
   { id: "reception-dashboard", label: "Dashboard", path: "/guard/dashboard", role: ["guard"] },

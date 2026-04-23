@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "guard" | "employee";
+export type UserRole = "admin" | "guard" | "employee" | "superadmin";
 
 export interface AuthUser {
   id: number;
@@ -66,15 +66,16 @@ export function clearAuthSession() {
 
 export function getRoleRedirectPath(role: string) {
   const normalized = role.toLowerCase();
-  if (normalized === "admin") return "/admin/dashboard";
-  if (normalized === "guard" || normalized === "guard") return "/guard/dashboard";
+  if (normalized === "admin" || normalized === "superadmin") return "/admin/dashboard";
+  if (normalized === "guard") return "/guard/dashboard";
   return "/employee/dashboard";
 }
 
 export function normalizeRole(role: string): UserRole | null {
   const normalized = role.trim().toLowerCase();
   if (normalized === "admin") return "admin";
-  if (normalized === "guard" || normalized === "guard") return "guard";
+  if (normalized === "guard") return "guard";
   if (normalized === "employee") return "employee";
+  if (normalized === "superadmin") return "superadmin";
   return null;
 }

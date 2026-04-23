@@ -129,8 +129,8 @@ export async function uploadVisitorPhoto(file: File): Promise<{ photo_url: strin
 
   return response.json();
 }
-export async function promoteToAdmin(employeeId: number): Promise<{ status: string; message: string }> {
-  return apiFetch(`/admin/promote/${employeeId}`, {
+export async function assignRole(employeeId: number, role: string): Promise<{ status: string; message: string }> {
+  return apiFetch(`/admin/assign-role/${employeeId}?role=${encodeURIComponent(role)}`, {
     method: "POST",
   });
 }

@@ -35,7 +35,7 @@ def sync_employees(db: Session) -> None:
     payload = {}
     
     try:
-        response = requests.post(api_url, json=payload, timeout=60)
+        response = requests.post(api_url, json=payload, timeout=300)
         response.raise_for_status()
         api_data = response.json()
     except Exception as e:
@@ -92,6 +92,13 @@ def sync_employees(db: Session) -> None:
                 else:
                     processed_phones.add(phone)
                 
+        # Determine role from Role field or PersonRole field
+        api_role_val = str(api_emp.get("Role") or api_emp.get("PersonRole") or "").lower()
+        if "superadmin" in api_role_val:
+            target_role = "superadmin"
+        else:
+            target_role = "employee"
+                
         # Find existing employee safely
         match = None
         if rid and rid in db_emp_by_rid:
@@ -125,6 +132,15 @@ def sync_employees(db: Session) -> None:
             match.project = api_emp.get("Project", match.project)
             match.project_lead = api_emp.get("ProjectLead", match.project_lead)
             match.shift = api_emp.get("Shift", match.shift)
+            # Role Management Protection:
+            # 1. If API says they are superadmin, always set it.
+            # 2. If they are currently admin or guard in our DB, DO NOT downgrade them to employee.
+            # 3. Otherwise, apply the target role.
+            current_role = str(match.role or "").lower()
+            if target_role == "superadmin":
+                match.role = "superadmin"
+            elif current_role not in ["admin", "guard"]:
+                match.role = target_role
             
             # Re-register local maps
             if match.resource_id: db_emp_by_rid[match.resource_id] = match
@@ -143,7 +159,7 @@ def sync_employees(db: Session) -> None:
                 email=email,
                 phone=phone,
                 password_hash=default_password_hash,
-                role="employee",
+                role=target_role,
                 department=api_emp.get("DepartmentName", "General"),
                 resource_id=rid,
                 employee_code=api_emp.get("EmployeeCode"),
