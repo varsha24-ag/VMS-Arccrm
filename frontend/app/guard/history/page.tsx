@@ -10,7 +10,7 @@ import AppDataGrid, {
   GridColDef,
   type GridRenderCellParams,
 } from "@/components/ui/app-data-grid";
-import { API_BASE_URL, apiFetch, resolveApiAssetUrl } from "@/lib/api";
+import { apiFetch, resolveApiAssetUrl } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 interface VisitHistoryItem {
@@ -30,7 +30,7 @@ interface VisitHistoryItem {
 }
 
 export default function ReceptionHistoryPage() {
-  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
+  const user = useAuthGuard({ allowedRoles: ["guard", "admin", "superadmin"] });
   const [history, setHistory] = useState<VisitHistoryItem[]>([]);
   const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -239,7 +239,7 @@ export default function ReceptionHistoryPage() {
           subtitle="Track check-ins and check-outs with captured photos."
         />
 
-        <Panel title="History">
+        <Panel title="History (Photo)" className="overflow-hidden">
           <AppDataGrid
             rows={historyWithPhotos}
             columns={columns}

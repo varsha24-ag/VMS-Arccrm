@@ -46,7 +46,7 @@ function statusBadgeClass(status: string) {
 }
 
 export default function AdminDashboard() {
-  const user = useAuthGuard({ allowedRoles: ["admin"] });
+  const user = useAuthGuard({ allowedRoles: ["admin", "superadmin"] });
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -179,7 +179,7 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-bold text-[var(--text-1)]">Recent Visitors</h3>
             <Link
-              href="/reception/visitors"
+              href="/guard/visitors"
               className="text-sm font-semibold text-[var(--accent)] hover:brightness-95"
             >
               View all

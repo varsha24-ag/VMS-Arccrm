@@ -176,7 +176,7 @@ function AppGridFilterPanel<R>({
     const isSingleSelect = column.type === "singleSelect" && Array.isArray(column.valueOptions);
     const isPurposeField = column.field === "purpose";
     const purposeOptions = isPurposeField ? valueOptionsMap[column.field] ?? [] : [];
-    const isDateField = column.field.toLowerCase().includes("created");
+    const isDateField = column.field.toLowerCase().includes("date") || column.field.toLowerCase().includes("time") || column.field.toLowerCase().includes("created") || ["valid_from", "valid_to"].includes(column.field);
 
     if (isDateField) {
       const hasFrom = Boolean(filters.dateFrom[column.field]);
@@ -279,6 +279,27 @@ function AppGridFilterPanel<R>({
   );
 }
 
+function DataGridToolbarButton({
+  active = false,
+  onClick,
+  children,
+}: {
+  active?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  const baseClass = "inline-flex shrink-0 items-center justify-center w-[110px] h-[40px] m-0 p-0 box-border rounded-full border border-solid text-xs font-semibold leading-none transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]";
+  const className = active
+    ? `${baseClass} border-[var(--accent)] bg-[var(--nav-active-bg)] text-[var(--accent)] shadow-[0_0_0_1px_var(--accent)]`
+    : `${baseClass} border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)] hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]`;
+
+  return (
+    <button type="button" onClick={onClick} className={className}>
+      {children}
+    </button>
+  );
+}
+
 export default function AppDataGrid<R extends object>({
   title,
   headerAction,
@@ -317,10 +338,6 @@ export default function AppDataGrid<R extends object>({
   const bodyCellClass =
     "overflow-hidden px-6 py-3 align-middle text-sm leading-6 text-[var(--text-1)]";
   const stateCellClass = "px-6 py-10 text-center text-sm text-[var(--text-3)]";
-  const toolbarButtonClass =
-    "rounded-full border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-xs font-semibold text-[var(--text-2)] transition hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]";
-  const activeToolbarButtonClass =
-    "rounded-full border border-[var(--accent)] bg-[var(--nav-active-bg)] px-4 py-2 text-xs font-semibold text-[var(--accent)] transition shadow-[0_0_0_1px_var(--accent)]";
 
   const defaultPageSize = initialState?.pagination?.paginationModel?.pageSize ?? pageSizeOptions[0] ?? 5;
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -461,7 +478,7 @@ export default function AppDataGrid<R extends object>({
         const rawValue = getRawValue(column, row, id);
         const cellValue = normalizeValue(rawValue);
         const filterValue = normalizeValue(panelFilters.fields[field]);
-        const isDateField = field.toLowerCase().includes("created");
+        const isDateField = field.toLowerCase().includes("date") || field.toLowerCase().includes("time") || field.toLowerCase().includes("created") || ["valid_from", "valid_to"].includes(field);
 
         if (isDateField) {
           const from = parseDateInput(panelFilters.dateFrom[field] ?? "");
@@ -700,24 +717,22 @@ export default function AppDataGrid<R extends object>({
               <div className="flex items-center gap-2.5">
                 {headerAction}
                 {showFilters && filterPanelColumns.length > 0 ? (
-                  <button
-                    type="button"
+                  <DataGridToolbarButton
+                    active={filtersOpen || hasActiveFilters}
                     onClick={handleFilterToggle}
-                    className={filtersOpen || hasActiveFilters ? activeToolbarButtonClass : toolbarButtonClass}
                   >
                     Filters
-                  </button>
+                  </DataGridToolbarButton>
                 ) : null}
 
                 {showColumns ? (
-                  <div className="relative" ref={columnsMenuRef}>
-                    <button
-                      type="button"
+                  <div className="relative flex items-center" ref={columnsMenuRef}>
+                    <DataGridToolbarButton
+                      active={columnsOpen || hasCustomColumnSelection}
                       onClick={() => setColumnsOpen((current) => !current)}
-                      className={columnsOpen || hasCustomColumnSelection ? activeToolbarButtonClass : toolbarButtonClass}
                     >
                       Columns
-                    </button>
+                    </DataGridToolbarButton>
                     {columnsOpen ? (
                       <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)]/100 p-2 shadow-[0_18px_45px_rgba(15,23,42,0.42)] backdrop-blur-xl">
                         {columns.map((column) => {
@@ -745,13 +760,12 @@ export default function AppDataGrid<R extends object>({
                 ) : null}
 
                 {showExport ? (
-                  <button
-                    type="button"
+                  <DataGridToolbarButton
+                    active={hasActiveExportScope}
                     onClick={handleExport}
-                    className={hasActiveExportScope ? activeToolbarButtonClass : toolbarButtonClass}
                   >
                     Export
-                  </button>
+                  </DataGridToolbarButton>
                 ) : null}
               </div>
             </div>

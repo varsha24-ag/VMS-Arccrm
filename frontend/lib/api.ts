@@ -1,7 +1,7 @@
-import { getAccessToken } from "./auth";
+import { clearAuthSession, getAccessToken } from "./auth";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8005";
-const DEFAULT_TIMEOUT_MS = 15000;
+const DEFAULT_TIMEOUT_MS = 30000;
 
 export function resolveApiAssetUrl(value?: string | null): string | null {
   if (!value) return null;
@@ -24,19 +24,23 @@ export function resolveApiAssetUrl(value?: string | null): string | null {
   return `${base}/${value}`;
 }
 
+type ApiFetchOptions = RequestInit & {
+  timeoutMs?: number;
+};
+
 async function fetchWithTimeout(input: RequestInfo, init: RequestInit = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
     const response = await fetch(input, { ...init, signal: controller.signal });
     return response;
   } finally {
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
   }
 }
 
 export interface LoginRequest {
-  identifier: string;
+  email: string;
   password: string;
 }
 
@@ -65,19 +69,38 @@ export async function loginApi(payload: LoginRequest): Promise<LoginResponse> {
   return response.json();
 }
 
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const token = getAccessToken();
-  const headers = new Headers(options.headers);
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, ...requestOptions } = options;
+  const headers = new Headers(requestOptions.headers);
 
   headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const response = await fetchWithTimeout(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(
+      `${API_BASE_URL}${path}`,
+      {
+        ...requestOptions,
+        headers,
+      },
+      timeoutMs
+    );
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`Request timed out for ${path}. Please wait and try again.`);
+    }
+    if (error instanceof TypeError) {
+      throw new Error(`Unable to reach the server at ${API_BASE_URL}. Make sure the backend is running and reachable.`);
+    }
+    throw error;
+  }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAuthSession();
+    }
     const error = await response.json().catch(() => ({}));
     throw new Error(error.detail ?? `Request failed (${response.status})`);
   }
@@ -97,9 +120,17 @@ export async function uploadVisitorPhoto(file: File): Promise<{ photo_url: strin
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAuthSession();
+    }
     const error = await response.json().catch(() => ({}));
     throw new Error(error.detail ?? `Photo upload failed (${response.status})`);
   }
 
   return response.json();
+}
+export async function assignRole(employeeId: number, role: string): Promise<{ status: string; message: string }> {
+  return apiFetch(`/admin/assign-role/${employeeId}?role=${encodeURIComponent(role)}`, {
+    method: "POST",
+  });
 }

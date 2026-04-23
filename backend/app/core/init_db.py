@@ -1,5 +1,8 @@
+from urllib.parse import urlparse
+
 from sqlalchemy import inspect, or_, text
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.core.db import Base, SessionLocal, engine
 from app.core.security import get_password_hash
@@ -91,6 +94,53 @@ def repair_visit_schema() -> None:
         if "approval_email_last_attempt_at" not in columns:
             connection.execute(text("ALTER TABLE visits ADD COLUMN approval_email_last_attempt_at TIMESTAMPTZ"))
             columns.add("approval_email_last_attempt_at")
+        if "source" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN source VARCHAR DEFAULT 'manual'"))
+            columns.add("source")
+        if "qr_expiry" not in columns:
+            connection.execute(text("ALTER TABLE visits ADD COLUMN qr_expiry TIMESTAMPTZ"))
+            columns.add("qr_expiry")
+
+
+def repair_access_pass_schema() -> None:
+    inspector = inspect(engine)
+    if "visitor_access_passes" not in inspector.get_table_names():
+        return
+
+    columns = {col["name"] for col in inspector.get_columns("visitor_access_passes")}
+
+    with engine.begin() as connection:
+        if "purpose" not in columns:
+            connection.execute(text("ALTER TABLE visitor_access_passes ADD COLUMN purpose VARCHAR"))
+            columns.add("purpose")
+
+
+def normalize_photo_url(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return value
+    if value.startswith("/uploads/"):
+        return value
+    if value.startswith("http://") or value.startswith("https://"):
+        try:
+            parsed = urlparse(value)
+            if parsed.path.startswith("/uploads/"):
+                return parsed.path
+        except Exception:
+            return value
+    return value
+
+
+def normalize_visitor_photo_urls(db: Session) -> int:
+    visitors = db.query(Visitor).filter(Visitor.photo_url.isnot(None)).all()
+    updated = 0
+    for visitor in visitors:
+        normalized = normalize_photo_url(visitor.photo_url)
+        if normalized != visitor.photo_url:
+            visitor.photo_url = normalized
+            updated += 1
+    if updated:
+        db.commit()
+    return updated
 
 
 def seed_employees(db: Session) -> int:
@@ -183,15 +233,67 @@ def seed_id_cards(db: Session) -> int:
     return len(seed_cards)
 
 
+def repair_employee_schema() -> None:
+    inspector = inspect(engine)
+    if "employees" not in inspector.get_table_names():
+        return
+
+    columns = {col["name"] for col in inspector.get_columns("employees")}
+
+    with engine.begin() as connection:
+        if "resource_id" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN resource_id INTEGER"))
+            columns.add("resource_id")
+        if "employee_code" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN employee_code VARCHAR"))
+            columns.add("employee_code")
+        if "is_current_employee" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN is_current_employee VARCHAR"))
+            columns.add("is_current_employee")
+        if "father_name" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN father_name VARCHAR"))
+            columns.add("father_name")
+        if "mother_name" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN mother_name VARCHAR"))
+            columns.add("mother_name")
+        if "dob" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN dob VARCHAR"))
+            columns.add("dob")
+        if "graduation" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN graduation VARCHAR"))
+            columns.add("graduation")
+        if "doj" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN doj VARCHAR"))
+            columns.add("doj")
+        if "expected_joining_date" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN expected_joining_date VARCHAR"))
+            columns.add("expected_joining_date")
+        if "designation" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN designation VARCHAR"))
+            columns.add("designation")
+        if "project" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN project VARCHAR"))
+            columns.add("project")
+        if "project_lead" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN project_lead VARCHAR"))
+            columns.add("project_lead")
+        if "shift" not in columns:
+            connection.execute(text("ALTER TABLE employees ADD COLUMN shift VARCHAR"))
+            columns.add("shift")
+
+
 def bootstrap_database() -> int:
     create_tables()
+    repair_employee_schema()
     repair_visitor_schema()
     repair_visit_schema()
+    repair_access_pass_schema()
     db = SessionLocal()
     try:
         create_admin_user(db)
         created_employees = seed_employees(db)
         created_cards = seed_id_cards(db)
+        normalize_visitor_photo_urls(db)
         return created_employees + created_cards
     finally:
         db.close()

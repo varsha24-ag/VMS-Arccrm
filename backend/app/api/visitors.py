@@ -1,9 +1,12 @@
 from pathlib import Path
-from typing import Annotated, List
+from typing import Annotated, List, Optional
+from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile, HTTPException
+from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
@@ -19,7 +22,10 @@ from app.schemas.visit import (
     EmailResendOut,
     EmailResendRequest,
     PhotoUploadOut,
+    QRInviteCreate,
+    QRInviteOut,
     QRCheckin,
+    VisitDetailOut,
     VisitCheckin,
     VisitCheckout,
     VisitHistoryItem,
@@ -29,19 +35,37 @@ from app.schemas.visit import (
 )
 from app.schemas.id_card import IdCardOut
 from app.schemas.visit_status import VisitStatusOut
+from app.services.notification_service import build_qr_png, get_frontend_qr_checkin_url
 from app.services.visit_service import (
     checkin_visit,
     checkout_visit,
     create_access_pass,
+    create_qr_invite,
     create_visitor,
+    get_qr_visitor_detail,
+    get_visit_detail,
     get_visit_history,
     qr_checkin,
     resend_host_notification,
 )
+from app.services.notification_service import send_visitor_access_pass
 
 router = APIRouter(tags=["visits"])
 # Keep uploads path aligned with app.mount("/uploads", ...).
 UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads" / "visitors"
+event_bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def normalize_scanned_code(raw_code: str) -> str:
+    code = raw_code.strip()
+    if not code:
+        return code
+    if "?code=" in code:
+        parsed = urlparse(code)
+        query_code = parse_qs(parsed.query).get("code", [None])[0]
+        if query_code:
+            return query_code
+    return code
 
 
 @router.post("/visitor/create", response_model=VisitorOut)
@@ -51,6 +75,28 @@ def create_visitor_route(
     current_user: Annotated[Employee, Depends(get_current_user)] = None,
 ):
     return create_visitor(db, payload)
+
+
+@router.post("/visit/invite", response_model=QRInviteOut)
+def create_qr_invite_route(
+    payload: QRInviteCreate,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    return create_qr_invite(db, payload)
+
+
+@router.get("/qr-checkin")
+def qr_checkin_redirect(code: str):
+    return RedirectResponse(url=get_frontend_qr_checkin_url(code), status_code=307)
+
+
+@router.get("/qr-image")
+def qr_image(code: str):
+    qr_png, qr_mime = build_qr_png(get_frontend_qr_checkin_url(code))
+    if not qr_png or not qr_mime:
+        raise HTTPException(status_code=500, detail="Unable to generate QR image")
+    return StreamingResponse(iter([qr_png]), media_type=qr_mime)
 
 
 @router.get("/visitor/{visitor_id}", response_model=VisitorOut)
@@ -82,6 +128,7 @@ def get_visit_status_by_code(
     db: Session = Depends(get_db),
     current_user: Annotated[Employee, Depends(get_current_user)] = None,
 ):
+    code = normalize_scanned_code(code)
     visit = None
     if code.isdigit():
         visit = (
@@ -124,6 +171,11 @@ def get_visit_status_by_code(
                 .order_by(Visit.id.desc())
                 .first()
             )
+    if not visit:
+        # Check by assigned ID card number
+        visitor = db.query(Visitor).filter(Visitor.id_number == code).order_by(Visitor.id.desc()).first()
+        if visitor:
+            visit = db.query(Visit).filter(Visit.visitor_id == visitor.id).order_by(Visit.id.desc()).first()
     if not visit:
         raise HTTPException(status_code=404, detail="Visit not found")
 
@@ -205,6 +257,24 @@ def get_visit_status(
     )
 
 
+@router.get("/visit/{visit_id}/details", response_model=VisitDetailOut)
+def get_visit_detail_route(
+    visit_id: int,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    return get_visit_detail(db, visit_id)
+
+
+@router.get("/qr-visitor/details", response_model=VisitDetailOut)
+def get_qr_visitor_detail_route(
+    code: str,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    return get_qr_visitor_detail(db, normalize_scanned_code(code))
+
+
 @router.post("/visit/checkin", response_model=VisitOut)
 def checkin_route(
     payload: VisitCheckin,
@@ -242,10 +312,26 @@ def upload_photo(
 @router.post("/access-pass/create", response_model=AccessPassOut)
 def access_pass_route(
     payload: AccessPassCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: Annotated[Employee, Depends(get_current_user)] = None,
 ):
-    return create_access_pass(db, payload)
+    access_pass = create_access_pass(
+        db,
+        payload,
+        default_host_employee_id=current_user.id if current_user else None,
+    )
+    if payload.email:
+        background_tasks.add_task(
+            send_visitor_access_pass,
+            payload.email,
+            payload.visitor_name,
+            current_user.name if current_user else "Your host",
+            access_pass.qr_code,
+            access_pass.valid_to.isoformat(),
+            access_pass.max_visits,
+        )
+    return access_pass
 
 
 @router.post("/visitor/resend-approval", response_model=EmailResendOut)
@@ -294,14 +380,22 @@ def available_id_cards(
     return [IdCardOut(id=card.id, id_number=card.id_number, status=card.status) for card in cards]
 @router.get("/events/visits")
 async def visit_events(
-    token: str,
+    token: Optional[str] = None,
+    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(event_bearer_scheme)] = None,
     db: Session = Depends(get_db),
 ):
-    user = get_user_from_token(token, db)
-    if user.role.lower() not in {"receptionist", "admin"}:
-        raise HTTPException(status_code=403, detail="Unauthorized access")
+    current_user: Employee
+    if credentials and credentials.scheme.lower() == "bearer":
+        current_user = get_user_from_token(credentials.credentials, db)
+    elif token:
+        current_user = get_user_from_token(token, db)
+    else:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized access")
+
+    if current_user.role.lower() not in {"receptionist", "admin", "employee", "guard", "superadmin"}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized access")
     return StreamingResponse(
-        event_stream(),
+        event_stream(current_user.id),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.models.visit import Visit
 from app.models.visitor import Visitor
-from app.services.notification_service import send_reception_notification
+from app.services.notification_service import get_frontend_visit_action_url, send_reception_notification
 from app.core.config import settings
 from app.core.realtime import publish_event
 
@@ -102,9 +102,8 @@ def approve_visit(
         raise HTTPException(status_code=404, detail="Invalid or expired approval link.")
     if visit.status in {"approved", "rejected"}:
         visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
-        base_url = settings.APP_BASE_URL or "http://localhost:8005"
-        approve_link = f"{base_url}/visits/{visit_id}/approve?token={token}"
-        reject_link = f"{base_url}/visits/{visit_id}/reject?token={token}"
+        approve_link = get_frontend_visit_action_url(visit_id, "approve", token)
+        reject_link = get_frontend_visit_action_url(visit_id, "reject", token)
         return HTMLResponse(
             build_approval_page(
                 visit.status,
@@ -134,9 +133,8 @@ def approve_visit(
         {"type": "visit_status", "visit_id": visit.id, "status": "approved", "visitor_id": visit.visitor_id},
     )
 
-    base_url = settings.APP_BASE_URL or "http://localhost:8005"
-    approve_link = f"{base_url}/visits/{visit_id}/approve?token={token}"
-    reject_link = f"{base_url}/visits/{visit_id}/reject?token={token}"
+    approve_link = get_frontend_visit_action_url(visit_id, "approve", token)
+    reject_link = get_frontend_visit_action_url(visit_id, "reject", token)
     return HTMLResponse(
         build_approval_page(
             "approved",
@@ -165,9 +163,8 @@ def reject_visit(
         raise HTTPException(status_code=404, detail="Invalid or expired approval link.")
     if visit.status in {"approved", "rejected"}:
         visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
-        base_url = settings.APP_BASE_URL or "http://localhost:8005"
-        approve_link = f"{base_url}/visits/{visit_id}/approve?token={token}"
-        reject_link = f"{base_url}/visits/{visit_id}/reject?token={token}"
+        approve_link = get_frontend_visit_action_url(visit_id, "approve", token)
+        reject_link = get_frontend_visit_action_url(visit_id, "reject", token)
         return HTMLResponse(
             build_approval_page(
                 visit.status,
@@ -197,9 +194,8 @@ def reject_visit(
         {"type": "visit_status", "visit_id": visit.id, "status": "rejected", "visitor_id": visit.visitor_id},
     )
 
-    base_url = settings.APP_BASE_URL or "http://localhost:8005"
-    approve_link = f"{base_url}/visits/{visit_id}/approve?token={token}"
-    reject_link = f"{base_url}/visits/{visit_id}/reject?token={token}"
+    approve_link = get_frontend_visit_action_url(visit_id, "approve", token)
+    reject_link = get_frontend_visit_action_url(visit_id, "reject", token)
     return HTMLResponse(
         build_approval_page(
             "rejected",

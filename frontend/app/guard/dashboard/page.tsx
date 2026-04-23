@@ -30,7 +30,7 @@ type VisitHistoryItem = {
 
 export default function ReceptionDashboard() {
   const router = useRouter();
-  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
+  const user = useAuthGuard({ allowedRoles: ["guard", "admin", "superadmin"] });
   const [history, setHistory] = useState<VisitHistoryItem[]>([]);
   const [hostMap, setHostMap] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
@@ -202,7 +202,7 @@ export default function ReceptionDashboard() {
                 {loading ? "Updating..." : "Live"}
               </span>
               <Link
-                href="/reception/visitors"
+                href="/guard/visitors"
                 className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1 text-xs font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)]"
               >
                 View all
@@ -217,7 +217,7 @@ export default function ReceptionDashboard() {
               const params = new URLSearchParams();
               if (item.visit_id) params.set("visitId", String(item.visit_id));
               if (item.visitor_id) params.set("visitorId", String(item.visitor_id));
-              router.push(`/reception/visitors?${params.toString()}`);
+              router.push(`/guard/visitors?${params.toString()}`);
             }}
           />
         </Panel>

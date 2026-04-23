@@ -8,9 +8,7 @@ import AppDataGrid, {
   GridColDef,
   type GridRenderCellParams,
 } from "@/components/ui/app-data-grid";
-import FilterBar from "@/components/ui/filter-bar";
 import { apiFetch } from "@/lib/api";
-import { buildCsv, downloadCsv } from "@/lib/csv";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 type EmployeeRow = {
@@ -22,28 +20,21 @@ type EmployeeRow = {
 };
 
 export default function UserManagementPage() {
-  const user = useAuthGuard({ allowedRoles: ["admin"] });
+  const user = useAuthGuard({ allowedRoles: ["admin", "superadmin"] });
   const [rows, setRows] = useState<EmployeeRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [deptFilter, setDeptFilter] = useState("all");
 
   useEffect(() => {
     if (!user) return;
     let mounted = true;
     async function load() {
       setLoading(true);
-      setError("");
       try {
         const data = await apiFetch<EmployeeRow[]>("/employees/hosts");
         if (!mounted) return;
         setRows(data ?? []);
-      } catch (err) {
+      } catch {
         if (!mounted) return;
-        setError(err instanceof Error ? err.message : "Failed to load users");
         setRows([]);
       } finally {
         if (mounted) setLoading(false);
@@ -55,45 +46,15 @@ export default function UserManagementPage() {
     };
   }, [user]);
 
-  const roleOptions = useMemo(() => {
-    const roles = Array.from(new Set(rows.map((r) => r.role).filter(Boolean))) as string[];
-    return roles.sort();
-  }, [rows]);
+  const roleOptions = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.role).filter(Boolean))).sort() as string[],
+    [rows]
+  );
 
-  const deptOptions = useMemo(() => {
-    const depts = Array.from(new Set(rows.map((r) => r.department ?? "General").filter(Boolean)));
-    return depts.sort();
-  }, [rows]);
-
-  const filtered = useMemo(() => {
-    return rows.filter((row) => {
-      if (
-        roleFilter !== "all" &&
-        row.role?.toLowerCase() !== roleFilter.toLowerCase()
-      ) {
-        return false;
-      }
-
-      const rowDept = row.department ?? "General";
-      if (
-        deptFilter !== "all" &&
-        rowDept.toLowerCase() !== deptFilter.toLowerCase()
-      ) {
-        return false;
-      }
-
-      if (search) {
-        const q = search.toLowerCase();
-        const haystack = [row.name, row.email, rowDept, row.role]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
-
-      return true;
-    });
-  }, [rows, search, roleFilter, deptFilter]);
+  const deptOptions = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.department ?? "General").filter(Boolean))).sort() as string[],
+    [rows]
+  );
 
   const columns: GridColDef<EmployeeRow>[] = useMemo(
     () => [
@@ -101,12 +62,10 @@ export default function UserManagementPage() {
         field: "name",
         headerName: "Name",
         flex: 1,
-        minWidth: 220,
+        minWidth: 160,
+        filterable: true,
         renderCell: (params: GridRenderCellParams<EmployeeRow>) => (
-          <div className="py-2">
-            <p className="font-bold text-[var(--text-1)] truncate">{params.row.name}</p>
-            <p className="text-xs text-[var(--text-3)] truncate">{params.row.email ?? "-"}</p>
-          </div>
+          <span className="block truncate font-medium">{String(params.row.name ?? "-")}</span>
         ),
       },
       {
@@ -116,54 +75,26 @@ export default function UserManagementPage() {
         minWidth: 140,
         filterable: true,
         type: "singleSelect",
-        valueOptions: Array.from(new Set(rows.map(r => r.role).filter(Boolean))) as string[],
+        valueOptions: roleOptions,
         renderCell: (params: GridRenderCellParams<EmployeeRow>) => (
-          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-[var(--border-1)] ${
-            params.row.role === 'admin' ? 'bg-indigo-500/15 text-indigo-500' :
-            params.row.role === 'receptionist' ? 'bg-amber-500/15 text-amber-500' :
-            'bg-emerald-500/15 text-emerald-500'
-          }`}>
-            {params.row.role ?? "unknown"}
-          </span>
+          <span className="capitalize">{String(params.row.role ?? "-")}</span>
         ),
       },
       {
         field: "department",
         headerName: "Department",
         flex: 1,
-        minWidth: 150,
+        minWidth: 140,
         filterable: true,
         type: "singleSelect",
-        valueOptions: Array.from(new Set(rows.map(r => r.department ?? "General"))).sort(),
+        valueOptions: deptOptions,
         renderCell: (params: GridRenderCellParams<EmployeeRow>) => (
-          <span className="font-medium text-[var(--text-2)]">{params.row.department ?? "General"}</span>
+          <span>{String(params.row.department ?? "General")}</span>
         ),
       },
     ],
-    [rows]
+    [rows, roleOptions, deptOptions]
   );
-
-  const handleExport = () => {
-    const csv = buildCsv(
-      filtered.map((row) => ({
-        id: row.id,
-        name: row.name,
-        email: row.email ?? "",
-        role: row.role ?? "",
-        department: row.department ?? "General",
-      })),
-      {
-        headers: [
-          { key: "id", label: "ID" },
-          { key: "name", label: "Name" },
-          { key: "email", label: "Email" },
-          { key: "role", label: "Role" },
-          { key: "department", label: "Department" },
-        ],
-      }
-    );
-    downloadCsv(`users-${new Date().toISOString().slice(0, 10)}.csv`, csv);
-  };
 
   if (!user) return null;
 

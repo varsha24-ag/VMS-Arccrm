@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import AsyncGenerator, Dict, Set
+from typing import AsyncGenerator, Dict, Set, Optional
 
 SubscriberQueue = asyncio.Queue[Dict[str, object]]
 
@@ -14,12 +14,16 @@ async def publish_event(event: Dict[str, object]) -> None:
         await queue.put(event)
 
 
-async def event_stream() -> AsyncGenerator[str, None]:
+async def event_stream(user_id: Optional[int] = None) -> AsyncGenerator[str, None]:
     queue: SubscriberQueue = asyncio.Queue()
     _subscribers.add(queue)
     try:
         while True:
             event = await queue.get()
+            target_user_ids = event.get("target_user_ids")
+            if isinstance(target_user_ids, list) and user_id is not None:
+                if user_id not in target_user_ids:
+                    continue
             yield f"data: {json.dumps(event)}\n\n"
     finally:
         _subscribers.discard(queue)

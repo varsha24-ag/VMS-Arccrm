@@ -1,125 +1,127 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
-import { Panel, SimpleTable, StatGrid, TextList } from "@/components/dashboard/panels";
+import { Panel, SimpleTable, StatGrid } from "@/components/dashboard/panels";
+import { AccessPassForm, AccessPassResult } from "@/components/employee/access-pass-form";
 import FilterBar from "@/components/ui/filter-bar";
-import Pagination from "@/components/ui/pagination";
-import { apiFetch } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
-const stats = [
-  { label: "My Visitors", value: "14", delta: "This month" },
-  { label: "Pending Approvals", value: "4", delta: "Needs action" },
-  { label: "Approved", value: "22", delta: "+6" },
-  { label: "Missed", value: "1", delta: "Today" }
-];
-
-const approvalTable = {
-  headers: ["Visitor", "Purpose", "Time", "Action"],
-  rows: [
-    ["Ananya Shah", "Project Discussion", "11:00 AM", "Approve"],
-    ["Ravi Desai", "Vendor Demo", "1:30 PM", "Approve"],
-    ["Suresh Naik", "Audit Review", "3:15 PM", "Approve"]
-  ]
-};
-
-const timelineItems = [
-  "09:30 AM - Daily standup",
-  "11:00 AM - Visitor approval",
-  "02:00 PM - Client walkthrough",
-  "04:30 PM - Security sign-off"
-];
-
-interface AccessPassPayload {
+type EmployeeVisitorRow = {
+  visit_id: number;
   visitor_name: string;
-  phone?: string;
-  email?: string;
-  company?: string;
-  host_employee_id?: number | null;
-  valid_from: string;
-  valid_to: string;
-  max_visits: number;
-}
+  purpose?: string | null;
+  created_at?: string | null;
+  status: string;
+};
 
 export default function EmployeeDashboard() {
   const user = useAuthGuard({ allowedRoles: ["employee"] });
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
   const [approvalQuery, setApprovalQuery] = useState("");
-  const [approvalPage, setApprovalPage] = useState(1);
-  const [approvalPageSize, setApprovalPageSize] = useState(5);
-  const [passPayload, setPassPayload] = useState<AccessPassPayload>({
-    visitor_name: "",
-    phone: "",
-    email: "",
-    company: "",
-    host_employee_id: null,
-    valid_from: "",
-    valid_to: "",
-    max_visits: 10,
-  });
+  const [visitorRows, setVisitorRows] = useState<EmployeeVisitorRow[]>([]);
+  const { pushToast } = useToast();
 
-  const filteredApprovalRows = useMemo(() => {
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const data = await apiFetch<EmployeeVisitorRow[]>("/employees/me/visitors");
+        if (!cancelled) {
+          setVisitorRows(data ?? []);
+        }
+      } catch {
+        if (!cancelled) {
+          setVisitorRows([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const filteredVisitorRows = useMemo(() => {
     const query = approvalQuery.trim().toLowerCase();
-    if (!query) return approvalTable.rows;
-    return approvalTable.rows.filter((row) =>
-      row
+    const sortedRows = [...visitorRows].sort((a, b) => {
+      const left = new Date(a.created_at ?? 0).getTime();
+      const right = new Date(b.created_at ?? 0).getTime();
+      return right - left;
+    });
+    if (!query) return sortedRows;
+    return sortedRows.filter((row) =>
+      [row.visitor_name, row.purpose, row.status, row.created_at]
         .filter(Boolean)
         .map((value) => String(value).toLowerCase())
         .join(" ")
         .includes(query)
     );
-  }, [approvalQuery]);
+  }, [approvalQuery, visitorRows]);
 
-  const approvalTotalPages = Math.max(1, Math.ceil(filteredApprovalRows.length / approvalPageSize));
-  const pagedApprovalRows = useMemo(() => {
-    const start = (approvalPage - 1) * approvalPageSize;
-    return filteredApprovalRows.slice(start, start + approvalPageSize);
-  }, [filteredApprovalRows, approvalPage, approvalPageSize]);
+  const latestVisitorRows = useMemo(
+    () =>
+      filteredVisitorRows.slice(0, 5).map((row) => [
+        row.visitor_name,
+        row.purpose ?? "—",
+        row.created_at ? new Date(row.created_at).toLocaleString() : "—",
+        row.status.replace(/_/g, " "),
+      ]),
+    [filteredVisitorRows]
+  );
+
+  const stats = useMemo(() => {
+    const pendingCount = visitorRows.filter((row) => row.status === "pending").length;
+    const approvedCount = visitorRows.filter((row) => row.status === "approved").length;
+    const rejectedCount = visitorRows.filter((row) => row.status === "rejected").length;
+
+    return [
+      { label: "My Visitors", value: String(visitorRows.length), delta: "Open full list", href: "/employee/visitors" },
+      { label: "Pending Approvals", value: String(pendingCount), delta: "Needs action", href: "/employee/visitors?view=pending" },
+      { label: "Approved", value: String(approvedCount), delta: "Approved visitors", href: "/employee/visitors?view=approved" },
+      { label: "Rejected", value: String(rejectedCount), delta: "Rejected visitors", href: "/employee/visitors?view=rejected" },
+    ];
+  }, [visitorRows]);
 
   useEffect(() => {
-    setApprovalPage(1);
-  }, [approvalQuery, approvalPageSize]);
+    if (!user) return;
+    const token = getAccessToken();
+    if (!token) return;
 
-  useEffect(() => {
-    if (approvalPage > approvalTotalPages) {
-      setApprovalPage(approvalTotalPages);
-    }
-  }, [approvalPage, approvalTotalPages]);
-
-  async function handleCreatePass(e: FormEvent) {
-    e.preventDefault();
-    setMessage("");
-    setLoading(true);
-    try {
-      await apiFetch("/access-pass/create", {
-        method: "POST",
-        body: JSON.stringify({
-          ...passPayload,
-          host_employee_id: passPayload.host_employee_id ? Number(passPayload.host_employee_id) : null,
-          max_visits: Number(passPayload.max_visits),
-        }),
-      });
-      setMessage("Access pass created.");
-      setPassPayload({
-        visitor_name: "",
-        phone: "",
-        email: "",
-        company: "",
-        host_employee_id: null,
-        valid_from: "",
-        valid_to: "",
-        max_visits: 10,
-      });
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Failed to create pass");
-    } finally {
-      setLoading(false);
-    }
-  }
+    const source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);
+    source.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data) as {
+          type?: string;
+          host_employee_id?: number;
+          visitor_name?: string;
+        };
+        if (payload.type !== "host_qr_checkin") return;
+        if (payload.host_employee_id !== user.id) return;
+        pushToast({
+          title: "Visitor checked in",
+          description: `${payload.visitor_name ?? "A visitor"} completed QR check-in.`,
+          variant: "success",
+          durationMs: 5000,
+        });
+      } catch {
+        // Ignore malformed realtime events.
+      }
+    };
+    source.onerror = () => {
+      source.close();
+    };
+    return () => {
+      source.close();
+    };
+  }, [pushToast, user]);
 
   if (!user) return null;
 
@@ -132,99 +134,50 @@ export default function EmployeeDashboard() {
       <StatGrid items={stats} />
 
       <div className="mt-6 grid gap-5 xl:grid-cols-[1.4fr_1fr]">
-        <Panel title="Pending Visitor Approvals">
+        <Panel
+          title="Visitors Details"
+          action={
+            <Link
+              href="/employee/visitors"
+              className="inline-flex min-h-[40px] items-center rounded-full border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-xs font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)]"
+            >
+              See all
+            </Link>
+          }
+        >
           <div className="mb-4">
             <FilterBar
               searchValue={approvalQuery}
               onSearchChange={setApprovalQuery}
-              searchPlaceholder="Search visitor or purpose..."
+              searchPlaceholder="Search latest visitor, purpose, or status..."
             />
           </div>
-          <SimpleTable headers={approvalTable.headers} rows={pagedApprovalRows} />
-          <div className="mt-4">
-            <Pagination
-              page={approvalPage}
-              totalItems={filteredApprovalRows.length}
-              pageSize={approvalPageSize}
-              onPageChange={setApprovalPage}
-              onPageSizeChange={setApprovalPageSize}
-              pageSizeOptions={[5, 10, 20, 50, 100]}
-            />
-          </div>
+          <SimpleTable headers={["Visitor", "Purpose", "Date & Time", "Status"]} rows={latestVisitorRows} />
         </Panel>
 
-        <Panel title="Generate Visitor Access Pass">
-          <form className="grid gap-3" onSubmit={handleCreatePass}>
-            <input
-              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
-              placeholder="Visitor name"
-              value={passPayload.visitor_name}
-              onChange={(e) => setPassPayload((prev) => ({ ...prev, visitor_name: e.target.value }))}
-              required
-            />
-            <input
-              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
-              placeholder="Phone"
-              value={passPayload.phone}
-              onChange={(e) => setPassPayload((prev) => ({ ...prev, phone: e.target.value }))}
-            />
-            <input
-              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
-              placeholder="Email"
-              value={passPayload.email}
-              onChange={(e) => setPassPayload((prev) => ({ ...prev, email: e.target.value }))}
-            />
-            <input
-              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
-              placeholder="Company"
-              value={passPayload.company}
-              onChange={(e) => setPassPayload((prev) => ({ ...prev, company: e.target.value }))}
-            />
-            <input
-              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
-              placeholder="Host employee ID"
-              value={passPayload.host_employee_id ?? ""}
-              onChange={(e) => setPassPayload((prev) => ({ ...prev, host_employee_id: Number(e.target.value) || null }))}
-            />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <input
-                type="date"
-                className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
-                value={passPayload.valid_from}
-                onChange={(e) => setPassPayload((prev) => ({ ...prev, valid_from: e.target.value }))}
-                required
-              />
-              <input
-                type="date"
-                className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
-                value={passPayload.valid_to}
-                onChange={(e) => setPassPayload((prev) => ({ ...prev, valid_to: e.target.value }))}
-                required
-              />
-            </div>
-            <input
-              type="number"
-              min={1}
-              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
-              placeholder="Max visits"
-              value={passPayload.max_visits}
-              onChange={(e) => setPassPayload((prev) => ({ ...prev, max_visits: Number(e.target.value) }))}
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
-            >
-              {loading ? "Creating..." : "Create Pass"}
-            </button>
-            {message ? <p className="text-xs text-[var(--text-2)]">{message}</p> : null}
-          </form>
-        </Panel>
-      </div>
-
-      <div className="mt-6">
-        <Panel title="Today Timeline">
-          <TextList items={timelineItems} />
+        <Panel title="Generate Visitor Pass">
+          <AccessPassForm
+            onSuccess={(created: AccessPassResult) => {
+              const description =
+                created.email_sent === false
+                  ? created.email_error ?? "Access pass created, but email was not sent."
+                  : "Access pass created successfully. QR has been sent to the visitor email.";
+              pushToast({
+                title: created.email_sent === false ? "Pass created" : "Access pass created",
+                description,
+                variant: created.email_sent === false ? "info" : "success",
+                durationMs: 5000,
+              });
+            }}
+            onError={(err) => {
+              pushToast({
+                title: "Failed to create pass",
+                description: err.message,
+                variant: "error",
+                durationMs: 5000,
+              });
+            }}
+          />
         </Panel>
       </div>
     </DashboardLayout>

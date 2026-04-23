@@ -24,7 +24,7 @@ interface VisitHistoryItem {
 }
 
 export default function ManualCheckoutPage() {
-  const user = useAuthGuard({ allowedRoles: ["receptionist", "admin"] });
+  const user = useAuthGuard({ allowedRoles: ["guard", "admin", "superadmin"] });
   const { pushToast } = useToast();
   const [idCardNumber, setIdCardNumber] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,6 +37,7 @@ export default function ManualCheckoutPage() {
   }, [user]);
 
   async function loadHistory() {
+    setLoading(true);
     try {
       const data = await apiFetch<VisitHistoryItem[]>("/visit/history");
       setHistory(data);
@@ -46,6 +47,8 @@ export default function ManualCheckoutPage() {
         description: err instanceof Error ? err.message : "Failed to load history",
         variant: "error",
       });
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -148,7 +151,7 @@ export default function ManualCheckoutPage() {
             onClick={() => setIdCardNumber(String(params.row.id_number ?? ""))}
             className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1 text-xs text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
           >
-            Checkout
+            Load
           </button>
         ),
       },

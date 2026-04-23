@@ -1,5 +1,6 @@
 import logging
 import smtplib
+from io import BytesIO
 from pathlib import Path
 from email.utils import make_msgid
 from email.message import EmailMessage
@@ -8,6 +9,38 @@ from typing import Optional
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def build_qr_png(payload: str) -> tuple[Optional[bytes], Optional[str]]:
+    try:
+        import qrcode
+    except ModuleNotFoundError:
+        logger.warning("qrcode package not installed. QR image will not be attached.")
+        return None, None
+
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=8,
+        border=2,
+    )
+    qr.add_data(payload)
+    qr.make(fit=True)
+    image = qr.make_image(fill_color="black", back_color="white")
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue(), "image/png"
+
+
+def get_frontend_qr_checkin_url(qr_code: str) -> str:
+    frontend_base_url = settings.FRONTEND_BASE_URL or "http://localhost:3000"
+    return f"{frontend_base_url}/qr-checkin?code={qr_code}"
+
+
+def get_frontend_visit_action_url(visit_id: int, action: str, token: Optional[str]) -> str:
+    frontend_base_url = settings.FRONTEND_BASE_URL or "http://localhost:3000"
+    token_query = f"?token={token}" if token else ""
+    return f"{frontend_base_url}/visits/{visit_id}/{action}{token_query}"
 
 
 def send_host_notification(
@@ -26,8 +59,8 @@ def send_host_notification(
         return False
 
     base_url = settings.APP_BASE_URL or "http://localhost:8005"
-    approve_link = f"{base_url}/visits/{visit_id}/approve?token={approval_token}"
-    reject_link = f"{base_url}/visits/{visit_id}/reject?token={approval_token}"
+    approve_link = get_frontend_visit_action_url(visit_id, "approve", approval_token)
+    reject_link = get_frontend_visit_action_url(visit_id, "reject", approval_token)
 
     subject = f"Visitor arrival: {visitor_name}"
     photo_link = photo_url
@@ -108,8 +141,9 @@ def send_host_notification(
         html_part.add_related(photo_bytes, maintype=maintype, subtype=subtype, cid=image_cid)
 
     try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
-            if settings.SMTP_USE_TLS:
+        smtp_class = smtplib.SMTP_SSL if settings.SMTP_PORT == 465 else smtplib.SMTP
+        with smtp_class(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
+            if settings.SMTP_USE_TLS and settings.SMTP_PORT != 465:
                 server.starttls()
             if settings.SMTP_USER and settings.SMTP_PASSWORD:
                 server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
@@ -141,8 +175,9 @@ def send_reception_notification(reception_email: str, visitor_name: str, status:
     message.set_content(body)
 
     try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
-            if settings.SMTP_USE_TLS:
+        smtp_class = smtplib.SMTP_SSL if settings.SMTP_PORT == 465 else smtplib.SMTP
+        with smtp_class(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
+            if settings.SMTP_USE_TLS and settings.SMTP_PORT != 465:
                 server.starttls()
             if settings.SMTP_USER and settings.SMTP_PASSWORD:
                 server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
@@ -150,3 +185,74 @@ def send_reception_notification(reception_email: str, visitor_name: str, status:
         logger.info("Reception notification sent to %s", reception_email)
     except Exception:
         logger.exception("Failed to send reception notification to %s", reception_email)
+
+
+def send_visitor_access_pass(
+    visitor_email: str,
+    visitor_name: str,
+    host_name: str,
+    qr_code: str,
+    valid_to: str,
+    max_visits: int,
+) -> bool:
+    if not settings.SMTP_HOST or not settings.SMTP_FROM:
+        logger.warning("SMTP not configured. Access pass email not sent.")
+        return False
+
+    qr_checkin_url = get_frontend_qr_checkin_url(qr_code)
+    qr_png, qr_mime = build_qr_png(qr_checkin_url)
+    qr_cid = make_msgid(domain="vms.local")[1:-1] if qr_png else None
+    subject = f"Visitor access pass for {visitor_name}"
+    body = (
+        f"Hello {visitor_name},\n\n"
+        f"Your visitor access pass has been created by {host_name}.\n"
+        f"QR Code: {qr_code}\n"
+        f"Valid until: {valid_to}\n"
+        f"Max visits: {max_visits}\n\n"
+        "Please present this code at reception.\n"
+    )
+
+    html_body = f"""
+    <html>
+      <body style="margin:0;padding:24px;background:#eef2ff;font-family:Arial,sans-serif;">
+        <div style="max-width:620px;margin:0 auto;background:#dbe4ff;border-radius:28px;padding:28px;color:#1f2937;">
+          <h2 style="margin:0 0 22px 0;color:#111827;font-size:28px;line-height:1.2;font-weight:700;">Visitor access pass</h2>
+          <p style="margin:0 0 14px 0;color:#374151;font-size:18px;">Hello {visitor_name},</p>
+          <p style="margin:0 0 24px 0;color:#4b5563;font-size:18px;">{host_name} has created your visitor access pass.</p>
+          <div style="background:#cfdbf8;border-radius:22px;padding:24px;">
+            <p style="margin:0 0 10px 0;color:#111827;font-size:20px;font-weight:700;">QR Code</p>
+            <p style="margin:0 0 18px 0;color:#111827;font-family:Menlo,Consolas,monospace;font-size:18px;line-height:1.35;word-break:break-word;">{qr_code}</p>
+            {f'<img src="cid:{qr_cid}" alt="Access pass QR" width="260" height="260" style="display:block;margin:0 0 22px 0;border-radius:18px;background:#ffffff;padding:16px;border:1px solid #d1d5db;" />' if qr_cid else ""}
+            <p style="margin:0 0 10px 0;color:#4b5563;font-size:16px;">Valid until: {valid_to}</p>
+            <p style="margin:0;color:#4b5563;font-size:16px;">Max visits: {max_visits}</p>
+          </div>
+        </div>
+      </body>
+    </html>
+    """
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = settings.SMTP_FROM
+    message["To"] = visitor_email
+    message.set_content(body)
+    message.add_alternative(html_body, subtype="html")
+    if qr_png and qr_cid and qr_mime:
+        html_part = message.get_payload()[-1]
+        maintype, subtype = qr_mime.split("/", 1)
+        html_part.add_related(qr_png, maintype=maintype, subtype=subtype, cid=qr_cid)
+        message.add_attachment(qr_png, maintype=maintype, subtype=subtype, filename=f"access-pass-{qr_code}.png")
+
+    try:
+        smtp_class = smtplib.SMTP_SSL if settings.SMTP_PORT == 465 else smtplib.SMTP
+        with smtp_class(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
+            if settings.SMTP_USE_TLS and settings.SMTP_PORT != 465:
+                server.starttls()
+            if settings.SMTP_USER and settings.SMTP_PASSWORD:
+                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.send_message(message)
+        logger.info("Access pass sent to %s", visitor_email)
+        return True
+    except Exception:
+        logger.exception("Failed to send access pass to %s", visitor_email)
+        return False
