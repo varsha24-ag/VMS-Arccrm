@@ -116,7 +116,7 @@ export default function LoginPage() {
 
                 <h2 className="text-2xl font-extrabold leading-tight tracking-tight text-white">
                   Visitor Management <br />
-                  <span className="text-white/60">System.</span>
+                  <span>System.</span>
                 </h2>
                 <p className="mt-4 max-w-sm text-sm text-slate-300/80 leading-relaxed">
                   A professional, secure platform for managing visitor access and workspace interactions.

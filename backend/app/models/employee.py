@@ -12,7 +12,7 @@ class Employee(Base):
     email = Column(String, unique=True, index=True, nullable=True)
     phone = Column(String, unique=True, index=True, nullable=True)
     password_hash = Column(String, nullable=False)
-    role = Column(String, nullable=False)
+    role = Column(String, nullable=False, index=True)
     department = Column(String, nullable=True)
     
     resource_id = Column(Integer, nullable=True)

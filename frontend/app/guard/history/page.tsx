@@ -30,7 +30,7 @@ interface VisitHistoryItem {
 }
 
 export default function ReceptionHistoryPage() {
-  const user = useAuthGuard({ allowedRoles: ["guard", "admin"] });
+  const user = useAuthGuard({ allowedRoles: ["guard", "admin", "superadmin"] });
   const [history, setHistory] = useState<VisitHistoryItem[]>([]);
   const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState(false);

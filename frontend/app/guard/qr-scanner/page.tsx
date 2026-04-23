@@ -43,7 +43,7 @@ function normalizeQrInput(rawValue: string) {
 }
 
 export default function ReceptionQrScannerPage() {
-  const user = useAuthGuard({ allowedRoles: ["guard", "admin"] });
+  const user = useAuthGuard({ allowedRoles: ["guard", "admin", "superadmin"] });
   const router = useRouter();
   const { pushToast } = useToast();
 
