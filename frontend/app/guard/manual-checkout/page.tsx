@@ -24,7 +24,7 @@ interface VisitHistoryItem {
 }
 
 export default function ManualCheckoutPage() {
-  const user = useAuthGuard({ allowedRoles: ["guard", "admin"] });
+  const user = useAuthGuard({ allowedRoles: ["guard", "admin", "superadmin"] });
   const { pushToast } = useToast();
   const [idCardNumber, setIdCardNumber] = useState("");
   const [loading, setLoading] = useState(false);

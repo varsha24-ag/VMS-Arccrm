@@ -32,7 +32,7 @@ export default function HostSearch({ value, onChange, onSelectHost }: HostSearch
       setLoading(true);
       setError("");
       try {
-        const data = await apiFetch<HostEmployee[]>("/employees/hosts");
+        const data = await apiFetch<HostEmployee[]>("/employees/hosts", { timeoutMs: 60000 });
         if (mounted) setHosts(data);
       } catch (err) {
         if (mounted) setError(err instanceof Error ? err.message : "Failed to load hosts");

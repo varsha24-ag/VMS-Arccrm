@@ -18,7 +18,14 @@ def list_hosts(
     exclude_role: Optional[str] = None,
     current_user: Annotated[Employee, Depends(get_current_user)] = None,
 ) -> List[dict]:
-    query = db.query(Employee)
+    query = db.query(Employee).with_entities(
+        Employee.id,
+        Employee.name,
+        Employee.department,
+        Employee.email,
+        Employee.phone,
+        Employee.role
+    )
     if exclude_role:
         # If excluding admin, we also exclude superadmin by default for UI consistency
         if exclude_role.lower() == "admin":

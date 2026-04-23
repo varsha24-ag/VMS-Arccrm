@@ -10,7 +10,7 @@ import HostSearch from "@/components/entry-desk/host-search";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 export default function ReceptionHostPage() {
-  const user = useAuthGuard({ allowedRoles: ["guard"] });
+  const user = useAuthGuard({ allowedRoles: ["guard", "admin", "superadmin"] });
   const [selectedHostId, setSelectedHostId] = useState<number | null>(null);
 
   if (!user) return null;

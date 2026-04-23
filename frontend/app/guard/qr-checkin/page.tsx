@@ -64,7 +64,7 @@ function areAvailableCardsEqual(a: AvailableIdCard[], b: AvailableIdCard[]) {
 
 export default function ReceptionQrCheckinPage() {
   const { pushToast } = useToast();
-  const user = useAuthGuard({ allowedRoles: ["guard"] });
+  const user = useAuthGuard({ allowedRoles: ["guard", "admin", "superadmin"] });
 
   const [qrCode, setQrCode] = useState("");
   const [idNumber, setIdNumber] = useState("");

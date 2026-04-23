@@ -64,7 +64,7 @@ export default function SettingsPage() {
         setError(null);
         try {
             // Use server-side filtering to exclude admins
-            const data = await apiFetch<Employee[]>("/employees/hosts?exclude_role=admin");
+            const data = await apiFetch<Employee[]>("/employees/hosts?exclude_role=admin", { timeoutMs: 60000 });
             setEmployees(data || []);
         } catch (err: any) {
             const msg = err.message || "Failed to load employee directory";

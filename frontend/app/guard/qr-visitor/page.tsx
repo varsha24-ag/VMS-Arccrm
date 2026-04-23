@@ -104,7 +104,7 @@ function getStatusTone(detail: VisitDetail | null) {
 }
 
 export default function ReceptionQrVisitorPage() {
-  const user = useAuthGuard({ allowedRoles: ["guard", "admin"] });
+  const user = useAuthGuard({ allowedRoles: ["guard", "admin", "superadmin"] });
   const router = useRouter();
   const searchParams = useSearchParams();
   const { pushToast } = useToast();
