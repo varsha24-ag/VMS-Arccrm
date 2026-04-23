@@ -117,7 +117,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
   const { pushToast } = useToast();
 
   useEffect(() => {
-    if (!user || !["guard", "admin", "employee"].includes(user.role)) return;
+    if (!user || !["guard", "admin", "employee", "superadmin"].includes(user.role)) return;
     const token = getAccessToken();
     if (!token) return;
     const source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);

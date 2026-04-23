@@ -20,7 +20,7 @@ interface Employee {
 }
 
 export default function SettingsPage() {
-    const user = useAuthGuard({ allowedRoles: ["admin"] });
+    const user = useAuthGuard({ allowedRoles: ["admin", "superadmin"] });
     const { pushToast } = useToast();
     
     // States
@@ -31,6 +31,14 @@ export default function SettingsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedRole, setSelectedRole] = useState<"admin" | "guard">("admin");
+    const isSuperAdmin = user?.role === "superadmin";
+
+    // Revert role selection if non-superadmin somehow targets admin
+    useEffect(() => {
+        if (!isSuperAdmin && selectedRole === "admin") {
+            setSelectedRole("guard");
+        }
+    }, [isSuperAdmin, selectedRole]);
 
     // Calculate next Saturday for maintenance window
     const getNextSaturday = () => {
@@ -117,16 +125,18 @@ export default function SettingsPage() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-3)]">Select Access Level</label>
-                                <div className="flex gap-2 p-1 bg-[var(--surface-3)] rounded-xl border border-[var(--border-1)] max-w-sm">
-                                    <button 
-                                        onClick={() => setSelectedRole("admin")}
-                                        className={`flex-1 py-3 px-4 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${selectedRole === "admin" ? 'bg-[var(--accent)] text-[var(--accent-fg)] shadow-lg scale-[1.02]' : 'text-[var(--text-3)] hover:text-[var(--text-1)]'}`}
-                                    >
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                        </svg>
-                                        Administrator
-                                    </button>
+                                <div className={`flex gap-2 p-1 bg-[var(--surface-3)] rounded-xl border border-[var(--border-1)] ${isSuperAdmin ? 'max-w-sm' : 'max-w-[200px]'}`}>
+                                    {isSuperAdmin && (
+                                        <button 
+                                            onClick={() => setSelectedRole("admin")}
+                                            className={`flex-1 py-3 px-4 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${selectedRole === "admin" ? 'bg-[var(--accent)] text-[var(--accent-fg)] shadow-lg scale-[1.02]' : 'text-[var(--text-3)] hover:text-[var(--text-1)]'}`}
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                            </svg>
+                                            Administrator
+                                        </button>
+                                    )}
                                     <button 
                                         onClick={() => setSelectedRole("guard")}
                                         className={`flex-1 py-3 px-4 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${selectedRole === "guard" ? 'bg-[var(--accent)] text-[var(--accent-fg)] shadow-lg scale-[1.02]' : 'text-[var(--text-3)] hover:text-[var(--text-1)]'}`}

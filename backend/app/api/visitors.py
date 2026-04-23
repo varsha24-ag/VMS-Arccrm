@@ -392,7 +392,7 @@ async def visit_events(
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized access")
 
-    if current_user.role.lower() not in {"receptionist", "admin", "employee", "guard"}:
+    if current_user.role.lower() not in {"receptionist", "admin", "employee", "guard", "superadmin"}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized access")
     return StreamingResponse(
         event_stream(current_user.id),

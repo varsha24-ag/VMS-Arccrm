@@ -92,9 +92,12 @@ def sync_employees(db: Session) -> None:
                 else:
                     processed_phones.add(phone)
                 
-        # Determine role from PersonRole field
-        api_role = str(api_emp.get("PersonRole", "")).lower()
-        target_role = "guard" if "guard" in api_role else "employee"
+        # Determine role from Role field or PersonRole field
+        api_role_val = str(api_emp.get("Role") or api_emp.get("PersonRole") or "").lower()
+        if "superadmin" in api_role_val:
+            target_role = "superadmin"
+        else:
+            target_role = "employee"
                 
         # Find existing employee safely
         match = None
