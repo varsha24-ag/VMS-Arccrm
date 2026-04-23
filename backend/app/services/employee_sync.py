@@ -132,7 +132,15 @@ def sync_employees(db: Session) -> None:
             match.project = api_emp.get("Project", match.project)
             match.project_lead = api_emp.get("ProjectLead", match.project_lead)
             match.shift = api_emp.get("Shift", match.shift)
-            match.role = target_role
+            # Role Management Protection:
+            # 1. If API says they are superadmin, always set it.
+            # 2. If they are currently admin or guard in our DB, DO NOT downgrade them to employee.
+            # 3. Otherwise, apply the target role.
+            current_role = str(match.role or "").lower()
+            if target_role == "superadmin":
+                match.role = "superadmin"
+            elif current_role not in ["admin", "guard"]:
+                match.role = target_role
             
             # Re-register local maps
             if match.resource_id: db_emp_by_rid[match.resource_id] = match

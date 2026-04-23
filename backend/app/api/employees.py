@@ -20,7 +20,11 @@ def list_hosts(
 ) -> List[dict]:
     query = db.query(Employee)
     if exclude_role:
-        query = query.filter(Employee.role != exclude_role)
+        # If excluding admin, we also exclude superadmin by default for UI consistency
+        if exclude_role.lower() == "admin":
+            query = query.filter(Employee.role.not_in(["admin", "superadmin"]))
+        else:
+            query = query.filter(Employee.role != exclude_role)
     employees = query.all()
     return [
         {
