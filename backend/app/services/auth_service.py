@@ -56,17 +56,17 @@ def login_employee(db: Session, data: LoginRequest) -> LoginResponse:
 
     user = find_user_by_email_and_resource_id(db, data.email, resource_id)
     # print(user)
-    
+
     if not user:
         raise ValueError("Login failed")
 
     token = create_access_token(user_id=resource_id, role=user.role)
-    
+
     return LoginResponse(
         access_token=token,
         user=UserOut(
-            id=resource_id, 
-            name=user.name, 
+            id=resource_id,
+            name=user.name,
             role=user.role
         ),
     )
