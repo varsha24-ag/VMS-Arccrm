@@ -145,26 +145,28 @@ export function AccessPassForm({
           </option>
         ))}
       </select>
-      <label className="grid gap-2 text-sm text-[var(--text-2)]">
-        Valid From
-        <input
-          type="datetime-local"
-          className="min-h-[44px] w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
-          value={passPayload.valid_from}
-          onChange={(e) => setPassPayload((prev) => ({ ...prev, valid_from: e.target.value }))}
-          required
-        />
-      </label>
-      <label className="grid gap-2 text-sm text-[var(--text-2)]">
-        Valid To
-        <input
-          type="datetime-local"
-          className="min-h-[44px] w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
-          value={passPayload.valid_to}
-          onChange={(e) => setPassPayload((prev) => ({ ...prev, valid_to: e.target.value }))}
-          required
-        />
-      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="grid gap-2 text-xs text-[var(--text-2)]">
+          Valid From
+          <input
+            type="datetime-local"
+            className="min-h-[44px] w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
+            value={passPayload.valid_from}
+            onChange={(e) => setPassPayload((prev) => ({ ...prev, valid_from: e.target.value }))}
+            required
+          />
+        </label>
+        <label className="grid gap-2 text-xs text-[var(--text-2)]">
+          Valid To
+          <input
+            type="datetime-local"
+            className="min-h-[44px] w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
+            value={passPayload.valid_to}
+            onChange={(e) => setPassPayload((prev) => ({ ...prev, valid_to: e.target.value }))}
+            required
+          />
+        </label>
+      </div>
       <button
         type="submit"
         disabled={loading}

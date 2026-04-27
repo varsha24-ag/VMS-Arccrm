@@ -22,6 +22,8 @@ interface VisitorCreatePayload {
   host_employee?: number | null;
   purpose?: string;
   photo_url?: string;
+  valid_from?: string;
+  valid_to?: string;
 }
 
 interface VisitorOut {
@@ -32,6 +34,15 @@ interface VisitorOut {
 }
 
 const steps = ["Visitor Info", "Photo", "Host"];
+
+function toDateTimeLocal(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  const hours = String(value.getHours()).padStart(2, "0");
+  const minutes = String(value.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
 
 function StepIndicator({ stepIndex, current }: { stepIndex: number; current: number }) {
   if (stepIndex < current) {
@@ -68,15 +79,21 @@ export default function ReceptionRegisterPage() {
   const [loading, setLoading] = useState(false);
   const [selectedHost, setSelectedHost] = useState<HostEmployee | null>(null);
 
-  const [register, setRegister] = useState<VisitorCreatePayload>({
-    name: "",
-    phone: "",
-    email: "",
-    company: "",
-    visitor_type: "Guest",
-    host_employee: null,
-    purpose: "Meeting",
-    photo_url: "",
+  const [register, setRegister] = useState<VisitorCreatePayload>(() => {
+    const now = new Date();
+    const expiry = new Date(now.getTime() + 8 * 60 * 60 * 1000); // Default 8 hours
+    return {
+      name: "",
+      phone: "",
+      email: "",
+      company: "",
+      visitor_type: "Guest",
+      host_employee: null,
+      purpose: "Meeting",
+      photo_url: "",
+      valid_from: toDateTimeLocal(now),
+      valid_to: toDateTimeLocal(expiry),
+    };
   });
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -117,6 +134,8 @@ export default function ReceptionRegisterPage() {
       const payload = {
         ...register,
         host_employee: register.host_employee ? Number(register.host_employee) : null,
+        valid_from: register.valid_from ? new Date(register.valid_from).toISOString() : undefined,
+        valid_to: register.valid_to ? new Date(register.valid_to).toISOString() : undefined,
       };
       const created = await apiFetch<VisitorOut>("/visitor/create", {
         method: "POST",
@@ -156,6 +175,8 @@ export default function ReceptionRegisterPage() {
           },
         });
       }
+      const now = new Date();
+      const expiry = new Date(now.getTime() + 8 * 60 * 60 * 1000);
       setRegister({
         name: "",
         phone: "",
@@ -165,6 +186,8 @@ export default function ReceptionRegisterPage() {
         host_employee: null,
         purpose: "Meeting",
         photo_url: "",
+        valid_from: toDateTimeLocal(now),
+        valid_to: toDateTimeLocal(expiry),
       });
       setPurposeOption("Meeting");
       setCustomPurpose("");
@@ -325,6 +348,25 @@ export default function ReceptionRegisterPage() {
                     />
                   </label>
                 ) : null}
+
+                <label className="text-sm text-[var(--text-2)]">
+                  Valid From
+                  <input
+                    type="datetime-local"
+                    className="mt-2 w-full rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
+                    value={register.valid_from}
+                    onChange={(e) => setRegister((prev) => ({ ...prev, valid_from: e.target.value }))}
+                  />
+                </label>
+                <label className="text-sm text-[var(--text-2)]">
+                  Valid To
+                  <input
+                    type="datetime-local"
+                    className="mt-2 w-full rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
+                    value={register.valid_to}
+                    onChange={(e) => setRegister((prev) => ({ ...prev, valid_to: e.target.value }))}
+                  />
+                </label>
 
                 <div className="md:col-span-2 flex justify-end">
                   <button
