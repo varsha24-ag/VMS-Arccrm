@@ -55,9 +55,15 @@ def login_employee(db: Session, data: LoginRequest) -> LoginResponse:
         login_role = "guard"
 
     user = find_user_by_email_and_resource_id(db, data.email, resource_id)
-    # print(user)
-
+    
+    # DEBUG LOGS (Remove after fixing login)
+    print(f"DEBUG: API returned Email='{data.email}', ResourceID={resource_id}")
     if not user:
+        print(f"DEBUG: No user found in DB for ResourceID={resource_id}")
+        # Try a wider search to see what's in the DB
+        alt_user = db.query(Employee).filter(Employee.resource_id == int(resource_id)).first()
+        if alt_user:
+            print(f"DEBUG: Found user with same ID but different email: '{alt_user.email}'")
         raise ValueError("Login failed")
 
     token = create_access_token(user_id=resource_id, role=user.role)
