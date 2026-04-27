@@ -24,10 +24,7 @@ export default function QrScanner({ onScan, onError, onReady }: QrScannerProps) 
         
         // Use the same basic constraints as your working Photo Capture
         const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: "environment" } 
-        }).catch(() => {
-            // Fallback if environment (back camera) fails
-            return navigator.mediaDevices.getUserMedia({ video: true });
+          video: { facingMode: "user" } 
         });
 
         if (videoRef.current) {
