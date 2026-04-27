@@ -29,14 +29,21 @@ export default function QrScanner({ onScan, onError, onReady }: QrScannerProps) 
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          try {
+            await videoRef.current.play();
+          } catch (e) {
+            console.warn("Autoplay was prevented, waiting for user interaction.");
+          }
           onReady();
         }
 
         // Start looking for QR codes
-        controls = await codeReader.decodeFromVideoElement(videoRef.current, (result, error) => {
+        controls = await codeReader.decodeFromVideoElement(videoRef.current, (result) => {
           if (result) {
             const text = result.getText().trim();
             if (text) {
+              // Once scanned, we stop to prevent double scanning
+              if (controls) controls.stop();
               onScan(text);
             }
           }
