@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { BrowserQRCodeReader } from "@zxing/browser";
+import { DecodeHintType, BarcodeFormat } from "@zxing/library";
 
 type QrScannerProps = {
   onScan: (value: string) => void;
@@ -14,7 +15,14 @@ export default function QrScanner({ onScan, onError, onReady }: QrScannerProps) 
   const readerRef = useRef<BrowserQRCodeReader | null>(null);
 
   useEffect(() => {
-    const codeReader = new BrowserQRCodeReader();
+    const hints = new Map();
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.QR_CODE]);
+    hints.set(DecodeHintType.TRY_HARDER, true);
+
+    const codeReader = new BrowserQRCodeReader(hints, {
+      delayBetweenScanAttempts: 100,
+      delayBetweenScanSuccess: 500,
+    });
     readerRef.current = codeReader;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let controls: any;
@@ -24,9 +32,13 @@ export default function QrScanner({ onScan, onError, onReady }: QrScannerProps) 
       try {
         if (!videoRef.current) return;
         
-        // Use the same basic constraints as your working Photo Capture
+        // Request an ideal 720p HD resolution to make small/blurry QR codes much easier to read fast
         const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: true 
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: "environment" // Use back camera on tablets/phones, defaults to webcam on PC
+          } 
         });
 
         if (videoRef.current) {
