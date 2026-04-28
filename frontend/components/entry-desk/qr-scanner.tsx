@@ -63,7 +63,11 @@ export default function QrScanner({ onScan, onError, onReady }: QrScannerProps) 
           }
         });
       } catch (err) {
-        onError(err instanceof Error ? err.message : "Unable to access camera for scanning.");
+        if (!navigator.mediaDevices?.getUserMedia && window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
+           onError("Camera blocked! You must use HTTPS or 'localhost' to access the camera.");
+        } else {
+           onError(err instanceof Error ? err.message : "Unable to access camera for scanning.");
+        }
       }
     }
 

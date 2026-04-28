@@ -46,7 +46,11 @@ export default function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
     setError("");
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
-        setError("Camera API not available in this browser.");
+        if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
+           setError("Camera blocked! You must use HTTPS or 'localhost' to access the camera on this device.");
+        } else {
+           setError("Camera API not available in this browser. Please check site permissions.");
+        }
         return;
       }
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
