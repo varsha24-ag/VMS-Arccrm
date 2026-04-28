@@ -125,9 +125,9 @@ export function SimpleTable({ headers, rows }: SimpleTableProps) {
 export function StatusList({ items, onItemClick }: StatusListProps) {
   return (
     <div className="space-y-3 text-sm text-[var(--text-1)]">
-      {items.map((item) => (
+      {items.map((item, idx) => (
         <article
-          key={item.title}
+          key={item.visit_id ? item.visit_id : `${item.title}-${idx}`}
           className="flex flex-col gap-3 rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-3 transition hover:-translate-y-0.5 hover:bg-[var(--surface-3)] sm:flex-row sm:items-center sm:justify-between"
           role={onItemClick ? "button" : undefined}
           tabIndex={onItemClick ? 0 : undefined}
