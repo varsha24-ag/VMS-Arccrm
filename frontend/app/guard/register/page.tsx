@@ -35,14 +35,6 @@ interface VisitorOut {
 
 const steps = ["Visitor Info", "Photo", "Host"];
 
-function toDateTimeLocal(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  const hours = String(value.getHours()).padStart(2, "0");
-  const minutes = String(value.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
 
 function StepIndicator({ stepIndex, current }: { stepIndex: number; current: number }) {
   if (stepIndex < current) {
@@ -80,8 +72,6 @@ export default function ReceptionRegisterPage() {
   const [selectedHost, setSelectedHost] = useState<HostEmployee | null>(null);
 
   const [register, setRegister] = useState<VisitorCreatePayload>(() => {
-    const now = new Date();
-    const expiry = new Date(now.getTime() + 8 * 60 * 60 * 1000); // Default 8 hours
     return {
       name: "",
       phone: "",
@@ -91,8 +81,8 @@ export default function ReceptionRegisterPage() {
       host_employee: null,
       purpose: "Meeting",
       photo_url: "",
-      valid_from: toDateTimeLocal(now),
-      valid_to: toDateTimeLocal(expiry),
+      valid_from: "",
+      valid_to: "",
     };
   });
 
@@ -106,6 +96,8 @@ export default function ReceptionRegisterPage() {
       if (register.email && !emailRegex.test(register.email.trim())) nextErrors.email = "Enter a valid email.";
       if (register.phone && !phoneRegex.test(register.phone.trim())) nextErrors.phone = "Enter a valid 10-digit phone number.";
       if (!register.purpose?.trim()) nextErrors.purpose = "Purpose is required.";
+      if (!register.valid_from) nextErrors.valid_from = "Valid from date is required.";
+      if (!register.valid_to) nextErrors.valid_to = "Valid to date is required.";
     }
     if (targetStep === 1) {
       if (!register.photo_url) nextErrors.photo_url = "Photo is required.";
@@ -175,8 +167,6 @@ export default function ReceptionRegisterPage() {
           },
         });
       }
-      const now = new Date();
-      const expiry = new Date(now.getTime() + 8 * 60 * 60 * 1000);
       setRegister({
         name: "",
         phone: "",
@@ -186,8 +176,8 @@ export default function ReceptionRegisterPage() {
         host_employee: null,
         purpose: "Meeting",
         photo_url: "",
-        valid_from: toDateTimeLocal(now),
-        valid_to: toDateTimeLocal(expiry),
+        valid_from: "",
+        valid_to: "",
       });
       setPurposeOption("Meeting");
       setCustomPurpose("");
@@ -357,6 +347,7 @@ export default function ReceptionRegisterPage() {
                     value={register.valid_from}
                     onChange={(e) => setRegister((prev) => ({ ...prev, valid_from: e.target.value }))}
                   />
+                  {formErrors.valid_from ? <p className="mt-1 text-xs text-red-400">{formErrors.valid_from}</p> : null}
                 </label>
                 <label className="text-sm text-[var(--text-2)]">
                   Valid To
@@ -366,6 +357,7 @@ export default function ReceptionRegisterPage() {
                     value={register.valid_to}
                     onChange={(e) => setRegister((prev) => ({ ...prev, valid_to: e.target.value }))}
                   />
+                  {formErrors.valid_to ? <p className="mt-1 text-xs text-red-400">{formErrors.valid_to}</p> : null}
                 </label>
 
                 <div className="md:col-span-2 flex justify-end">
