@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
+import CustomSelect from "@/components/ui/custom-select";
 
 const passPurposeOptions = [
   "Meeting",
@@ -130,21 +131,14 @@ export function AccessPassForm({
         value={passPayload.company}
         onChange={(e) => setPassPayload((prev) => ({ ...prev, company: e.target.value }))}
       />
-      <select
-        className="min-h-[44px] w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
+      <CustomSelect
+        options={[
+          { value: "", label: "Select purpose" },
+          ...passPurposeOptions.map(opt => ({ value: opt, label: opt }))
+        ]}
         value={passPayload.purpose}
-        onChange={(e) => setPassPayload((prev) => ({ ...prev, purpose: e.target.value }))}
-        required
-      >
-        <option value="" className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
-          Select purpose
-        </option>
-        {passPurposeOptions.map((option) => (
-          <option key={option} value={option} className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
-            {option}
-          </option>
-        ))}
-      </select>
+        onChange={(value) => setPassPayload((prev) => ({ ...prev, purpose: value }))}
+      />
       <div className="grid grid-cols-2 gap-3">
         <label className="grid gap-2 text-xs text-[var(--text-2)]">
           Valid From

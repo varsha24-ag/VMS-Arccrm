@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import CustomSelect from "@/components/ui/custom-select";
 
 type PageItem = number | "ellipsis";
 
@@ -58,17 +59,13 @@ export default function Pagination({
           {showPageSize && onPageSizeChange ? (
             <div className="flex items-center gap-3">
               <span className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Rows per page</span>
-              <select
-                value={pageSize}
-                onChange={(event) => onPageSizeChange(Number(event.target.value))}
-                className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] shadow-[var(--shadow-1)] focus:outline-none"
-              >
-                {pageSizeOptions.map((size) => (
-                  <option key={size} value={size} className="bg-[var(--surface-1)] text-[var(--text-1)]">
-                    {size}
-                  </option>
-                ))}
-              </select>
+              <div className="w-[100px]">
+                <CustomSelect
+                  options={pageSizeOptions.map(size => ({ value: String(size), label: String(size) }))}
+                  value={String(pageSize)}
+                  onChange={(value) => onPageSizeChange(Number(value))}
+                />
+              </div>
             </div>
           ) : null}
         </div>

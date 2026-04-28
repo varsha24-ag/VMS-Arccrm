@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import AppTableShell from "@/components/ui/app-table-shell";
+import CustomSelect from "@/components/ui/custom-select";
 
 type GridRowId = string | number;
 type GridColumnVisibilityModel = Record<string, boolean>;
@@ -211,28 +212,22 @@ function AppGridFilterPanel<R>({
 
     if (isSingleSelect || (isPurposeField && purposeOptions.length > 0)) {
       return (
-        <select
-          className={getInputClass(Boolean(filters.fields[column.field]))}
+        <CustomSelect
+          options={[
+            { value: "", label: `All ${label}` },
+            ...(isSingleSelect ? (column.valueOptions as string[]) : purposeOptions).map(opt => ({
+              value: String(opt).trim().toLowerCase().replace(/\s+/g, "_"),
+              label: String(opt).replace(/_/g, " ")
+            }))
+          ]}
           value={filters.fields[column.field] ?? ""}
-          onChange={(event) => {
-            const raw = event.target.value;
-            const normalized = raw ? raw.trim().toLowerCase().replace(/\s+/g, "_") : "";
+          onChange={(value) => {
             onFiltersChange({
               ...filters,
-              fields: { ...filters.fields, [column.field]: normalized },
+              fields: { ...filters.fields, [column.field]: value },
             });
           }}
-        >
-          <option value="" className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">All {label}</option>
-          {(isSingleSelect ? (column.valueOptions as string[]) : purposeOptions).map((option) => {
-            const val = String(option).trim().toLowerCase().replace(/\s+/g, "_");
-            return (
-              <option key={val} value={val} className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
-                {String(option).replace(/_/g, " ")}
-              </option>
-            );
-          })}
-        </select>
+        />
       );
     }
 
@@ -872,20 +867,16 @@ export default function AppDataGrid<R extends object>({
                   : `${safePage * pageSize + 1}-${Math.min((safePage + 1) * pageSize, filteredRows.length)} of ${filteredRows.length}`}
               </div>
               <div className="flex items-center gap-3">
-                <select
-                  value={pageSize}
-                  onChange={(event) => {
-                    setPageSize(Number(event.target.value));
-                    setPage(0);
-                  }}
-                  className="rounded-lg border border-[var(--border-1)] bg-[var(--surface-1)] px-3 py-2 text-sm text-[var(--text-1)] focus:outline-none focus:border-[var(--focus-accent)] focus:ring-2 focus:ring-[var(--focus-ring)]"
-                >
-                  {pageSizeOptions.map((option) => (
-                    <option key={option} value={option} className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
-                      {option} / page
-                    </option>
-                  ))}
-                </select>
+                <div className="w-[120px]">
+                  <CustomSelect
+                    options={pageSizeOptions.map(opt => ({ value: String(opt), label: `${opt} / page` }))}
+                    value={String(pageSize)}
+                    onChange={(value) => {
+                      setPageSize(Number(value));
+                      setPage(0);
+                    }}
+                  />
+                </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"

@@ -9,6 +9,7 @@ import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import EntryDeskHeader from "@/components/entry-desk/entry-desk-header";
 import HostSearch, { HostEmployee } from "@/components/entry-desk/host-search";
 import PhotoCapture from "@/components/entry-desk/photo-capture";
+import CustomSelect from "@/components/ui/custom-select";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
@@ -263,11 +264,10 @@ export default function ReceptionRegisterPage() {
                 </label>
                 <label className="text-sm text-[var(--text-2)]">
                   Visitor Type
-                  <select
-                    className="mt-2 w-full rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
+                  <CustomSelect
+                    options={["Guest", "Vendor", "Contractor", "Interview", "Delivery", "Custom"].map(opt => ({ value: opt, label: opt }))}
                     value={visitorTypeOption}
-                    onChange={(e) => {
-                      const value = e.target.value;
+                    onChange={(value) => {
                       setVisitorTypeOption(value);
                       if (value !== "Custom") {
                         setCustomVisitorType("");
@@ -276,13 +276,7 @@ export default function ReceptionRegisterPage() {
                         setRegister((prev) => ({ ...prev, visitor_type: "" }));
                       }
                     }}
-                  >
-                    {["Guest", "Vendor", "Contractor", "Interview", "Delivery", "Custom"].map((option) => (
-                      <option key={option} value={option} className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </label>
                 {visitorTypeOption === "Custom" ? (
                   <label className="text-sm text-[var(--text-2)]">
@@ -301,11 +295,10 @@ export default function ReceptionRegisterPage() {
                 ) : null}
                 <label className="text-sm text-[var(--text-2)]">
                   Purpose
-                  <select
-                    className="mt-2 w-full rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
+                  <CustomSelect
+                    options={["Meeting", "Interview", "Delivery", "Maintenance", "Vendor", "Custom"].map(opt => ({ value: opt, label: opt }))}
                     value={purposeOption}
-                    onChange={(e) => {
-                      const value = e.target.value;
+                    onChange={(value) => {
                       setPurposeOption(value);
                       if (value !== "Custom") {
                         setCustomPurpose("");
@@ -314,13 +307,7 @@ export default function ReceptionRegisterPage() {
                         setRegister((prev) => ({ ...prev, purpose: "" }));
                       }
                     }}
-                  >
-                    {["Meeting", "Interview", "Delivery", "Maintenance", "Vendor", "Custom"].map((option) => (
-                      <option key={option} value={option} className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                  />
                   {formErrors.purpose ? <p className="mt-1 text-xs text-red-400">{formErrors.purpose}</p> : null}
                 </label>
                 {purposeOption === "Custom" ? (
