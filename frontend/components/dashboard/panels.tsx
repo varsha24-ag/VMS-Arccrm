@@ -79,7 +79,7 @@ export function StatGrid({ items }: StatGridProps) {
 export function Panel({ title, children, action, className, contentClassName }: PanelProps) {
   return (
     <section
-      className={`overflow-hidden rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-4 shadow-[var(--shadow-1)] ${className ?? ""}`}
+      className={`rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-4 shadow-[var(--shadow-1)] ${className ?? ""}`}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-base font-semibold text-[var(--text-1)] sm:text-lg">{title}</h2>
