@@ -64,6 +64,7 @@ export default function Pagination({
                   options={pageSizeOptions.map(size => ({ value: String(size), label: String(size) }))}
                   value={String(pageSize)}
                   onChange={(value) => onPageSizeChange(Number(value))}
+                  menuPlacement="top"
                 />
               </div>
             </div>

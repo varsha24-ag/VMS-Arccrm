@@ -11,9 +11,10 @@ interface CustomSelectProps {
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  menuPlacement?: "top" | "bottom";
 }
 
-export default function CustomSelect({ options, value, onChange, placeholder = "Select an option", disabled = false }: CustomSelectProps) {
+export default function CustomSelect({ options, value, onChange, placeholder = "Select an option", disabled = false, menuPlacement = "bottom" }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +50,7 @@ export default function CustomSelect({ options, value, onChange, placeholder = "
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-[var(--border-1)] bg-[var(--surface-1)] py-1 shadow-lg backdrop-blur-xl">
+        <div className={`absolute z-50 max-h-60 w-full overflow-auto rounded-lg border border-[var(--border-1)] bg-[var(--surface-1)] py-1 shadow-lg backdrop-blur-xl ${menuPlacement === "top" ? "bottom-full mb-1" : "top-full mt-1"}`}>
           {options.map((option) => (
             <button
               key={option.value}

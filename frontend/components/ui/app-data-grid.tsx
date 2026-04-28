@@ -875,6 +875,7 @@ export default function AppDataGrid<R extends object>({
                       setPageSize(Number(value));
                       setPage(0);
                     }}
+                    menuPlacement="top"
                   />
                 </div>
                 <div className="flex items-center gap-2">
