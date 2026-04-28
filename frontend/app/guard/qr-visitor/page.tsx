@@ -8,6 +8,7 @@ import PhotoCapture from "@/components/entry-desk/photo-capture";
 import { Panel } from "@/components/dashboard/panels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
+import CustomSelect from "@/components/ui/custom-select";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, resolveApiAssetUrl } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
@@ -327,11 +328,14 @@ export default function ReceptionQrVisitorPage() {
 
               <label className="block text-sm text-[var(--text-2)]">
                 ID Card
-                <select
-                  className="mt-2 w-full rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                <CustomSelect
+                  options={[
+                    { value: "", label: idCardLoading ? "Loading ID cards..." : "Select ID card" },
+                    ...availableCards.map(card => ({ value: card.id_number, label: card.id_number })),
+                    { value: "__custom__", label: "Custom" }
+                  ]}
                   value={idCardSelection}
-                  onChange={(e) => {
-                    const value = e.target.value;
+                  onChange={(value) => {
                     setIdCardSelection(value);
                     if (value === "__custom__") {
                       setCustomIdNumber("");
@@ -341,19 +345,7 @@ export default function ReceptionQrVisitorPage() {
                     setCustomIdNumber("");
                     setIdNumber(value);
                   }}
-                >
-                  <option value="" className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
-                    {idCardLoading ? "Loading ID cards..." : "Select ID card"}
-                  </option>
-                  {availableCards.map((card) => (
-                    <option key={card.id} value={card.id_number} className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
-                      {card.id_number}
-                    </option>
-                  ))}
-                  <option value="__custom__" className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
-                    Custom
-                  </option>
-                </select>
+                />
               </label>
 
               {idCardSelection === "__custom__" ? (

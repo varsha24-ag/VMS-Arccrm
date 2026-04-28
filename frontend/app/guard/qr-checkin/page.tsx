@@ -9,8 +9,9 @@ import AppDataGrid, {
   GridColDef,
   type GridRenderCellParams,
 } from "@/components/ui/app-data-grid";
+import CustomSelect from "@/components/ui/custom-select";
 import { useToast } from "@/components/ui/toast";
-import {  apiFetch } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
@@ -596,34 +597,26 @@ export default function ReceptionQrCheckinPage() {
               onChange={(e) => setQrCode(e.target.value)}
               required
             />
-            <select
-              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
-              value={idCardSelection}
-              onChange={(e) => {
-                const value = e.target.value;
-                setIdCardSelection(value);
-                if (value === "__custom__") {
-                  setIdNumber("");
-                  setCustomIdNumber("");
-                } else {
-                  setCustomIdNumber("");
-                  setIdNumber(value);
-                }
-              }}
-              required
-            >
-              <option value="" className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
-                {idCardLoading ? "Loading ID cards..." : "Select ID card"}
-              </option>
-              {availableCards.map((card) => (
-                <option key={card.id} value={card.id_number} className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
-                  {card.id_number}
-                </option>
-              ))}
-              <option value="__custom__" className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
-                Custom
-              </option>
-            </select>
+            <div className="w-full relative shrink-0" style={{ maxWidth: "240px" }}>
+              <CustomSelect
+                options={[
+                  { value: "", label: idCardLoading ? "Loading ID cards..." : "Select ID card" },
+                  ...availableCards.map(card => ({ value: card.id_number, label: card.id_number })),
+                  { value: "__custom__", label: "Custom" }
+                ]}
+                value={idCardSelection}
+                onChange={(value) => {
+                  setIdCardSelection(value);
+                  if (value === "__custom__") {
+                    setIdNumber("");
+                    setCustomIdNumber("");
+                  } else {
+                    setCustomIdNumber("");
+                    setIdNumber(value);
+                  }
+                }}
+              />
+            </div>
             {idCardSelection === "__custom__" ? (
               <input
                 className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
