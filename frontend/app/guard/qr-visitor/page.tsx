@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -104,7 +104,7 @@ function getStatusTone(detail: VisitDetail | null) {
   };
 }
 
-export default function ReceptionQrVisitorPage() {
+function ReceptionQrVisitorContent() {
   const user = useAuthGuard({ allowedRoles: ["guard", "admin", "superadmin"] });
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -395,5 +395,13 @@ export default function ReceptionQrVisitorPage() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function ReceptionQrVisitorPage() {
+  return (
+    <Suspense fallback={null}>
+      <ReceptionQrVisitorContent />
+    </Suspense>
   );
 }

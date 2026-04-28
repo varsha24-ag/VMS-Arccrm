@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { BrowserQRCodeReader } from "@zxing/browser";
 
 type QrScannerProps = {
@@ -16,7 +16,9 @@ export default function QrScanner({ onScan, onError, onReady }: QrScannerProps) 
   useEffect(() => {
     const codeReader = new BrowserQRCodeReader();
     readerRef.current = codeReader;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let controls: any;
+    const currentVideo = videoRef.current;
 
     async function startScanner() {
       try {
@@ -31,7 +33,7 @@ export default function QrScanner({ onScan, onError, onReady }: QrScannerProps) 
           videoRef.current.srcObject = stream;
           try {
             await videoRef.current.play();
-          } catch (e) {
+          } catch {
             console.warn("Autoplay was prevented, waiting for user interaction.");
           }
           onReady();
@@ -57,8 +59,8 @@ export default function QrScanner({ onScan, onError, onReady }: QrScannerProps) 
 
     return () => {
       if (controls) controls.stop();
-      if (videoRef.current?.srcObject) {
-          const stream = videoRef.current.srcObject as MediaStream;
+      if (currentVideo?.srcObject) {
+          const stream = currentVideo.srcObject as MediaStream;
           stream.getTracks().forEach(track => track.stop());
       }
     };
