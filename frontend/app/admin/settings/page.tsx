@@ -66,8 +66,8 @@ export default function SettingsPage() {
             // Use server-side filtering to exclude admins
             const data = await apiFetch<Employee[]>("/employees/hosts?exclude_role=admin", { timeoutMs: 60000 });
             setEmployees(data || []);
-        } catch (err: any) {
-            const msg = err.message || "Failed to load employee directory";
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Failed to load employee directory";
             setError(msg);
             pushToast({ variant: "error", title: "Sync Error", description: msg });
         } finally {
@@ -98,8 +98,8 @@ export default function SettingsPage() {
             setSearchTerm("");
             // Refresh list
             await fetchData();
-        } catch (err: any) {
-            pushToast({ variant: "error", title: "Promotion Failed", description: err.message || "Failed to promote employee" });
+        } catch (err: unknown) {
+            pushToast({ variant: "error", title: "Promotion Failed", description: err instanceof Error ? err.message : "Failed to promote employee" });
         } finally {
             setIsSubmitting(false);
         }

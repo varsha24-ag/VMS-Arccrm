@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function PublicQrCheckinPage() {
+function PublicQrCheckinContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -17,4 +17,12 @@ export default function PublicQrCheckinPage() {
   }, [router, searchParams]);
 
   return null;
+}
+
+export default function PublicQrCheckinPage() {
+  return (
+    <Suspense fallback={null}>
+      <PublicQrCheckinContent />
+    </Suspense>
+  );
 }
