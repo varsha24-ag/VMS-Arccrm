@@ -223,11 +223,11 @@ function AppGridFilterPanel<R>({
             });
           }}
         >
-          <option value="" className="bg-[var(--surface-1)] text-[var(--text-1)]">All {label}</option>
+          <option value="" className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">All {label}</option>
           {(isSingleSelect ? (column.valueOptions as string[]) : purposeOptions).map((option) => {
             const val = String(option).trim().toLowerCase().replace(/\s+/g, "_");
             return (
-              <option key={val} value={val} className="bg-[var(--surface-1)] text-[var(--text-1)]">
+              <option key={val} value={val} className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
                 {String(option).replace(/_/g, " ")}
               </option>
             );
@@ -881,7 +881,7 @@ export default function AppDataGrid<R extends object>({
                   className="rounded-lg border border-[var(--border-1)] bg-[var(--surface-1)] px-3 py-2 text-sm text-[var(--text-1)] focus:outline-none focus:border-[var(--focus-accent)] focus:ring-2 focus:ring-[var(--focus-ring)]"
                 >
                   {pageSizeOptions.map((option) => (
-                    <option key={option} value={option} className="bg-[var(--surface-1)] text-[var(--text-1)]">
+                    <option key={option} value={option} className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
                       {option} / page
                     </option>
                   ))}

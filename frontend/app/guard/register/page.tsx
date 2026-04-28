@@ -278,7 +278,7 @@ export default function ReceptionRegisterPage() {
                     }}
                   >
                     {["Guest", "Vendor", "Contractor", "Interview", "Delivery", "Custom"].map((option) => (
-                      <option key={option} value={option} className="bg-[var(--surface-1)] text-[var(--text-1)]">
+                      <option key={option} value={option} className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
                         {option}
                       </option>
                     ))}
@@ -316,7 +316,7 @@ export default function ReceptionRegisterPage() {
                     }}
                   >
                     {["Meeting", "Interview", "Delivery", "Maintenance", "Vendor", "Custom"].map((option) => (
-                      <option key={option} value={option} className="bg-[var(--surface-1)] text-[var(--text-1)]">
+                      <option key={option} value={option} className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
                         {option}
                       </option>
                     ))}

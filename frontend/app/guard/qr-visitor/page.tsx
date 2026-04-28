@@ -342,15 +342,15 @@ export default function ReceptionQrVisitorPage() {
                     setIdNumber(value);
                   }}
                 >
-                  <option value="" className="bg-[var(--surface-1)] text-[var(--text-1)]">
+                  <option value="" className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
                     {idCardLoading ? "Loading ID cards..." : "Select ID card"}
                   </option>
                   {availableCards.map((card) => (
-                    <option key={card.id} value={card.id_number} className="bg-[var(--surface-1)] text-[var(--text-1)]">
+                    <option key={card.id} value={card.id_number} className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
                       {card.id_number}
                     </option>
                   ))}
-                  <option value="__custom__" className="bg-[var(--surface-1)] text-[var(--text-1)]">
+                  <option value="__custom__" className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
                     Custom
                   </option>
                 </select>

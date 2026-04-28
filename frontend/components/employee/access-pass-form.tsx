@@ -136,11 +136,11 @@ export function AccessPassForm({
         onChange={(e) => setPassPayload((prev) => ({ ...prev, purpose: e.target.value }))}
         required
       >
-        <option value="" className="bg-[var(--surface-1)] text-[var(--text-1)]">
+        <option value="" className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
           Select purpose
         </option>
         {passPurposeOptions.map((option) => (
-          <option key={option} value={option} className="bg-[var(--surface-1)] text-[var(--text-1)]">
+          <option key={option} value={option} className="bg-[var(--surface-1)] text-[var(--text-1)] [html[data-theme='dark']_&]:!bg-[#0b2239]">
             {option}
           </option>
         ))}
