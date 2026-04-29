@@ -144,57 +144,7 @@ def normalize_visitor_photo_urls(db: Session) -> int:
 
 
 def seed_employees(db: Session) -> int:
-    seed_users = [
-        {
-            "name": "Front Desk",
-            "email": "reception@arccrm.local",
-            "phone": "9900000002",
-            "password": "Reception@123",
-            "role": "receptionist",
-            "department": "Operations",
-        },
-        {
-            "name": "Default Employee",
-            "email": "employee@arccrm.local",
-            "phone": "9900000003",
-            "password": "Employee@123",
-            "role": "employee",
-            "department": "General",
-        },
-        {
-            "name": "Varsha Nagda",
-            "email": "varsha.nagda@arcgate.com",
-            "phone": "9900000004",
-            "password": "Employee@123",
-            "role": "employee",
-            "department": "Admin",
-        },
-    ]
-
-    created_count = 0
-    for user in seed_users:
-        existing_user = (
-            db.query(Employee)
-            .filter(or_(Employee.email == user["email"], Employee.phone == user["phone"]))
-            .first()
-        )
-        if existing_user:
-            continue
-
-        db.add(
-            Employee(
-                name=user["name"],
-                email=user["email"],
-                phone=user["phone"],
-                password_hash=get_password_hash(user["password"]),
-                role=user["role"],
-                department=user["department"],
-            )
-        )
-        created_count += 1
-
-    db.commit()
-    return created_count
+    return 0
 
 
 def create_admin_user(db: Session) -> bool:
