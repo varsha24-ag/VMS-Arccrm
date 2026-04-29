@@ -53,7 +53,7 @@ export default function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
         }
         return;
       }
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "user" } } });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;

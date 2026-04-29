@@ -37,7 +37,7 @@ export default function QrScanner({ onScan, onError, onReady }: QrScannerProps) 
           video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            facingMode: "environment" // Use back camera on tablets/phones, defaults to webcam on PC
+            facingMode: { ideal: "environment" } // Use back camera if available, fallback to any webcam safely
           } 
         });
 
