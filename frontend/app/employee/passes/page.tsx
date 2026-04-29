@@ -104,6 +104,8 @@ export default function EmployeePassesPage() {
   const columns = useMemo<GridColDef<AccessPassRow>[]>(
     () => [
       { field: "visitor_name", headerName: "Visitor Name", flex: 1, minWidth: 180, filterable: true },
+      { field: "email", headerName: "Email", flex: 1, minWidth: 180, filterable: true },
+      { field: "phone", headerName: "Phone", flex: 0.8, minWidth: 140, filterable: true },
       { field: "purpose", headerName: "Purpose", flex: 1, minWidth: 180, filterable: true },
       {
         field: "created_at",
