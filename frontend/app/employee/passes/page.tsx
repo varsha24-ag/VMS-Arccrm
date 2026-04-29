@@ -61,6 +61,10 @@ export default function EmployeePassesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [rows, setRows] = useState<AccessPassRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
+    email: false,
+    phone: false,
+  });
 
   const fetchPasses = useCallback(async () => {
     return apiFetch<AccessPassRow[]>("/employees/me/passes");
@@ -218,11 +222,13 @@ export default function EmployeePassesPage() {
           columns={columns}
           getRowId={(row) => row.id}
           loading={loading}
-          showColumns={false}
+          showColumns={true}
           showExport={false}
           showSearch
           showFilters
           showPagination
+          columnVisibilityModel={columnVisibility}
+          onColumnVisibilityModelChange={setColumnVisibility}
           searchPlaceholder="Search visitor, purpose, status..."
           localeText={{ noRowsLabel: loading ? "Loading passes..." : "No passes found." }}
           initialState={{ pagination: { paginationModel: { page: 0, pageSize: 10 } } }}

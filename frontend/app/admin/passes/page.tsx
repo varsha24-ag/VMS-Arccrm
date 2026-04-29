@@ -61,6 +61,10 @@ export default function AdminPassesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [rows, setRows] = useState<AccessPassRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
+    email: false,
+    phone: false,
+  });
 
   const fetchPasses = useCallback(async () => {
     return apiFetch<AccessPassRow[]>("/employees/me/passes");
@@ -115,6 +119,8 @@ export default function AdminPassesPage() {
   const columns = useMemo<GridColDef<AccessPassRow>[]>(
     () => [
       { field: "visitor_name", headerName: "Visitor Name", flex: 1, minWidth: 180, filterable: true },
+      { field: "email", headerName: "Email", flex: 1, minWidth: 180, filterable: true },
+      { field: "phone", headerName: "Phone", flex: 0.8, minWidth: 140, filterable: true },
       { field: "purpose", headerName: "Purpose", flex: 1, minWidth: 180, filterable: true },
       {
         field: "created_at",
@@ -227,11 +233,13 @@ export default function AdminPassesPage() {
           columns={columns}
           getRowId={(row) => row.id}
           loading={loading}
-          showColumns={false}
+          showColumns={true}
           showExport={false}
           showSearch
           showFilters
           showPagination
+          columnVisibilityModel={columnVisibility}
+          onColumnVisibilityModelChange={setColumnVisibility}
           searchPlaceholder="Search visitor, purpose, status..."
           localeText={{ noRowsLabel: loading ? "Loading passes..." : "No passes found." }}
           initialState={{ pagination: { paginationModel: { page: 0, pageSize: 10 } } }}
