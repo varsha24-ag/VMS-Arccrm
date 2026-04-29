@@ -211,11 +211,32 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {modules.map((module) => {
-            const isBasePathModule = module.path === pathname && !module.path.includes("?");
-            const isFilteredEmployeeVisitorsRoute = pathname === "/employee/visitors" && searchParams.has("view");
-            const isActive =
-              currentRoute === module.path ||
-              (isBasePathModule && !(module.path === "/employee/visitors" && isFilteredEmployeeVisitorsRoute));
+            const isRegistrationWizard = pathname === "/guard/register";
+            const wizardStep = searchParams.get("step");
+
+            let isActive = false;
+
+            if (isRegistrationWizard) {
+              if (module.id === "reception-register" && (!wizardStep || wizardStep === "0")) {
+                isActive = true;
+              } else if (module.id === "reception-photo" && wizardStep === "1") {
+                isActive = true;
+              } else if (module.id === "reception-host" && wizardStep === "2") {
+                isActive = true;
+              } else if (["reception-register", "reception-photo", "reception-host"].includes(module.id)) {
+                isActive = false;
+              } else {
+                const isBasePathModule = module.path === pathname && !module.path.includes("?");
+                isActive = currentRoute === module.path || isBasePathModule;
+              }
+            } else {
+              const isBasePathModule = module.path === pathname && !module.path.includes("?");
+              const isFilteredEmployeeVisitorsRoute = pathname === "/employee/visitors" && searchParams.has("view");
+              isActive =
+                currentRoute === module.path ||
+                (isBasePathModule && !(module.path === "/employee/visitors" && isFilteredEmployeeVisitorsRoute));
+            }
+
             return (
               <Link
                 key={module.id}

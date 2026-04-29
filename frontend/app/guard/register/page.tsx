@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Panel } from "@/components/dashboard/panels";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -62,8 +62,18 @@ function StepIndicator({ stepIndex, current }: { stepIndex: number; current: num
 export default function ReceptionRegisterPage() {
   const user = useAuthGuard({ allowedRoles: ["guard", "admin", "superadmin"] });
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { pushToast } = useToast();
-  const [step, setStep] = useState(0);
+  
+  const initialStep = Number(searchParams.get("step")) || 0;
+  const [step, setStep] = useState(initialStep);
+
+  useEffect(() => {
+    const currentStepParam = searchParams.get("step");
+    if (String(step) !== currentStepParam) {
+      router.replace(`?step=${step}`);
+    }
+  }, [step, router, searchParams]);
   const [purposeOption, setPurposeOption] = useState("Meeting");
   const [customPurpose, setCustomPurpose] = useState("");
   const [visitorTypeOption, setVisitorTypeOption] = useState("Guest");
