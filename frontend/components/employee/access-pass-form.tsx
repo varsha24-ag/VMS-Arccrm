@@ -105,68 +105,84 @@ export function AccessPassForm({
   }
 
   return (
-    <form className={`grid gap-3 ${className ?? ""}`} onSubmit={handleSubmit}>
-      <input
-        className="min-h-[44px] w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
-        placeholder="Visitor name"
-        value={passPayload.visitor_name}
-        onChange={(e) => setPassPayload((prev) => ({ ...prev, visitor_name: e.target.value }))}
-        required
-      />
-      <input
-        className="min-h-[44px] w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
-        placeholder="Phone"
-        value={passPayload.phone}
-        onChange={(e) => setPassPayload((prev) => ({ ...prev, phone: e.target.value }))}
-      />
-      <input
-        className="min-h-[44px] w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
-        placeholder="Email"
-        value={passPayload.email}
-        onChange={(e) => setPassPayload((prev) => ({ ...prev, email: e.target.value }))}
-      />
-      <input
-        className="min-h-[44px] w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
-        placeholder="Company"
-        value={passPayload.company}
-        onChange={(e) => setPassPayload((prev) => ({ ...prev, company: e.target.value }))}
-      />
-      <CustomSelect
-        options={[
-          { value: "", label: "Select purpose" },
-          ...passPurposeOptions.map(opt => ({ value: opt, label: opt }))
-        ]}
-        value={passPayload.purpose}
-        onChange={(value) => setPassPayload((prev) => ({ ...prev, purpose: value }))}
-      />
-      <div className="grid grid-cols-2 gap-3">
-        <label className="grid gap-2 text-xs text-[var(--text-2)]">
-          Valid From
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+      <div className="flex flex-col">
+        <label className="mb-1 text-xs text-[var(--text-2)]">Visitor Name</label>
+        <input
+          className="h-11 w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 box-border leading-none"
+          placeholder="Visitor name"
+          value={passPayload.visitor_name}
+          onChange={(e) => setPassPayload((prev) => ({ ...prev, visitor_name: e.target.value }))}
+          required
+        />
+      </div>
+      <div className="flex flex-col">
+        <label className="mb-1 text-xs text-[var(--text-2)]">Phone</label>
+        <input
+          className="h-11 w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 box-border leading-none"
+          placeholder="Phone"
+          value={passPayload.phone}
+          onChange={(e) => setPassPayload((prev) => ({ ...prev, phone: e.target.value }))}
+        />
+      </div>
+      <div className="flex flex-col">
+        <label className="mb-1 text-xs text-[var(--text-2)]">Email</label>
+        <input
+          className="h-11 w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 box-border leading-none"
+          placeholder="Email"
+          value={passPayload.email}
+          onChange={(e) => setPassPayload((prev) => ({ ...prev, email: e.target.value }))}
+        />
+      </div>
+      <div className="flex flex-col">
+        <label className="mb-1 text-xs text-[var(--text-2)]">Company</label>
+        <input
+          className="h-11 w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 box-border leading-none"
+          placeholder="Company"
+          value={passPayload.company}
+          onChange={(e) => setPassPayload((prev) => ({ ...prev, company: e.target.value }))}
+        />
+      </div>
+      <div className="flex flex-col">
+        <label className="mb-1 text-xs text-[var(--text-2)]">Purpose</label>
+        <CustomSelect
+          className="h-11 w-full m-0"
+          options={[
+            { value: "", label: "Select purpose" },
+            ...passPurposeOptions.map(opt => ({ value: opt, label: opt }))
+          ]}
+          value={passPayload.purpose}
+          onChange={(value) => setPassPayload((prev) => ({ ...prev, purpose: value }))}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col">
+          <label className="mb-1 text-xs text-[var(--text-2)]">Valid From</label>
           <input
             type="datetime-local"
-            className="min-h-[44px] w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
+            className="h-11 w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 text-sm text-[var(--text-1)] outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 box-border leading-none"
             value={passPayload.valid_from}
             onChange={(e) => setPassPayload((prev) => ({ ...prev, valid_from: e.target.value }))}
             required
           />
-        </label>
-        <label className="grid gap-2 text-xs text-[var(--text-2)]">
-          Valid To
+        </div>
+        <div className="flex flex-col">
+          <label className="mb-1 text-xs text-[var(--text-2)]">Valid To</label>
           <input
             type="datetime-local"
-            className="min-h-[44px] w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)]"
+            className="h-11 w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 text-sm text-[var(--text-1)] outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 box-border leading-none"
             value={passPayload.valid_to}
             onChange={(e) => setPassPayload((prev) => ({ ...prev, valid_to: e.target.value }))}
             required
           />
-        </label>
+        </div>
       </div>
       <button
         type="submit"
         disabled={loading}
-        className="min-h-[44px] rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
+        className="mt-2 h-11 w-full rounded-lg bg-[var(--accent)] text-sm font-semibold text-[var(--accent-fg)] shadow-md transition hover:brightness-95 disabled:opacity-50"
       >
-        {loading ? loadingLabel : submitLabel}
+        {loading ? "Generating..." : "Generate Pass"}
       </button>
     </form>
   );
