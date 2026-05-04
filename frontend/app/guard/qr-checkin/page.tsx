@@ -589,16 +589,17 @@ export default function ReceptionQrCheckinPage() {
       <DashboardPageHeader title="Check-in" subtitle="Scan or paste a QR code to complete a check-in." />
       <div className="space-y-6">
         <Panel title="Check-in">
-          <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleQrCheckin}>
+          <form className="flex flex-col sm:flex-row sm:items-center gap-4" onSubmit={handleQrCheckin}>
             <input
-              className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
+              className="flex-1 w-full sm:w-auto h-11 rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-4 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 box-border leading-none"
               placeholder="Visitor ID / phone / email / QR code"
               value={qrCode}
               onChange={(e) => setQrCode(e.target.value)}
               required
             />
-            <div className="w-full relative shrink-0" style={{ maxWidth: "240px" }}>
+            <div className="relative shrink-0 w-full sm:w-[220px]">
               <CustomSelect
+                className="h-11 m-0 w-full"
                 options={[
                   { value: "", label: idCardLoading ? "Loading ID cards..." : "Select ID card" },
                   ...availableCards.map(card => ({ value: card.id_number, label: card.id_number })),
@@ -619,7 +620,7 @@ export default function ReceptionQrCheckinPage() {
             </div>
             {idCardSelection === "__custom__" ? (
               <input
-                className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
+                className="w-full sm:w-[200px] h-11 shrink-0 rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-4 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 box-border leading-none"
                 placeholder="Enter ID card number"
                 value={customIdNumber}
                 onChange={(e) => {
@@ -634,14 +635,14 @@ export default function ReceptionQrCheckinPage() {
               type="button"
               onClick={() => handleStatusCheck({ showToast: true, showLoading: true })}
               disabled={loading}
-              className="whitespace-nowrap rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)] disabled:opacity-60"
+              className="h-11 flex items-center justify-center shrink-0 whitespace-nowrap rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-4 text-sm font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)] disabled:opacity-60 box-border leading-none"
             >
               Check Status
             </button>
             <button
               type="submit"
               disabled={loading || visitorStatus !== "approved"}
-              className="whitespace-nowrap rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
+              className="h-11 flex items-center justify-center shrink-0 whitespace-nowrap rounded-lg bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60 box-border leading-none"
             >
               {loading ? "Checking in..." : "Check-in"}
             </button>

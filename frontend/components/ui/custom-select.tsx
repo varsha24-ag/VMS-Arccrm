@@ -12,9 +12,10 @@ interface CustomSelectProps {
   placeholder?: string;
   disabled?: boolean;
   menuPlacement?: "top" | "bottom";
+  className?: string;
 }
 
-export default function CustomSelect({ options, value, onChange, placeholder = "Select an option", disabled = false, menuPlacement = "bottom" }: CustomSelectProps) {
+export default function CustomSelect({ options, value, onChange, placeholder = "Select an option", disabled = false, menuPlacement = "bottom", className = "mt-2" }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +37,7 @@ export default function CustomSelect({ options, value, onChange, placeholder = "
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className="mt-2 flex w-full items-center justify-between rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] outline-none transition focus:border-[var(--focus-accent)] focus:ring-2 focus:ring-[var(--focus-ring)] disabled:opacity-50"
+        className={`${className} flex w-full items-center justify-between rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-4 text-sm text-[var(--text-1)] outline-none transition focus:border-[var(--focus-accent)] focus:ring-2 focus:ring-[var(--focus-ring)] disabled:opacity-50`}
       >
         <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
         <svg
