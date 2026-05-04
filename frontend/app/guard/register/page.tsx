@@ -244,7 +244,7 @@ export default function ReceptionRegisterPage() {
                     value={register.name}
                     onChange={(e) => setRegister((prev) => ({ ...prev, name: e.target.value }))}
                   />
-                  {formErrors.name ? <p className="mt-1 text-xs text-red-400">{formErrors.name}</p> : null}
+                  {formErrors.name ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.name}</p> : null}
                 </label>
                 <label className="text-sm text-[var(--text-2)]">
                   Phone
@@ -253,7 +253,7 @@ export default function ReceptionRegisterPage() {
                     value={register.phone}
                     onChange={(e) => setRegister((prev) => ({ ...prev, phone: e.target.value }))}
                   />
-                  {formErrors.phone ? <p className="mt-1 text-xs text-red-400">{formErrors.phone}</p> : null}
+                  {formErrors.phone ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.phone}</p> : null}
                 </label>
                 <label className="text-sm text-[var(--text-2)]">
                   Email
@@ -262,7 +262,7 @@ export default function ReceptionRegisterPage() {
                     value={register.email}
                     onChange={(e) => setRegister((prev) => ({ ...prev, email: e.target.value }))}
                   />
-                  {formErrors.email ? <p className="mt-1 text-xs text-red-400">{formErrors.email}</p> : null}
+                  {formErrors.email ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.email}</p> : null}
                 </label>
                 <label className="text-sm text-[var(--text-2)]">
                   Company
@@ -318,7 +318,7 @@ export default function ReceptionRegisterPage() {
                       }
                     }}
                   />
-                  {formErrors.purpose ? <p className="mt-1 text-xs text-red-400">{formErrors.purpose}</p> : null}
+                  {formErrors.purpose ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.purpose}</p> : null}
                 </label>
                 {purposeOption === "Custom" ? (
                   <label className="text-sm text-[var(--text-2)] md:col-span-2">
@@ -344,7 +344,7 @@ export default function ReceptionRegisterPage() {
                     value={register.valid_from}
                     onChange={(e) => setRegister((prev) => ({ ...prev, valid_from: e.target.value }))}
                   />
-                  {formErrors.valid_from ? <p className="mt-1 text-xs text-red-400">{formErrors.valid_from}</p> : null}
+                  {formErrors.valid_from ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.valid_from}</p> : null}
                 </label>
                 <label className="text-sm text-[var(--text-2)]">
                   Valid To
@@ -354,7 +354,7 @@ export default function ReceptionRegisterPage() {
                     value={register.valid_to}
                     onChange={(e) => setRegister((prev) => ({ ...prev, valid_to: e.target.value }))}
                   />
-                  {formErrors.valid_to ? <p className="mt-1 text-xs text-red-400">{formErrors.valid_to}</p> : null}
+                  {formErrors.valid_to ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.valid_to}</p> : null}
                 </label>
 
                 <div className="md:col-span-2 flex justify-end">
@@ -375,7 +375,7 @@ export default function ReceptionRegisterPage() {
                   value={register.photo_url}
                   onChange={(value) => setRegister((prev) => ({ ...prev, photo_url: value }))}
                 />
-                {formErrors.photo_url ? <p className="text-sm text-red-400">{formErrors.photo_url}</p> : null}
+                {formErrors.photo_url ? <p className="text-sm text-red-600 dark:text-red-400">{formErrors.photo_url}</p> : null}
                 <div className="flex items-center justify-between">
                   <button
                     type="button"
@@ -405,7 +405,7 @@ export default function ReceptionRegisterPage() {
                 <p className="text-xs text-[var(--text-3)]">
                   Selected host email: {selectedHost?.email ?? "None"}
                 </p>
-                {formErrors.host_employee ? <p className="text-sm text-red-400">{formErrors.host_employee}</p> : null}
+                {formErrors.host_employee ? <p className="text-sm text-red-600 dark:text-red-400">{formErrors.host_employee}</p> : null}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <button
                     type="button"

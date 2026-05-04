@@ -53,8 +53,8 @@ function areAvailableCardsEqual(a: AvailableIdCard[], b: AvailableIdCard[]) {
 function getStatusTone(detail: VisitDetail | null) {
   if (!detail) {
     return {
-      panelClass: "border-red-400/30 bg-red-500/10 text-red-200",
-      badgeClass: "border-red-400/40 bg-red-500/15 text-red-200",
+      panelClass: "border-red-400/30 bg-red-500/10 text-red-700 dark:text-red-200",
+      badgeClass: "border-red-400/40 bg-red-500/15 text-red-700 dark:text-red-200",
       label: "Invalid Scan",
       description: "No visitor record was resolved from this QR scan.",
       canCheckIn: false,
@@ -67,8 +67,8 @@ function getStatusTone(detail: VisitDetail | null) {
 
   if (isExpired || detail.status === "rejected" || detail.status === "checked_out" || detail.status === "auto_checked_out") {
     return {
-      panelClass: "border-red-400/30 bg-red-500/10 text-red-200",
-      badgeClass: "border-red-400/40 bg-red-500/15 text-red-200",
+      panelClass: "border-red-400/30 bg-red-500/10 text-red-700 dark:text-red-200",
+      badgeClass: "border-red-400/40 bg-red-500/15 text-red-700 dark:text-red-200",
       label: isExpired ? "QR Expired" : "Check-in Blocked",
       description: isExpired ? "This invite has expired." : `This visit is ${detail.status.replace(/_/g, " ")}.`,
       canCheckIn: false,
@@ -77,8 +77,8 @@ function getStatusTone(detail: VisitDetail | null) {
 
   if (detail.status === "checked_in") {
     return {
-      panelClass: "border-amber-400/30 bg-amber-500/10 text-amber-100",
-      badgeClass: "border-amber-400/40 bg-amber-500/15 text-amber-100",
+      panelClass: "border-amber-400/30 bg-amber-500/10 text-amber-700 dark:text-amber-100",
+      badgeClass: "border-amber-400/40 bg-amber-500/15 text-amber-700 dark:text-amber-100",
       label: "Already Checked In",
       description: "This visitor is already checked in.",
       canCheckIn: false,
@@ -87,8 +87,8 @@ function getStatusTone(detail: VisitDetail | null) {
 
   if (detail.status !== "approved") {
     return {
-      panelClass: "border-red-400/30 bg-red-500/10 text-red-200",
-      badgeClass: "border-red-400/40 bg-red-500/15 text-red-200",
+      panelClass: "border-red-400/30 bg-red-500/10 text-red-700 dark:text-red-200",
+      badgeClass: "border-red-400/40 bg-red-500/15 text-red-700 dark:text-red-200",
       label: "Approval Pending",
       description: "This visitor is not approved for check-in yet.",
       canCheckIn: false,
@@ -96,8 +96,8 @@ function getStatusTone(detail: VisitDetail | null) {
   }
 
   return {
-    panelClass: "border-emerald-400/30 bg-emerald-500/10 text-emerald-100",
-    badgeClass: "border-emerald-400/40 bg-emerald-500/15 text-emerald-100",
+    panelClass: "border-emerald-400/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-100",
+    badgeClass: "border-emerald-400/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-100",
     label: "Valid Scan",
     description: "Visitor is ready for photo verification and check-in.",
     canCheckIn: true,
@@ -316,7 +316,7 @@ function ReceptionQrVisitorContent() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-6 text-sm text-red-200">
+              <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-6 text-sm text-red-700 dark:text-red-200">
                 {error || "No visitor details found for this QR scan."}
               </div>
             )}
