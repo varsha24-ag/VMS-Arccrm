@@ -13,6 +13,7 @@ export interface HostEmployee {
   name: string;
   department: string;
   email?: string | null;
+  phone?: string | null;
 }
 
 interface HostSearchProps {
@@ -141,6 +142,22 @@ export default function HostSearch({ value, onChange, onSelectHost }: HostSearch
           return <span>{email && String(email).trim().length > 0 ? email : "-"}</span>;
         },
       },
+      {
+        field: "phone",
+        headerName: "Phone",
+        type: "string",
+        flex: 0.8,
+        minWidth: 140,
+        filterable: true,
+        valueGetter: ((params: HostValueGetterParams) => {
+          const phone = params?.row?.phone;
+          return phone && String(phone).trim().length > 0 ? String(phone).trim() : "";
+        }),
+        renderCell: (params: GridRenderCellParams<HostEmployee>) => {
+          const phone = params?.row?.phone;
+          return <span>{phone && String(phone).trim().length > 0 ? phone : "-"}</span>;
+        },
+      },
     ],
     [hosts]
   );
@@ -155,7 +172,7 @@ export default function HostSearch({ value, onChange, onSelectHost }: HostSearch
           getRowId={(row) => row.id}
           loading={loading}
           autoHeight={true}
-          searchPlaceholder="Search host by name, department, or email..."
+          searchPlaceholder="Search host by name, department, phone, or email..."
           initialState={{
             columns: { columnVisibilityModel: { email: true } },
           }}

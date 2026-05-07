@@ -382,9 +382,10 @@ function ReceptionRegisterContent() {
                   onChange={(value) => setRegister((prev) => ({ ...prev, host_employee: value }))}
                   onSelectHost={setSelectedHost}
                 />
-                <p className="text-xs text-[var(--text-3)]">
-                  Selected host email: {selectedHost?.email ?? "None"}
-                </p>
+                <div className="flex flex-col gap-1 text-xs text-[var(--text-3)]">
+                  <p>Selected host email: <span className="text-[var(--text-2)]">{selectedHost?.email ?? "None"}</span></p>
+                  <p>Selected host phone: <span className="text-[var(--text-2)]">{selectedHost?.phone ?? "None"}</span></p>
+                </div>
                 {formErrors.host_employee ? <p className="text-sm text-red-600 dark:text-red-400">{formErrors.host_employee}</p> : null}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <button
