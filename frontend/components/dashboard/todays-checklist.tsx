@@ -52,16 +52,16 @@ export function TodaysChecklistPanel({ history, hostMap }: TodaysChecklistPanelP
     return [
       { key: "pending" as const, label: "Pending approvals", count: pending },
       { key: "approved" as const, label: "Approved arrivals waiting", count: approved },
-      { key: "checked_in" as const, label: "Currently checked-in", count: checkedIn },
-      { key: "checked_out" as const, label: "Checked-out", count: checkedOut },
+      { key: "checked_in" as const, label: "Currently In", count: checkedIn },
+      { key: "checked_out" as const, label: "Out", count: checkedOut },
     ];
   }, [history]);
 
   const modalTitle = useMemo(() => {
     if (modalKey === "pending") return "Pending Approvals";
     if (modalKey === "approved") return "Approved Visitors";
-    if (modalKey === "checked_in") return "Currently Checked-in";
-    if (modalKey === "checked_out") return "Checked-out Visitors";
+    if (modalKey === "checked_in") return "Currently In";
+    if (modalKey === "checked_out") return "Out Visitors";
     return "";
   }, [modalKey]);
 
@@ -175,7 +175,7 @@ export function TodaysChecklistPanel({ history, hostMap }: TodaysChecklistPanelP
                           </td>
                           <td className="py-4">
                             <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(item.status)}`}>
-                              {item.status.replace("_", " ")}
+                              {item.status === "checked_in" ? "In" : item.status === "checked_out" ? "Out" : item.status.replace("_", " ")}
                             </span>
                           </td>
                         </tr>

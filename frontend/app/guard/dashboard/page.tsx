@@ -115,10 +115,10 @@ export default function ReceptionDashboard() {
     const pending = history.filter((item) => item.status === "pending").length;
     const checkedInNow = history.filter((item) => item.status === "checked_in").length;
     return [
-      { label: "Check-ins", value: String(checkinsToday), delta: "Today" },
-      { label: "Check-outs", value: String(checkoutsToday), delta: "Today" },
+      { label: "In", value: String(checkinsToday), delta: "Today" },
+      { label: "Out", value: String(checkoutsToday), delta: "Today" },
       { label: "Pending Approval", value: String(pending), delta: "Awaiting host" },
-      { label: "Checked-in Now", value: String(checkedInNow), delta: "Live" },
+      { label: "In Now", value: String(checkedInNow), delta: "Live" },
     ];
   }, [history]);
 
@@ -145,16 +145,16 @@ export default function ReceptionDashboard() {
     return [
       { key: "pending" as const, label: "Pending approvals", count: pending },
       { key: "approved" as const, label: "Approved arrivals waiting", count: approved },
-      { key: "checked_in" as const, label: "Currently checked-in", count: checkedIn },
-      { key: "checked_out" as const, label: "Checked-out", count: checkedOut },
+      { key: "checked_in" as const, label: "Currently In", count: checkedIn },
+      { key: "checked_out" as const, label: "Out", count: checkedOut },
     ];
   }, [history]);
 
   const modalTitle = useMemo(() => {
     if (modalKey === "pending") return "Pending Approvals";
     if (modalKey === "approved") return "Approved Visitors";
-    if (modalKey === "checked_in") return "Currently Checked-in";
-    if (modalKey === "checked_out") return "Checked-out Visitors";
+    if (modalKey === "checked_in") return "Currently In";
+    if (modalKey === "checked_out") return "Out Visitors";
     return "";
   }, [modalKey]);
 
@@ -187,7 +187,7 @@ export default function ReceptionDashboard() {
     <DashboardLayout user={user}>
       <DashboardPageHeader
         title="Reception Dashboard"
-        subtitle="Manage check-ins, appointment flow, and visitor desk operations in real time."
+        subtitle="Manage in/out, appointment flow, and visitor desk operations in real time."
       />
       <div className="mt-6">
         <StatGrid items={stats} />
@@ -316,7 +316,7 @@ export default function ReceptionDashboard() {
                                 item.status
                               )}`}
                             >
-                              {item.status.replace("_", " ")}
+                              {item.status === "checked_in" ? "In" : item.status === "checked_out" ? "Out" : item.status.replace("_", " ")}
                             </span>
                           </td>
                         </tr>

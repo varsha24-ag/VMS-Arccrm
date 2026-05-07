@@ -153,7 +153,11 @@ function EmployeeVisitorsContent() {
     }
   };
 
-  const statusLabel = useCallback((status: string) => status.replace(/_/g, " "), []);
+  const statusLabel = useCallback((status: string) => {
+    if (status === "checked_in") return "In";
+    if (status === "checked_out") return "Out";
+    return status.replace(/_/g, " ");
+  }, []);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -226,7 +230,7 @@ function EmployeeVisitorsContent() {
       { key: "visitor_name", label: "Visitor" },
       { key: "id_number", label: "ID Card" },
       { key: "status", label: "Status" },
-      { key: "checkin_time", label: "Check-in" },
+      { key: "checkin_time", label: "In" },
       { key: "created_at", label: "Created" },
       { key: "company", label: "Company" },
       { key: "visitor_email", label: "Email" },
@@ -278,7 +282,7 @@ function EmployeeVisitorsContent() {
       },
       {
         field: "checkin_time",
-        headerName: "Check-in",
+        headerName: "In",
         flex: 1,
         minWidth: 180,
         filterable: false,
@@ -358,8 +362,8 @@ function EmployeeVisitorsContent() {
             <div className="space-y-1"><p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">ID Card</p><p className="text-base text-[var(--text-1)]">{selectedRow.id_number ?? "—"}</p></div>
             <div className="space-y-1"><p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Purpose</p><p className="text-base text-[var(--text-1)]">{selectedRow.purpose ?? "—"}</p></div>
             <div className="space-y-1"><p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Company</p><p className="text-base text-[var(--text-1)]">{selectedRow.company ?? "—"}</p></div>
-            <div className="space-y-1"><p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Check-in</p><p className="text-base text-[var(--text-1)]">{selectedRow.checkin_time ? new Date(selectedRow.checkin_time).toLocaleString() : "—"}</p></div>
-            <div className="space-y-1"><p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Check-out</p><p className="text-base text-[var(--text-1)]">{selectedRow.checkout_time ? new Date(selectedRow.checkout_time).toLocaleString() : "—"}</p></div>
+            <div className="space-y-1"><p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">In</p><p className="text-base text-[var(--text-1)]">{selectedRow.checkin_time ? new Date(selectedRow.checkin_time).toLocaleString() : "—"}</p></div>
+            <div className="space-y-1"><p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Out</p><p className="text-base text-[var(--text-1)]">{selectedRow.checkout_time ? new Date(selectedRow.checkout_time).toLocaleString() : "—"}</p></div>
           </div>
         </div>
       </div>

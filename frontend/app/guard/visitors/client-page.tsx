@@ -176,7 +176,11 @@ function ReceptionVisitorsContent() {
     }
   };
 
-  const statusLabel = useCallback((status: string) => status.replace(/_/g, " "), []);
+  const statusLabel = useCallback((status: string) => {
+    if (status === "checked_in") return "In";
+    if (status === "checked_out") return "Out";
+    return status.replace(/_/g, " ");
+  }, []);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -235,7 +239,7 @@ function ReceptionVisitorsContent() {
       { key: "host_name", label: "Host" },
       { key: "id_number", label: "ID Card" },
       { key: "status", label: "Status" },
-      { key: "checkin_time", label: "Check-in" },
+      { key: "checkin_time", label: "In" },
       { key: "created_at", label: "Created" },
       { key: "company", label: "Company" },
       { key: "visitor_email", label: "Email" },
@@ -322,7 +326,7 @@ function ReceptionVisitorsContent() {
       },
       {
         field: "checkin_time",
-        headerName: "Check-in",
+        headerName: "In",
         flex: 1,
         minWidth: 180,
         filterable: false,
@@ -433,7 +437,7 @@ function ReceptionVisitorsContent() {
               <p className="truncate text-sm text-[var(--text-2)]">{selectedRow.visitor_email ?? "—"}</p>
             </div>
             <span className={`ml-auto rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${statusBadgeClass(selectedRow.status)}`}>
-              {selectedRow.status.replace("_", " ")}
+              {statusLabel(selectedRow.status)}
             </span>
           </div>
 
@@ -461,13 +465,13 @@ function ReceptionVisitorsContent() {
               <p className="text-base text-[var(--text-1)]">{selectedRow.company ?? "—"}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Check-in</p>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">In</p>
               <p className="text-base text-[var(--text-1)]">
                 {selectedRow.checkin_time ? new Date(selectedRow.checkin_time).toLocaleString() : "—"}
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Check-out</p>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Out</p>
               <p className="text-base text-[var(--text-1)]">
                 {selectedRow.checkout_time ? new Date(selectedRow.checkout_time).toLocaleString() : "—"}
               </p>

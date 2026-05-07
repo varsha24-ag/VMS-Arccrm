@@ -60,8 +60,8 @@ export default function ManualCheckoutPage() {
         body: JSON.stringify({ id_number: idNumber }),
       });
       pushToast({
-        title: "Visitor checked out",
-        description: `ID card ${idNumber} was checked out successfully.`,
+        title: "Visitor out",
+        description: `ID card ${idNumber} was out successfully.`,
         variant: "success",
       });
       setIdCardNumber("");
@@ -69,8 +69,8 @@ export default function ManualCheckoutPage() {
       await loadHistory();
     } catch (err) {
       pushToast({
-        title: "Check-out failed",
-        description: err instanceof Error ? err.message : "Check-out failed",
+        title: "Out failed",
+        description: err instanceof Error ? err.message : "Out failed",
         variant: "error",
       });
     } finally {
@@ -119,7 +119,7 @@ export default function ManualCheckoutPage() {
       },
       {
         field: "checkin_time",
-        headerName: "Check-in",
+        headerName: "In",
         flex: 1,
         minWidth: 180,
         filterable: false,
@@ -149,7 +149,7 @@ export default function ManualCheckoutPage() {
             type="button"
             disabled={loading}
             onClick={() => setIdCardNumber(String(params.row.id_number ?? ""))}
-            className="rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1 text-xs text-[var(--text-1)] hover:bg-[var(--surface-3)] disabled:opacity-60"
+            className="rounded-md bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
           >
             Load
           </button>
@@ -176,14 +176,14 @@ export default function ManualCheckoutPage() {
 
   return (
     <DashboardLayout user={user}>
-      <DashboardPageHeader title="Checkout" subtitle="Check out visitors by ID card when needed." />
+      <DashboardPageHeader title="Out" subtitle="Out visitors by ID card when needed." />
       <div className="space-y-3">
         <EntryDeskHeader
-          title="Checkout"
-          subtitle="Use the assigned ID card number to complete check-out quickly."
+          title="Out"
+          subtitle="Use the assigned ID card number to complete out quickly."
         />
 
-        <Panel title="Check-out by ID Card">
+        <Panel title="Out by ID Card">
           <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleCheckout}>
             <input
               className="w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]"
@@ -197,12 +197,12 @@ export default function ManualCheckoutPage() {
               disabled={loading}
               className="whitespace-nowrap rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
             >
-              {loading ? "Checking out..." : "Check-out"}
+              {loading ? "Out..." : "Out"}
             </button>
           </form>
         </Panel>
 
-        <Panel title="Currently Checked In">
+        <Panel title="Currently In">
           <AppDataGrid
             rows={checkedInRows}
             columns={columns}
@@ -218,9 +218,9 @@ export default function ManualCheckoutPage() {
       {checkoutCandidate ? (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/45 px-4">
           <div className="w-full max-w-md rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] p-6 shadow-[var(--shadow-1)]">
-            <h2 className="text-lg font-semibold text-[var(--text-1)]">Confirm check-out</h2>
+            <h2 className="text-lg font-semibold text-[var(--text-1)]">Confirm Out</h2>
             <p className="mt-2 text-sm text-[var(--text-3)]">
-              Check out the visitor using ID card <span className="font-semibold text-[var(--text-1)]">{checkoutCandidate}</span>?
+              Out the visitor using ID card <span className="font-semibold text-[var(--text-1)]">{checkoutCandidate}</span>?
             </p>
             <div className="mt-6 flex justify-end gap-3">
               <button
@@ -237,7 +237,7 @@ export default function ManualCheckoutPage() {
                 disabled={loading}
                 className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60"
               >
-                {loading ? "Checking out..." : "Confirm"}
+                {loading ? "Out..." : "Confirm"}
               </button>
             </div>
           </div>

@@ -23,8 +23,6 @@ interface VisitorCreatePayload {
   host_employee?: number | null;
   purpose?: string;
   photo_url?: string;
-  valid_from?: string;
-  valid_to?: string;
 }
 
 interface VisitorOut {
@@ -100,8 +98,6 @@ function ReceptionRegisterContent() {
       host_employee: null,
       purpose: "Meeting",
       photo_url: "",
-      valid_from: "",
-      valid_to: "",
     };
   });
 
@@ -115,8 +111,6 @@ function ReceptionRegisterContent() {
       if (register.email && !emailRegex.test(register.email.trim())) nextErrors.email = "Enter a valid email.";
       if (register.phone && !phoneRegex.test(register.phone.trim())) nextErrors.phone = "Enter a valid 10-digit phone number.";
       if (!register.purpose?.trim()) nextErrors.purpose = "Purpose is required.";
-      if (!register.valid_from) nextErrors.valid_from = "Valid from date is required.";
-      if (!register.valid_to) nextErrors.valid_to = "Valid to date is required.";
     }
     if (targetStep === 1) {
       if (!register.photo_url) nextErrors.photo_url = "Photo is required.";
@@ -145,8 +139,6 @@ function ReceptionRegisterContent() {
       const payload = {
         ...register,
         host_employee: register.host_employee ? Number(register.host_employee) : null,
-        valid_from: register.valid_from ? new Date(register.valid_from).toISOString() : undefined,
-        valid_to: register.valid_to ? new Date(register.valid_to).toISOString() : undefined,
       };
       const created = await apiFetch<VisitorOut>("/visitor/create", {
         method: "POST",
@@ -195,8 +187,6 @@ function ReceptionRegisterContent() {
         host_employee: null,
         purpose: "Meeting",
         photo_url: "",
-        valid_from: "",
-        valid_to: "",
       });
       setPurposeOption("Meeting");
       setCustomPurpose("");
@@ -346,26 +336,6 @@ function ReceptionRegisterContent() {
                   </div>
                 ) : null}
 
-                <div className="flex flex-col">
-                  <label className="mb-2 text-sm text-[var(--text-2)]">Valid From</label>
-                  <input
-                    type="datetime-local"
-                    className="h-11 w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 text-sm text-[var(--text-1)] outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 box-border leading-none"
-                    value={register.valid_from}
-                    onChange={(e) => setRegister((prev) => ({ ...prev, valid_from: e.target.value }))}
-                  />
-                  {formErrors.valid_from ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.valid_from}</p> : null}
-                </div>
-                <div className="flex flex-col">
-                  <label className="mb-2 text-sm text-[var(--text-2)]">Valid To</label>
-                  <input
-                    type="datetime-local"
-                    className="h-11 w-full rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-4 text-sm text-[var(--text-1)] outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 box-border leading-none"
-                    value={register.valid_to}
-                    onChange={(e) => setRegister((prev) => ({ ...prev, valid_to: e.target.value }))}
-                  />
-                  {formErrors.valid_to ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.valid_to}</p> : null}
-                </div>
 
                 <div className="md:col-span-2 flex justify-end mt-2">
                   <button

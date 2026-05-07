@@ -126,8 +126,8 @@ export default function AdminDashboard() {
     const pendingApprovals = summary?.pending_approvals ?? 0;
     return [
       { label: "Visitors Today", value: String(visitorsToday), change: "Today", color: "text-sky-400", bg: "bg-sky-500/15" },
-      { label: "Check-in Visitors", value: String(checkedInVisitors), change: "Live", color: "text-[var(--accent)]", bg: "bg-[var(--nav-active-bg)]" },
-      { label: "Check-out Visitors", value: String(checkedOutVisitors), change: "Today", color: "text-emerald-400", bg: "bg-emerald-500/15" },
+      { label: "In", value: String(checkedInVisitors), change: "Live", color: "text-[var(--accent)]", bg: "bg-[var(--nav-active-bg)]" },
+      { label: "Out", value: String(checkedOutVisitors), change: "Today", color: "text-emerald-400", bg: "bg-emerald-500/15" },
       { label: "Pending Approvals", value: String(pendingApprovals), change: "Awaiting host", color: "text-amber-400", bg: "bg-amber-500/15" },
     ] as const;
   }, [summary]);
@@ -142,7 +142,8 @@ export default function AdminDashboard() {
       const isCheckedOut = item.status === "checked_out";
       const visitTime = isCheckedOut ? formatTime(item.checkout_time ?? item.checkin_time) : formatTime(item.checkin_time);
       const photo = resolveApiAssetUrl(item.photo_url);
-      return { name: item.visitor_name, visitTime, status: item.status, statusLabel: item.status.replace("_", " "), photo };
+      const statusLabel = item.status === "checked_in" ? "In" : item.status === "checked_out" ? "Out" : item.status.replace("_", " ");
+      return { name: item.visitor_name, visitTime, status: item.status, statusLabel, photo };
     });
   }, [summary]);
 

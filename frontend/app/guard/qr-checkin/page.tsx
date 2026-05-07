@@ -102,7 +102,11 @@ export default function ReceptionQrCheckinPage() {
         return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
     }
   };
-  const statusLabel = useCallback((status: string) => status.replace(/_/g, " "), []);
+  const statusLabel = useCallback((status: string) => {
+    if (status === "checked_in") return "In";
+    if (status === "checked_out") return "Out";
+    return status.replace(/_/g, " ");
+  }, []);
   const statusOptions = useMemo(() => ["approved", "pending", "rejected", "checked_in", "checked_out"], []);
   const [idCardLoading, setIdCardLoading] = useState(false);
   const [availableCards, setAvailableCards] = useState<AvailableIdCard[]>([]);
@@ -293,8 +297,8 @@ export default function ReceptionQrCheckinPage() {
       });
       setMessage("QR check-in completed.");
       pushToast({
-        title: "Check-in completed",
-        description: "QR check-in successful.",
+        title: "In completed",
+        description: "QR in successful.",
         variant: "success",
       });
       setQrCode("");
@@ -311,7 +315,7 @@ export default function ReceptionQrCheckinPage() {
       const errorMessage = err instanceof Error ? err.message : "QR check-in failed";
       setMessage(errorMessage);
       pushToast({
-        title: "Check-in failed",
+        title: "In failed",
         description: errorMessage,
         variant: "error",
       });
@@ -343,9 +347,9 @@ export default function ReceptionQrCheckinPage() {
         setResolvedVisitorId((prev) => (prev === data.visitor_id ? prev : data.visitor_id));
         if (showToast) {
           if (data.status === "approved") {
-            pushToast({ title: "Approved by host", description: "You can check-in this visitor.", variant: "success" });
+            pushToast({ title: "Approved by host", description: "You can in this visitor.", variant: "success" });
           } else if (data.status === "rejected") {
-            pushToast({ title: "Rejected by host", description: "Do not proceed with check-in.", variant: "error" });
+            pushToast({ title: "Rejected by host", description: "Do not proceed with in.", variant: "error" });
           } else {
             pushToast({ title: "Pending approval", description: "Wait for host response.", variant: "info" });
           }
@@ -586,9 +590,9 @@ export default function ReceptionQrCheckinPage() {
 
   return (
     <DashboardLayout user={user}>
-      <DashboardPageHeader title="Check-in" subtitle="Scan or paste a QR code to complete a check-in." />
+      <DashboardPageHeader title="In" subtitle="Scan or paste a QR code to complete a check-in." />
       <div className="space-y-6">
-        <Panel title="Check-in">
+        <Panel title="In">
           <form className="flex flex-col sm:flex-row sm:items-center gap-4" onSubmit={handleQrCheckin}>
             <input
               className="flex-1 w-full sm:w-auto h-11 rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-4 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 box-border leading-none"
@@ -644,7 +648,7 @@ export default function ReceptionQrCheckinPage() {
               disabled={loading || visitorStatus !== "approved"}
               className="h-11 flex items-center justify-center shrink-0 whitespace-nowrap rounded-lg bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--accent-fg)] shadow-sm transition hover:brightness-95 disabled:opacity-60 box-border leading-none"
             >
-              {loading ? "Checking in..." : "Check-in"}
+              {loading ? "In..." : "In"}
             </button>
           </form>
 
@@ -708,7 +712,7 @@ export default function ReceptionQrCheckinPage() {
               columns: { columnVisibilityModel: { host_name: true, email_status: false } },
             }}
           />
-          <p className="mt-3 text-xs text-[var(--text-3)]">Check-in is enabled only when status is approved.</p>
+          <p className="mt-3 text-xs text-[var(--text-3)]">In is enabled only when status is approved.</p>
         </Panel>
       </div>
     </DashboardLayout>

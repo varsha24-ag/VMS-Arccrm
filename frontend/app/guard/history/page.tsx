@@ -53,7 +53,11 @@ export default function ReceptionHistoryPage() {
         return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
     }
   };
-  const statusLabel = (status: string) => status.replace(/_/g, " ");
+  const statusLabel = (status: string) => {
+    if (status === "checked_in") return "In";
+    if (status === "checked_out") return "Out";
+    return status.replace(/_/g, " ");
+  };
   const statusOptions = ["approved", "pending", "rejected", "checked_in", "checked_out"];
 
   useEffect(() => {
@@ -152,7 +156,7 @@ export default function ReceptionHistoryPage() {
     },
     {
       field: "checkin_time",
-      headerName: "Check-in",
+      headerName: "In",
       flex: 1,
       minWidth: 180,
       filterable: false,
@@ -167,7 +171,7 @@ export default function ReceptionHistoryPage() {
     },
     {
       field: "checkout_time",
-      headerName: "Check-out",
+      headerName: "Out",
       flex: 1,
       minWidth: 180,
       filterable: false,
@@ -236,7 +240,7 @@ export default function ReceptionHistoryPage() {
       <div className="space-y-3">
         <EntryDeskHeader
           title="Visit History"
-          subtitle="Track check-ins and check-outs with captured photos."
+          subtitle="Track in and out with captured photos."
         />
 
         <Panel title="History (Photo)" className="overflow-hidden">
