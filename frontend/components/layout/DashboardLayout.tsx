@@ -118,43 +118,78 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
 
   useEffect(() => {
     if (!user || !["guard", "admin", "employee", "superadmin"].includes(user.role)) return;
-    const token = getAccessToken();
-    if (!token) return;
-    const source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);
-    source.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data) as {
-          type?: string;
-          status?: string;
-          visit_id?: number;
-          visitor_id?: number;
-        };
-        if (payload?.type !== "visit_status" || !payload.status) return;
 
-        // Broadcast a global event so other pages can refresh automatically
-        window.dispatchEvent(new CustomEvent("visitor-status-updated", { detail: payload }));
+    let source: EventSource | null = null;
+    let retryTimeout: NodeJS.Timeout | null = null;
 
-        const statusLabel =
-          payload.status === "approved"
-            ? "Approved by host"
-            : payload.status === "rejected"
-              ? "Rejected by host"
-              : "Status updated";
-        const visitLabel = payload.visit_id ? `Visit #${payload.visit_id}` : "Visit update";
-        pushToast({
-          title: statusLabel,
-          description: `${visitLabel} · Receptionist notification`,
-          variant: payload.status === "approved" ? "success" : payload.status === "rejected" ? "error" : "info",
-        });
-      } catch {
-        // ignore malformed events
+    const connect = () => {
+      const token = getAccessToken();
+      if (!token) return;
+
+      if (source) {
+        source.close();
       }
+
+      source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);
+
+      source.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data) as {
+            type?: string;
+            status?: string;
+            visit_id?: number;
+            visitor_id?: number;
+          };
+          if (payload?.type !== "visit_status" || !payload.status) return;
+
+          // Broadcast a global event so other pages can refresh automatically
+          window.dispatchEvent(new CustomEvent("visitor-status-updated", { detail: payload }));
+
+          const statusLabel =
+            payload.status === "approved"
+              ? "Approved by host"
+              : payload.status === "rejected"
+                ? "Rejected by host"
+                : payload.status === "checked_in"
+                  ? "Visitor Checked In"
+                  : payload.status === "checked_out"
+                    ? "Visitor Checked Out"
+                    : "Status updated";
+
+          const visitLabel = payload.visit_id ? `Visit #${payload.visit_id}` : "Visit update";
+
+          pushToast({
+            title: statusLabel,
+            description: `${visitLabel} · Receptionist notification`,
+            variant: payload.status === "approved" ? "success" : payload.status === "rejected" ? "error" : "info",
+          });
+        } catch {
+          // ignore malformed events
+        }
+      };
+
+      source.onerror = () => {
+        if (source) {
+          source.close();
+          source = null;
+        }
+        // Attempt to reconnect after 5 seconds
+        if (retryTimeout) clearTimeout(retryTimeout);
+        retryTimeout = setTimeout(() => {
+          connect();
+        }, 5000);
+      };
     };
-    source.onerror = () => {
-      source.close();
-    };
+
+    connect();
+
     return () => {
-      source.close();
+      if (source) {
+        source.close();
+      }
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
     };
   }, [pushToast, user]);
 

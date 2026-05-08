@@ -57,7 +57,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const pushToast = useCallback((toast: ToastInput) => {
     const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const duration = toast.durationMs ?? (toast.actionLabel ? 8000 : 3500);
+    const duration = toast.durationMs ?? (toast.actionLabel ? 20000 : 20000);
     setToasts((prev) => [...prev, { ...toast, id, timeoutMs: duration }]);
     window.setTimeout(() => {
       setToasts((prev) => prev.filter((item) => item.id !== id));

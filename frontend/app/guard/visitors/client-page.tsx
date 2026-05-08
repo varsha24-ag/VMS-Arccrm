@@ -227,6 +227,17 @@ function ReceptionVisitorsContent() {
     void fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    const handleStatusUpdate = () => {
+      void fetchData();
+    };
+
+    window.addEventListener("visitor-status-updated", handleStatusUpdate);
+    return () => {
+      window.removeEventListener("visitor-status-updated", handleStatusUpdate);
+    };
+  }, [fetchData]);
+
   const selectedRow = useMemo(() => {
     if (rows.length === 0) return null;
     return rows.find((item) => item.visit_id === selectedVisitId) ?? rows[0];

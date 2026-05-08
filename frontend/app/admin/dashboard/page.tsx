@@ -105,22 +105,16 @@ export default function AdminDashboard() {
   }, [loadHistory, loadSummary, user]);
 
   useEffect(() => {
-    if (!user) return;
-    const token = getAccessToken();
-    if (!token) return;
-    const source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);
-
-    source.onmessage = () => {
+    const handleStatusUpdate = () => {
       void loadSummary();
       void loadHistory();
     };
-    source.onerror = () => {
-      source.close();
-    };
+
+    window.addEventListener("visitor-status-updated", handleStatusUpdate);
     return () => {
-      source.close();
+      window.removeEventListener("visitor-status-updated", handleStatusUpdate);
     };
-  }, [loadHistory, loadSummary, user]);
+  }, [loadHistory, loadSummary]);
 
   const stats = useMemo(() => {
     const visitorsToday = summary?.visitors_today ?? 0;
