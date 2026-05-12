@@ -524,16 +524,14 @@ export default function ReceptionQrCheckinPage() {
               <button
                 type="button"
                 onClick={() => handleLoadVisit(row)}
-                disabled={row.status === "checked_out" || row.status === "auto_checked_out"}
+                disabled={row.status !== "approved"}
                 title={
                   row.status === "approved"
                     ? "Load visitor for IN"
-                    : row.status === "checked_in" || row.status === "IN"
-                    ? "Load visitor for OUT"
-                    : "Load visitor"
+                    : "Action disabled"
                 }
                 className={`rounded-md px-3 py-1.5 text-xs font-bold transition shadow-md ${
-                  row.status === "approved" || row.status === "checked_in" || row.status === "IN"
+                  row.status === "approved"
                     ? "bg-orange-500 text-black hover:bg-orange-600 active:scale-95"
                     : "bg-slate-500/10 text-[var(--text-3)] border border-[var(--border-1)] cursor-not-allowed opacity-60"
                 }`}
