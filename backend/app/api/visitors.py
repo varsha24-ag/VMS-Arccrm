@@ -133,14 +133,14 @@ def get_visit_status_by_code(
     if code.isdigit():
         visit = (
             db.query(Visit)
-            .filter(Visit.visitor_id == int(code))
+            .filter(Visit.visitor_id == int(code), Visit.source != "attendance_log")
             .order_by(Visit.id.desc())
             .first()
         )
         if not visit:
-            visit = db.query(Visit).filter(Visit.id == int(code)).first()
+            visit = db.query(Visit).filter(Visit.id == int(code), Visit.source != "attendance_log").first()
     if not visit:
-        visit = db.query(Visit).filter(Visit.qr_code == code).first()
+        visit = db.query(Visit).filter(Visit.qr_code == code, Visit.source != "attendance_log").first()
     if not visit and not code.isdigit():
         visitor = None
         if "@" in code:
@@ -175,7 +175,7 @@ def get_visit_status_by_code(
         # Check by assigned ID card number
         visitor = db.query(Visitor).filter(Visitor.id_number == code).order_by(Visitor.id.desc()).first()
         if visitor:
-            visit = db.query(Visit).filter(Visit.visitor_id == visitor.id).order_by(Visit.id.desc()).first()
+            visit = db.query(Visit).filter(Visit.visitor_id == visitor.id, Visit.source != "attendance_log").order_by(Visit.id.desc()).first()
     if not visit:
         raise HTTPException(status_code=404, detail="Visit not found")
 

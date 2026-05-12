@@ -164,7 +164,11 @@ export default function ReceptionDashboard() {
   const modalRows = useMemo(() => {
     if (!modalKey) return [];
     return history
-      .filter((item) => item.status === modalKey)
+      .filter((item) => {
+        if (modalKey === "checked_in") return item.status === "checked_in" || item.status === "IN";
+        if (modalKey === "checked_out") return item.status === "checked_out" || item.status === "OUT";
+        return item.status === modalKey;
+      })
       .sort((a, b) => b.visit_id - a.visit_id);
   }, [history, modalKey]);
 

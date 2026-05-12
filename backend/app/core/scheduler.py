@@ -3,7 +3,7 @@ from apscheduler.triggers.cron import CronTrigger
 import zoneinfo
 
 from app.core.db import SessionLocal
-from app.services.visit_service import auto_checkout_expired_qr_invites
+from app.services.visit_service import auto_checkout_expired_qr_invites, log_pending_visits_attendance
 from app.services.employee_sync import sync_employees
 
 
@@ -14,6 +14,14 @@ def run_expired_invite_auto_checkout() -> None:
     db = SessionLocal()
     try:
         auto_checkout_expired_qr_invites(db)
+    finally:
+        db.close()
+
+
+def run_pending_visits_attendance_log() -> None:
+    db = SessionLocal()
+    try:
+        log_pending_visits_attendance(db)
     finally:
         db.close()
 
@@ -42,6 +50,13 @@ def start_scheduler() -> None:
         run_employee_sync,
         trigger=CronTrigger(hour=10, minute=30, timezone=tz),
         id="sync_employees_daily",
+        replace_existing=True,
+    )
+
+    scheduler.add_job(
+        run_pending_visits_attendance_log,
+        trigger=CronTrigger(hour=18, minute=0, timezone=tz),
+        id="log_pending_attendance_daily",
         replace_existing=True,
     )
     

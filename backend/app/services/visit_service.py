@@ -272,14 +272,18 @@ def checkin_visit(db: Session, payload: VisitCheckin) -> VisitOut:
     elif access_pass:
         existing_visit = (
             db.query(Visit)
-            .filter(Visit.visitor_id == payload.visitor_id, Visit.qr_code == access_pass.qr_code)
+            .filter(
+                Visit.visitor_id == payload.visitor_id, 
+                Visit.qr_code == access_pass.qr_code,
+                Visit.source != "attendance_log"
+            )
             .order_by(desc(Visit.id))
             .first()
         )
     else:
         existing_visit = (
             db.query(Visit)
-            .filter(Visit.visitor_id == payload.visitor_id)
+            .filter(Visit.visitor_id == payload.visitor_id, Visit.source != "attendance_log")
             .order_by(desc(Visit.id))
             .first()
         )
@@ -378,7 +382,7 @@ def checkout_visit(db: Session, payload: VisitCheckout) -> VisitOut:
     elif payload.visitor_id:
         visit = (
             db.query(Visit)
-            .filter(Visit.visitor_id == payload.visitor_id)
+            .filter(Visit.visitor_id == payload.visitor_id, Visit.source != "attendance_log")
             .order_by(desc(Visit.checkin_time))
             .first()
         )
@@ -521,7 +525,7 @@ def get_visit_detail(db: Session, visit_id: int) -> VisitDetailOut:
 
 
 def get_qr_visitor_detail(db: Session, qr_code: str) -> VisitDetailOut:
-    visit = db.query(Visit).filter(Visit.qr_code == qr_code).order_by(desc(Visit.id)).first()
+    visit = db.query(Visit).filter(Visit.qr_code == qr_code, Visit.source != "attendance_log").order_by(desc(Visit.id)).first()
     if visit:
         return get_visit_detail(db, visit.id)
 
@@ -795,6 +799,89 @@ def qr_checkin(db: Session, payload: QRCheckin) -> VisitOut:
         source=visit.source,
         qr_expiry=visit.qr_expiry,
     )
+
+
+def log_pending_visits_attendance(db: Session) -> int:
+    import logging
+    from zoneinfo import ZoneInfo
+    from app.core.config import settings
+
+    logger = logging.getLogger(__name__)
+    
+    try:
+        tz = ZoneInfo(settings.BUSINESS_TIMEZONE)
+    except Exception:
+        tz = timezone.utc
+        
+    now_local = datetime.now(tz)
+    # Target check-out time is 6:00 PM today local time
+    log_checkout_time_local = now_local.replace(hour=18, minute=0, second=0, microsecond=0)
+    log_checkout_time_utc = log_checkout_time_local.astimezone(timezone.utc)
+    
+    # Define the window for today to check for duplicates
+    today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start_utc = today_start_local.astimezone(timezone.utc)
+    today_end_utc = today_start_utc + timedelta(days=1)
+
+    # Fetch all visits that are currently Pending and are NOT logs themselves
+    # Additionally check that they don't have any check-in or check-out times yet
+    pending_visits = (
+        db.query(Visit)
+        .filter(
+            Visit.status == "pending",
+            Visit.source != "attendance_log",
+            Visit.checkin_time.is_(None),
+            Visit.checkout_time.is_(None)
+        )
+        .all()
+    )
+
+    created_count = 0
+    for visit in pending_visits:
+        try:
+            # Prevent duplicate: check if a log already exists for this visitor today
+            exists = (
+                db.query(Visit)
+                .filter(
+                    Visit.visitor_id == visit.visitor_id,
+                    Visit.source == "attendance_log",
+                    Visit.checkin_time >= today_start_utc,
+                    Visit.checkin_time < today_end_utc
+                )
+                .first()
+            )
+            
+            if exists:
+                continue
+                
+            # Create a new attendance log record
+            # Invitation sent time = visit.created_at
+            # Scheduler execution time = log_checkout_time_utc (6:00 PM)
+            new_log = Visit(
+                visitor_id=visit.visitor_id,
+                host_employee_id=visit.host_employee_id,
+                purpose=visit.purpose,
+                checkin_time=visit.created_at,
+                checkout_time=log_checkout_time_utc,
+                status="pending", # As per requirement: status must remain Pending
+                source="attendance_log"
+            )
+            db.add(new_log)
+            created_count += 1
+        except Exception as e:
+            logger.error(f"Failed to create attendance log for visit {visit.id}: {e}")
+            continue
+        
+    if created_count:
+        try:
+            db.commit()
+            logger.info(f"Successfully created {created_count} pending attendance logs.")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error while committing attendance logs: {e}")
+            return 0
+            
+    return created_count
 
 
 def auto_checkout_expired_qr_invites(db: Session) -> int:

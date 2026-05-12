@@ -42,7 +42,7 @@ def get_admin_dashboard_summary(
         .filter(Visit.checkout_time >= start_utc, Visit.checkout_time < end_utc)
         .count()
     )
-    pending_approvals = db.query(Visit).filter(Visit.status == "pending").count()
+    pending_approvals = db.query(Visit).filter(Visit.status == "pending", Visit.source != "attendance_log").count()
 
     recent_rows = (
         db.query(Visit, Visitor, Employee)
