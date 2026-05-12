@@ -164,7 +164,7 @@ function ReceptionVisitorsContent() {
       case "pending":
         return "border-amber-300/60 bg-amber-500/15 text-amber-400";
       case "rejected":
-        return "bg-red-600 text-white border-red-700 shadow-sm font-bold";
+        return "border-red-300/60 bg-red-500/15 text-red-400";
       case "IN":
         return "border-orange-500/50 bg-orange-500/20 text-orange-400 font-bold shadow-[0_0_10px_rgba(249,115,22,0.15)]";
       case "OUT":
@@ -453,31 +453,31 @@ function ReceptionVisitorsContent() {
           </div>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl bg-red-600 p-4 text-white shadow-md border border-red-700">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-white/80">Phone</p>
-              <p className="mt-1 text-base font-semibold">{selectedRow.visitor_phone ?? "—"}</p>
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Phone</p>
+              <p className="text-base text-[var(--text-1)]">{selectedRow.visitor_phone ?? "—"}</p>
             </div>
-            <div className="rounded-2xl bg-red-600 p-4 text-white shadow-md border border-red-700">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-white/80">Host</p>
-              <p className="mt-1 text-base font-semibold">
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Host</p>
+              <p className="text-base text-[var(--text-1)]">
                 {selectedRow.host_employee_id ? hostMap[selectedRow.host_employee_id] ?? "Unknown" : "Unassigned"}
               </p>
             </div>
-            <div className="rounded-2xl bg-red-600 p-4 text-white shadow-md border border-red-700">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-white/80">ID Card</p>
-              <p className="mt-1 text-base font-semibold">{selectedRow.id_number ?? "—"}</p>
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">ID Card</p>
+              <p className="text-base text-[var(--text-1)]">{selectedRow.id_number ?? "—"}</p>
             </div>
-            <div className="rounded-2xl bg-red-600 p-4 text-white shadow-md border border-red-700">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-white/80">Purpose</p>
-              <p className="mt-1 text-base font-semibold">{selectedRow.purpose ?? "—"}</p>
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Purpose</p>
+              <p className="text-base text-[var(--text-1)]">{selectedRow.purpose ?? "—"}</p>
             </div>
-            <div className="rounded-2xl bg-red-600 p-4 text-white shadow-md border border-red-700">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-white/80">Company</p>
-              <p className="mt-1 text-base font-semibold">{selectedRow.company ?? "—"}</p>
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">Company</p>
+              <p className="text-base text-[var(--text-1)]">{selectedRow.company ?? "—"}</p>
             </div>
-            <div className="rounded-2xl bg-red-600 p-4 text-white shadow-md border border-red-700">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-white/80">IN</p>
-              <p className="mt-1 text-base font-semibold">
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-3)]">IN</p>
+              <p className="text-base text-[var(--text-1)]">
                 {selectedRow.checkin_time ? new Date(selectedRow.checkin_time).toLocaleString() : "—"}
               </p>
             </div>

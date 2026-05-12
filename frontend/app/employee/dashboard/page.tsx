@@ -200,7 +200,7 @@ export default function EmployeeDashboard() {
                       <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase ${
                         row.status === "approved" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" :
                         row.status === "pending" ? "border-amber-500/30 bg-amber-500/10 text-amber-400" :
-                        row.status === "rejected" ? "bg-red-600 text-white border-red-700 shadow-sm" :
+                        row.status === "rejected" ? "border-red-500/30 bg-red-500/10 text-red-400" :
                         "border-[var(--border-1)] bg-[var(--surface-3)] text-[var(--text-2)]"
                       }`}>
                         {row.status.replace(/_/g, " ")}
@@ -217,7 +217,7 @@ export default function EmployeeDashboard() {
                           </button>
                           <button
                             onClick={() => handleAction(row.visit_id, "reject")}
-                            className="rounded-lg bg-red-600 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-red-700 active:scale-95 shadow-sm"
+                            className="rounded-lg bg-red-500/10 border border-red-500/50 px-3 py-1.5 text-[11px] font-bold text-red-400 transition hover:bg-red-500/20 active:scale-95"
                           >
                             Reject
                           </button>

@@ -26,6 +26,7 @@ type VisitHistoryItem = {
   checkout_time?: string | null;
   status: string;
   qr_code?: string | null;
+  created_at?: string | null;
 };
 
 export default function ReceptionDashboard() {
@@ -109,21 +110,22 @@ export default function ReceptionDashboard() {
     };
   }, [loadData, user]);
 
+  const todayKey = useMemo(() => new Date().toDateString(), []);
+  const isToday = useCallback((dateStr?: string | null) => 
+    dateStr ? new Date(dateStr).toDateString() === todayKey : false, [todayKey]);
+
   const stats = useMemo<StatItem[]>(() => {
-    const todayKey = new Date().toDateString();
-    const isToday = (value?: string | null) =>
-      value ? new Date(value).toDateString() === todayKey : false;
-    const checkinsToday = history.filter((item) => isToday(item.checkin_time)).length;
-    const checkoutsToday = history.filter((item) => isToday(item.checkout_time)).length;
-    const pending = history.filter((item) => item.status === "pending").length;
-    const checkedInNow = history.filter((item) => item.status === "IN").length;
+    const pendingToday = history.filter((item) => item.status === "pending" && isToday(item.created_at)).length;
+    const checkedInTodayNow = history.filter((item) => item.status === "IN" && isToday(item.checkin_time)).length;
+    const checkedOutToday = history.filter((item) => item.status === "OUT" && isToday(item.checkout_time)).length;
+
     return [
-      { label: "IN", value: String(checkinsToday), delta: "Today", color: "orange" },
-      { label: "OUT", value: String(checkoutsToday), delta: "Today", color: "sky" },
-      { label: "Pending Approval", value: String(pending), delta: "Awaiting host", color: "amber" },
-      { label: "IN Now", value: String(checkedInNow), delta: "Live", color: "orange" },
+      { label: "IN", value: String(checkedInTodayNow), delta: "Today", color: "orange" },
+      { label: "OUT", value: String(checkedOutToday), delta: "Today", color: "sky" },
+      { label: "PENDING APPROVAL", value: String(pendingToday), delta: "Today", color: "amber" },
+      { label: "IN NOW", value: String(checkedInTodayNow), delta: "Live", color: "orange" },
     ] as StatItem[];
-  }, [history]);
+  }, [history, isToday]);
 
   const queueItems = useMemo(() => {
     return [...history]
@@ -131,8 +133,7 @@ export default function ReceptionDashboard() {
       .slice(0, 5)
       .map((item) => ({
         title: item.visitor_name,
-        subtitle: `${item.purpose ?? "Visit"} · Host: ${item.host_employee_id ? hostMap[item.host_employee_id] ?? "Unknown" : "Unassigned"
-          }`,
+        subtitle: `${item.purpose ?? "Visit"} · Host: ${item.host_employee_id ? hostMap[item.host_employee_id] ?? "Unknown" : "Unassigned"}`,
         image: resolveApiAssetUrl(item.photo_url),
         visit_id: item.visit_id,
         visitor_id: item.visitor_id,
@@ -141,17 +142,17 @@ export default function ReceptionDashboard() {
   }, [history, hostMap]);
 
   const checklistItems = useMemo(() => {
-    const pending = history.filter((item) => item.status === "pending").length;
-    const approved = history.filter((item) => item.status === "approved").length;
-    const checkedIn = history.filter((item) => item.status === "IN").length;
-    const checkedOut = history.filter((item) => item.status === "OUT").length;
+    const pending = history.filter((item) => item.status === "pending" && isToday(item.created_at)).length;
+    const approved = history.filter((item) => item.status === "approved" && isToday(item.created_at)).length;
+    const checkedIn = history.filter((item) => item.status === "IN" && isToday(item.checkin_time)).length;
+    const checkedOut = history.filter((item) => item.status === "OUT" && isToday(item.checkout_time)).length;
     return [
       { key: "pending" as const, label: "Pending approvals", count: pending },
       { key: "approved" as const, label: "Approved arrivals waiting", count: approved },
       { key: "checked_in" as const, label: "Currently IN", count: checkedIn },
       { key: "checked_out" as const, label: "OUT", count: checkedOut },
     ];
-  }, [history]);
+  }, [history, isToday]);
 
   const modalTitle = useMemo(() => {
     if (modalKey === "pending") return "Pending Approvals";
@@ -163,14 +164,26 @@ export default function ReceptionDashboard() {
 
   const modalRows = useMemo(() => {
     if (!modalKey) return [];
+
     return history
       .filter((item) => {
-        if (modalKey === "checked_in") return item.status === "checked_in" || item.status === "IN";
-        if (modalKey === "checked_out") return item.status === "checked_out" || item.status === "OUT";
-        return item.status === modalKey;
+        // Status match
+        let statusMatch = false;
+        if (modalKey === "checked_in") statusMatch = item.status === "checked_in" || item.status === "IN";
+        else if (modalKey === "checked_out") statusMatch = item.status === "checked_out" || item.status === "OUT";
+        else statusMatch = item.status === modalKey;
+
+        if (!statusMatch) return false;
+
+        // Date match (Today only)
+        if (modalKey === "pending" || modalKey === "approved") return isToday(item.created_at);
+        if (modalKey === "checked_in") return isToday(item.checkin_time);
+        if (modalKey === "checked_out") return isToday(item.checkout_time);
+        
+        return true;
       })
       .sort((a, b) => b.visit_id - a.visit_id);
-  }, [history, modalKey]);
+  }, [history, modalKey, isToday]);
 
   const modalTotalPages = Math.max(1, Math.ceil(modalRows.length / modalPageSize));
   const modalPagedRows = useMemo(() => {
