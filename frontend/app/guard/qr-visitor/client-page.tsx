@@ -53,8 +53,8 @@ function areAvailableCardsEqual(a: AvailableIdCard[], b: AvailableIdCard[]) {
 function getStatusTone(detail: VisitDetail | null) {
   if (!detail) {
     return {
-      panelClass: "border-red-400/30 bg-red-500/10 text-red-700 dark:text-red-200",
-      badgeClass: "border-red-400/40 bg-red-500/15 text-red-700 dark:text-red-200",
+      panelClass: "bg-red-600 text-white border-red-700 shadow-lg",
+      badgeClass: "bg-white text-red-600 border-white",
       label: "Invalid Scan",
       description: "No visitor record was resolved from this QR scan.",
       canCheckIn: false,
@@ -67,8 +67,8 @@ function getStatusTone(detail: VisitDetail | null) {
 
   if (isExpired || detail.status === "rejected" || detail.status === "checked_out" || detail.status === "auto_checked_out") {
     return {
-      panelClass: "border-red-400/30 bg-red-500/10 text-red-700 dark:text-red-200",
-      badgeClass: "border-red-400/40 bg-red-500/15 text-red-700 dark:text-red-200",
+      panelClass: "bg-red-600 text-white border-red-700 shadow-lg",
+      badgeClass: "bg-white text-red-600 border-white",
       label: isExpired ? "QR Expired" : "Check-in Blocked",
       description: isExpired ? "This invite has expired." : `This visit is ${detail.status.replace(/_/g, " ")}.`,
       canCheckIn: false,
@@ -87,8 +87,8 @@ function getStatusTone(detail: VisitDetail | null) {
 
   if (detail.status !== "approved") {
     return {
-      panelClass: "border-red-400/30 bg-red-500/10 text-red-700 dark:text-red-200",
-      badgeClass: "border-red-400/40 bg-red-500/15 text-red-700 dark:text-red-200",
+      panelClass: "bg-red-600 text-white border-red-700 shadow-lg",
+      badgeClass: "bg-white text-red-600 border-white",
       label: "Approval Pending",
       description: "This visitor is not approved for check-in yet.",
       canCheckIn: false,
@@ -297,21 +297,21 @@ function ReceptionQrVisitorContent() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-2)] p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-3)]">Phone</p>
-                    <p className="mt-2 text-base text-[var(--text-1)]">{detail.phone || "-"}</p>
+                  <div className="rounded-2xl bg-red-600 p-4 text-white shadow-md border border-red-700">
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/80">Phone</p>
+                    <p className="mt-2 text-base font-semibold">{detail.phone || "-"}</p>
                   </div>
-                  <div className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-2)] p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-3)]">Email</p>
-                    <p className="mt-2 text-base text-[var(--text-1)]">{detail.email || "-"}</p>
+                  <div className="rounded-2xl bg-red-600 p-4 text-white shadow-md border border-red-700">
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/80">Email</p>
+                    <p className="mt-2 text-base font-semibold">{detail.email || "-"}</p>
                   </div>
-                  <div className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-2)] p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-3)]">Company</p>
-                    <p className="mt-2 text-base text-[var(--text-1)]">{detail.company || "-"}</p>
+                  <div className="rounded-2xl bg-red-600 p-4 text-white shadow-md border border-red-700">
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/80">Company</p>
+                    <p className="mt-2 text-base font-semibold">{detail.company || "-"}</p>
                   </div>
-                  <div className="rounded-2xl border border-[var(--border-1)] bg-[var(--surface-2)] p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-3)]">Purpose</p>
-                    <p className="mt-2 text-base text-[var(--text-1)]">{detail.purpose || "-"}</p>
+                  <div className="rounded-2xl bg-red-600 p-4 text-white shadow-md border border-red-700">
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/80">Purpose</p>
+                    <p className="mt-2 text-base font-semibold">{detail.purpose || "-"}</p>
                   </div>
                 </div>
               </div>

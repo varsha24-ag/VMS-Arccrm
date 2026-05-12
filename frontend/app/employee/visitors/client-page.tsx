@@ -142,7 +142,7 @@ function EmployeeVisitorsContent() {
       case "pending":
         return "border-amber-300/60 bg-amber-500/15 text-amber-400";
       case "rejected":
-        return "border-red-300/60 bg-red-500/15 text-red-400";
+        return "bg-red-600 text-white border-red-700 shadow-sm font-bold";
       case "IN":
         return "border-orange-500/50 bg-orange-500/20 text-orange-400 font-bold shadow-[0_0_10px_rgba(249,115,22,0.15)]";
       case "OUT":
