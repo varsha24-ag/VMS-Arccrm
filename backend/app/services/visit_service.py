@@ -801,6 +801,48 @@ def qr_checkin(db: Session, payload: QRCheckin) -> VisitOut:
     )
 
 
+def update_visit_status(db: Session, visit_id: int, status: str, host_id: int) -> bool:
+    import anyio
+    from app.core.realtime import publish_event
+    from app.services.notification_service import send_reception_notification
+    from app.core.config import settings
+
+    visit = db.query(Visit).filter(Visit.id == visit_id).first()
+    if not visit:
+        return False
+    
+    # Security: Ensure only the assigned host can update the status
+    if visit.host_employee_id != host_id:
+        return False
+
+    if status not in {"approved", "rejected"}:
+        return False
+
+    visit.status = status
+    if status == "approved":
+        visit.approved_at = datetime.now(timezone.utc)
+    else:
+        visit.rejected_at = datetime.now(timezone.utc)
+
+    visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
+    if visitor:
+        visitor.status = status
+    
+    db.commit()
+
+    # Notify reception if email is configured
+    if visitor and settings.RECEPTION_EMAIL:
+        send_reception_notification(settings.RECEPTION_EMAIL, visitor.name, status)
+
+    # Publish realtime event
+    anyio.from_thread.run(
+        publish_event,
+        {"type": "visit_status", "visit_id": visit.id, "status": status, "visitor_id": visit.visitor_id},
+    )
+
+    return True
+
+
 def log_pending_visits_attendance(db: Session) -> int:
     import logging
     from zoneinfo import ZoneInfo

@@ -60,3 +60,31 @@ def list_my_passes(
     current_user: Annotated[Employee, Depends(get_current_user)] = None,
 ) -> List[AccessPassListItem]:
     return get_employee_access_passes(db, current_user.id)
+
+
+@router.post("/me/visitors/{visit_id}/approve")
+def approve_my_visitor(
+    visit_id: int,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    from app.services.visit_service import update_visit_status
+    success = update_visit_status(db, visit_id, "approved", current_user.id)
+    if not success:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Failed to approve visit")
+    return {"status": "success"}
+
+
+@router.post("/me/visitors/{visit_id}/reject")
+def reject_my_visitor(
+    visit_id: int,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    from app.services.visit_service import update_visit_status
+    success = update_visit_status(db, visit_id, "rejected", current_user.id)
+    if not success:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Failed to reject visit")
+    return {"status": "success"}

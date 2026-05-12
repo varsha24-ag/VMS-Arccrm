@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
-import { Panel, SimpleTable, StatGrid } from "@/components/dashboard/panels";
+import { Panel, SimpleTable, StatGrid, type StatItem } from "@/components/dashboard/panels";
 import { AccessPassForm, AccessPassResult } from "@/components/employee/access-pass-form";
 import FilterBar from "@/components/ui/filter-bar";
 import { useToast } from "@/components/ui/toast";
@@ -15,9 +15,12 @@ import { useAuthGuard } from "@/lib/use-auth-guard";
 
 type EmployeeVisitorRow = {
   visit_id: number;
+  visitor_id: number;
   visitor_name: string;
   purpose?: string | null;
   created_at?: string | null;
+  checkin_time?: string | null;
+  checkout_time?: string | null;
   status: string;
 };
 
@@ -27,27 +30,48 @@ export default function EmployeeDashboard() {
   const [visitorRows, setVisitorRows] = useState<EmployeeVisitorRow[]>([]);
   const { pushToast } = useToast();
 
+  const isToday = (dateStr?: string | null) => {
+    if (!dateStr) return false;
+    const date = new Date(dateStr);
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
+  const loadData = useCallback(async () => {
+    try {
+      const data = await apiFetch<EmployeeVisitorRow[]>("/employees/me/visitors");
+      setVisitorRows(data ?? []);
+    } catch {
+      setVisitorRows([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (!user) return;
-    let cancelled = false;
+    void loadData();
+  }, [loadData, user]);
 
-    void (async () => {
-      try {
-        const data = await apiFetch<EmployeeVisitorRow[]>("/employees/me/visitors");
-        if (!cancelled) {
-          setVisitorRows(data ?? []);
-        }
-      } catch {
-        if (!cancelled) {
-          setVisitorRows([]);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
+  const handleAction = async (visitId: number, action: "approve" | "reject") => {
+    try {
+      await apiFetch(`/employees/me/visitors/${visitId}/${action}`, { method: "POST" });
+      pushToast({
+        title: `Visitor ${action === "approve" ? "Approved" : "Rejected"}`,
+        description: `Successfully ${action === "approve" ? "approved" : "rejected"} the visitor request.`,
+        variant: action === "approve" ? "success" : "info",
+      });
+      void loadData();
+    } catch (err) {
+      pushToast({
+        title: "Action failed",
+        description: err instanceof Error ? err.message : "Unable to update status",
+        variant: "error",
+      });
+    }
+  };
 
   const filteredVisitorRows = useMemo(() => {
     const query = approvalQuery.trim().toLowerCase();
@@ -66,29 +90,28 @@ export default function EmployeeDashboard() {
     );
   }, [approvalQuery, visitorRows]);
 
-  const latestVisitorRows = useMemo(
-    () =>
-      filteredVisitorRows.slice(0, 5).map((row) => [
-        row.visitor_name,
-        row.purpose ?? "—",
-        row.created_at ? new Date(row.created_at).toLocaleString() : "—",
-        row.status.replace(/_/g, " "),
-      ]),
-    [filteredVisitorRows]
-  );
-
-  const stats = useMemo(() => {
+  const stats = useMemo<StatItem[]>(() => {
     const pendingCount = visitorRows.filter((row) => row.status === "pending").length;
     const approvedCount = visitorRows.filter((row) => row.status === "approved").length;
     const rejectedCount = visitorRows.filter((row) => row.status === "rejected").length;
 
     return [
       { label: "My Visitors", value: String(visitorRows.length), delta: "Open full list", href: "/employee/visitors" },
-      { label: "Pending Approvals", value: String(pendingCount), delta: "Needs action", href: "/employee/visitors?view=pending" },
-      { label: "Approved", value: String(approvedCount), delta: "Approved visitors", href: "/employee/visitors?view=approved" },
-      { label: "Rejected", value: String(rejectedCount), delta: "Rejected visitors", href: "/employee/visitors?view=rejected" },
+      { label: "Pending Approvals", value: String(pendingCount), delta: "Needs action", href: "/employee/visitors?view=pending", color: "amber" },
+      { label: "Approved", value: String(approvedCount), delta: "Approved visitors", href: "/employee/visitors?view=approved", color: "emerald" },
+      { label: "Rejected", value: String(rejectedCount), delta: "Rejected visitors", href: "/employee/visitors?view=rejected", color: "sky" },
     ];
   }, [visitorRows]);
+
+  useEffect(() => {
+    const handleStatusUpdate = () => {
+      void loadData();
+    };
+    window.addEventListener("visitor-status-updated", handleStatusUpdate);
+    return () => {
+      window.removeEventListener("visitor-status-updated", handleStatusUpdate);
+    };
+  }, [loadData]);
 
   useEffect(() => {
     if (!user) return;
@@ -103,14 +126,15 @@ export default function EmployeeDashboard() {
           host_employee_id?: number;
           visitor_name?: string;
         };
-        if (payload.type !== "host_qr_checkin") return;
-        if (payload.host_employee_id !== user.id) return;
-        pushToast({
-          title: "Visitor checked in",
-          description: `${payload.visitor_name ?? "A visitor"} completed QR check-in.`,
-          variant: "success",
-          durationMs: 5000,
-        });
+        if (payload.type === "host_qr_checkin" && payload.host_employee_id === user.id) {
+          pushToast({
+            title: "Visitor checked in",
+            description: `${payload.visitor_name ?? "A visitor"} completed QR check-in.`,
+            variant: "success",
+            durationMs: 5000,
+          });
+        }
+        void loadData();
       } catch {
         // Ignore malformed realtime events.
       }
@@ -121,7 +145,7 @@ export default function EmployeeDashboard() {
     return () => {
       source.close();
     };
-  }, [pushToast, user]);
+  }, [pushToast, user, loadData]);
 
   if (!user) return null;
 
@@ -152,7 +176,70 @@ export default function EmployeeDashboard() {
               searchPlaceholder="Search latest visitor, purpose, or status..."
             />
           </div>
-          <SimpleTable headers={["Visitor", "Purpose", "Date & Time", "Status"]} rows={latestVisitorRows} />
+          
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead>
+                <tr className="text-[var(--text-3)] border-b border-[var(--border-1)]">
+                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[11px]">Visitor</th>
+                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[11px]">Purpose</th>
+                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[11px]">Time</th>
+                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[11px]">Status</th>
+                  <th className="pb-3 font-semibold uppercase tracking-wider text-[11px] text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="text-[var(--text-1)]">
+                {filteredVisitorRows.slice(0, 10).map((row) => (
+                  <tr key={row.visit_id} className="border-t border-[var(--border-1)] transition hover:bg-[var(--surface-2)]/50">
+                    <td className="py-4 pr-4 font-medium">{row.visitor_name}</td>
+                    <td className="py-4 pr-4 text-[var(--text-2)]">{row.purpose ?? "—"}</td>
+                    <td className="py-4 pr-4 text-[var(--text-3)] text-xs">
+                      {row.created_at ? new Date(row.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "—"}
+                    </td>
+                    <td className="py-4 pr-4">
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase ${
+                        row.status === "approved" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" :
+                        row.status === "pending" ? "border-amber-500/30 bg-amber-500/10 text-amber-400" :
+                        row.status === "rejected" ? "border-red-500/30 bg-red-500/10 text-red-400" :
+                        "border-[var(--border-1)] bg-[var(--surface-3)] text-[var(--text-2)]"
+                      }`}>
+                        {row.status.replace(/_/g, " ")}
+                      </span>
+                    </td>
+                    <td className="py-4 text-right">
+                      {row.status === "pending" && isToday(row.created_at) && !row.checkin_time && !row.checkout_time ? (
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleAction(row.visit_id, "approve")}
+                            className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-emerald-600 active:scale-95"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={() => handleAction(row.visit_id, "reject")}
+                            className="rounded-lg bg-red-500/10 border border-red-500/50 px-3 py-1.5 text-[11px] font-bold text-red-400 transition hover:bg-red-500/20 active:scale-95"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-[var(--text-3)] font-medium">
+                          {row.status === "pending" && !isToday(row.created_at) ? "Expired" : "Done"}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {filteredVisitorRows.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-[var(--text-3)] italic">
+                      No visitor requests found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </Panel>
 
         <Panel title="Generate Visitor Pass">

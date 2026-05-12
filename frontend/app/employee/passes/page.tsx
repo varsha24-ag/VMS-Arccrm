@@ -161,7 +161,7 @@ export default function EmployeePassesPage() {
             <button
               type="button"
               onClick={() => setRecreateTarget(params.row)}
-              className="min-h-[38px] rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1 text-xs font-semibold text-[var(--text-1)] transition hover:bg-[var(--surface-3)]"
+              className="rounded-md bg-orange-500 px-3 py-1 text-xs font-bold text-black shadow-md transition hover:bg-orange-600 active:scale-95"
             >
               Recreate Pass
             </button>
@@ -170,7 +170,7 @@ export default function EmployeePassesPage() {
               type="button"
               disabled
               aria-disabled="true"
-              className="min-h-[38px] cursor-not-allowed rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-1 text-xs font-semibold text-[var(--text-3)] opacity-60"
+              className="rounded-md bg-slate-500/20 border border-slate-500/20 px-3 py-1 text-xs font-bold text-[var(--text-3)] cursor-not-allowed opacity-60"
             >
               Recreate Pass
             </button>
