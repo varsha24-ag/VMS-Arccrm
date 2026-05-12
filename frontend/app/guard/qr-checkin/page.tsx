@@ -527,9 +527,9 @@ export default function ReceptionQrCheckinPage() {
                 disabled={row.status === "checked_out" || row.status === "auto_checked_out"}
                 title={
                   row.status === "approved"
-                    ? "Load visitor for IN"
+                    ? "Load visitor for IN page"
                     : row.status === "checked_in" || row.status === "IN"
-                    ? "Load visitor for OUT"
+                    ? "Load visitor for OUT page"
                     : "Load visitor"
                 }
                 className={`rounded-md px-3 py-1.5 text-xs font-bold transition shadow-md ${

@@ -171,7 +171,7 @@ export default function LoginPage() {
 
             <div className="mb-8">
               <h2 className="text-2xl font-bold tracking-tight text-[var(--text-1)]">Sign In</h2>
-              <p className="mt-2 text-sm text-[var(--text-3)]">Welcome back! Please enter your details.</p>
+              <p className="mt-2 text-sm text-[var(--text-3)]">Welcome back! Please enter your arccrm details.</p>
             </div>
 
             <form className="space-y-6" onSubmit={handleSubmit}>
@@ -181,7 +181,7 @@ export default function LoginPage() {
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
-                placeholder="name@company.com"
+                placeholder="name@arcgate.com"
                 error={errors.email}
                 required
               />

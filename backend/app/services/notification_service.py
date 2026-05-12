@@ -43,6 +43,11 @@ def get_frontend_visit_action_url(visit_id: int, action: str, token: Optional[st
     return f"{frontend_base_url}/visits/{visit_id}/{action}{token_query}"
 
 
+def get_frontend_dashboard_url() -> str:
+    frontend_base_url = settings.FRONTEND_BASE_URL or "http://localhost:3000"
+    return f"{frontend_base_url}/employee/dashboard"
+
+
 def send_host_notification(
     host_email: str,
     host_name: str,
@@ -92,17 +97,21 @@ def send_host_notification(
     image_cid = make_msgid(domain="vms.local")[1:-1] if photo_bytes else None
     photo_src = f"cid:{image_cid}" if image_cid else (photo_link or default_avatar)
 
+    dashboard_url = get_frontend_dashboard_url()
     body = (
         f"Hello {host_name},\n\n"
-        f"A visitor has been registered.\n"
+        f"A visitor is awaiting your approval.\n\n"
         f"Visitor: {visitor_name}\n"
         f"Phone: {phone or 'N/A'}\n"
         f"Company: {company or 'N/A'}\n"
         f"Purpose: {purpose or 'N/A'}\n\n"
-        f"Photo: {photo_link or 'N/A'}\n\n"
+        f"You can approve or reject this request directly from this email using the links below:\n"
         f"Approve: {approve_link}\n"
         f"Reject: {reject_link}\n\n"
-        "Please be available to receive the visitor.\n"
+        f"Alternatively, you may open your Employee Dashboard to review complete visitor details and manage approvals:\n"
+        f"{dashboard_url}\n\n"
+        "Please note:\n"
+        "Once an action is taken, all other approval links will be automatically disabled for security purposes.\n"
     )
 
     html_body = f"""
@@ -125,19 +134,30 @@ def send_host_notification(
               </tr>
             </table>
           </div>
-          <div style="margin-top:24px;">
+          <div style="margin-top:24px;background:#102a43;border-radius:14px;padding:20px;text-align:center;border:1px solid #1e3a5f;">
+            <p style="margin:0 0 16px 0;color:#ffffff;font-size:16px;font-weight:600;">A visitor is awaiting your approval.</p>
             <table width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td width="120">
-                  <a href="{approve_link}" style="display:inline-block;background:#22c55e;color:#0b1220;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:700;text-align:center;">Accept</a>
+                <td width="50%" align="center">
+                  <a href="{approve_link}" style="display:inline-block;background:#22c55e;color:#0b1220;text-decoration:none;padding:12px 30px;border-radius:10px;font-weight:700;text-align:center;min-width:100px;">Accept</a>
                 </td>
-                <td>
-                  <a href="{reject_link}" style="display:inline-block;background:#ef4444;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:700;text-align:center;">Reject</a>
+                <td width="50%" align="center">
+                  <a href="{reject_link}" style="display:inline-block;background:#ef4444;color:#ffffff;text-decoration:none;padding:12px 30px;border-radius:10px;font-weight:700;text-align:center;min-width:100px;">Reject</a>
                 </td>
               </tr>
             </table>
+            <p style="margin:16px 0 0 0;color:#94a3b8;font-size:12px;">You can approve or reject directly from this email using the buttons above.</p>
           </div>
-          <p style="margin-top:18px;color:#94a3b8;font-size:12px;">This link works only once. After you respond, the other option will be disabled.</p>
+          
+          <div style="margin-top:24px;padding:20px;border:1px dashed #1e3a5f;border-radius:14px;text-align:center;">
+            <p style="margin:0 0 12px 0;color:#cbd5f5;font-size:14px;">Alternatively, you may open your Employee Dashboard to review complete visitor details and manage approvals.</p>
+            <a href="{dashboard_url}" style="display:inline-block;color:#60a5fa;text-decoration:none;font-weight:700;font-size:14px;border:1px solid #60a5fa;padding:8px 20px;border-radius:8px;">Open Dashboard</a>
+          </div>
+
+          <p style="margin-top:24px;color:#94a3b8;font-size:12px;line-height:1.5;">
+            <strong>Please note:</strong><br/>
+            Once an action is taken, all other approval links will be automatically disabled for security purposes.
+          </p>
         </div>
       </body>
     </html>

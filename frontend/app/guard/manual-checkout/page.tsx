@@ -149,7 +149,7 @@ export default function ManualCheckoutPage() {
             type="button"
             disabled={loading}
             onClick={() => setIdCardNumber(String(params.row.id_number ?? ""))}
-            title="Load visitor for OUT"
+            title="Load visitor for OUT page"
             className={`rounded-md px-3 py-1 text-xs font-bold transition shadow-md ${
               !loading
                 ? "bg-orange-500 text-black hover:bg-orange-600 active:scale-95"
