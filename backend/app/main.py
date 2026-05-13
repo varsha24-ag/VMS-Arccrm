@@ -20,14 +20,7 @@ from app.api.visitors import router as visitors_router
 from app.core.config import settings
 from app.core.init_db import bootstrap_database
 
-try:
-    from app.core.scheduler import start_scheduler, stop_scheduler
-except ModuleNotFoundError:
-    def start_scheduler() -> None:
-        return
-
-    def stop_scheduler() -> None:
-        return
+from app.core.scheduler import start_scheduler, stop_scheduler
 
 app = FastAPI(title="VMS ARC CRM Auth API")
 
