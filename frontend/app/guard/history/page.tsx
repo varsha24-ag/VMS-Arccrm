@@ -49,6 +49,8 @@ export default function ReceptionHistoryPage() {
         return "border-orange-500/50 bg-orange-500/20 text-orange-400 font-bold shadow-[0_0_10px_rgba(249,115,22,0.15)]";
       case "OUT":
         return "border-sky-500/50 bg-sky-500/20 text-sky-400 font-bold shadow-[0_0_10px_rgba(14,165,233,0.15)]";
+      case "auto_checked_out":
+        return "border-green-600/60 bg-green-900/30 text-green-500 font-bold";
       default:
         return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
     }
@@ -56,9 +58,10 @@ export default function ReceptionHistoryPage() {
   const statusLabel = (status: string) => {
     if (status === "checked_in" || status === "IN") return "IN";
     if (status === "checked_out" || status === "OUT") return "OUT";
+    if (status === "auto_checked_out") return "AUTO-OUT";
     return status.replace(/_/g, " ");
   };
-  const statusOptions = ["approved", "pending", "rejected", "IN", "OUT"];
+  const statusOptions = ["approved", "pending", "rejected", "IN", "OUT", "auto_checked_out"];
 
   useEffect(() => {
     if (!user) return;

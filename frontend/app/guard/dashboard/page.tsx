@@ -50,6 +50,8 @@ export default function ReceptionDashboard() {
         return "border-orange-500/50 bg-orange-500/20 text-orange-400 font-bold shadow-[0_0_10px_rgba(249,115,22,0.15)]";
       case "OUT":
         return "border-sky-500/50 bg-sky-500/20 text-sky-400 font-bold shadow-[0_0_10px_rgba(14,165,233,0.15)]";
+      case "auto_checked_out":
+        return "border-green-600/60 bg-green-900/30 text-green-500 font-bold";
       default:
         return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
     }
@@ -336,7 +338,7 @@ export default function ReceptionDashboard() {
                                 item.status
                               )}`}
                             >
-                              {item.status === "IN" ? "IN" : item.status === "OUT" ? "OUT" : item.status.replace("_", " ")}
+                              {item.status === "IN" ? "IN" : item.status === "OUT" ? "OUT" : item.status === "auto_checked_out" ? "AUTO-OUT" : item.status.replace("_", " ")}
                             </span>
                           </td>
                         </tr>
