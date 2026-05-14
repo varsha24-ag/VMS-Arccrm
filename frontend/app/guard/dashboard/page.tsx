@@ -338,7 +338,7 @@ export default function ReceptionDashboard() {
                                 item.status
                               )}`}
                             >
-                              {item.status === "IN" ? "IN" : item.status === "OUT" ? "OUT" : item.status === "auto_checked_out" ? "AUTO-OUT" : item.status.replace("_", " ")}
+                              {item.status === "IN" ? "IN" : item.status === "OUT" ? "OUT" : item.status === "auto_checked_out" ? "Auto-OUT" : item.status.replace("_", " ")}
                             </span>
                           </td>
                         </tr>

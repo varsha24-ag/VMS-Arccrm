@@ -144,7 +144,7 @@ export default function AdminDashboard() {
       const statusLabel = 
         item.status === "checked_in" ? "IN" : 
         item.status === "checked_out" ? "OUT" : 
-        item.status === "auto_checked_out" ? "AUTO-OUT" :
+        item.status === "auto_checked_out" ? "Auto-OUT" :
         item.status.replace("_", " ");
       return { name: item.visitor_name, visitTime, status: item.status, statusLabel, photo };
     });

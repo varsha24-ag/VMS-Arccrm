@@ -157,7 +157,7 @@ function EmployeeVisitorsContent() {
   const statusLabel = useCallback((status: string) => {
     if (status === "checked_in" || status === "IN") return "IN";
     if (status === "checked_out" || status === "OUT") return "OUT";
-    if (status === "auto_checked_out") return "AUTO-OUT";
+    if (status === "auto_checked_out") return "Auto-OUT";
     return status.replace(/_/g, " ");
   }, []);
 

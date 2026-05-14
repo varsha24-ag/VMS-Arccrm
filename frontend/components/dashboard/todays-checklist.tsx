@@ -181,7 +181,7 @@ export function TodaysChecklistPanel({ history, hostMap }: TodaysChecklistPanelP
                           </td>
                           <td className="py-4">
                             <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(item.status)}`}>
-                              {item.status === "checked_in" ? "IN" : item.status === "checked_out" ? "OUT" : item.status === "auto_checked_out" ? "AUTO-OUT" : item.status.replace("_", " ")}
+                              {item.status === "checked_in" ? "IN" : item.status === "checked_out" ? "OUT" : item.status === "auto_checked_out" ? "Auto-OUT" : item.status.replace("_", " ")}
                             </span>
                           </td>
                         </tr>
