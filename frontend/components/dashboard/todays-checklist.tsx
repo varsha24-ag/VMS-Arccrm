@@ -35,7 +35,7 @@ function statusBadgeClass(status: string) {
     case "OUT":
       return "border-sky-500/50 bg-sky-500/20 text-sky-400 font-bold shadow-[0_0_10px_rgba(14,165,233,0.15)]";
     case "auto_checked_out":
-      return "border-emerald-300/60 bg-emerald-500/15 text-emerald-400 font-bold";
+      return "border-violet-500/50 bg-violet-500/20 text-violet-400 font-bold shadow-[0_0_10px_rgba(139,92,246,0.15)]";
     default:
       return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
   }
