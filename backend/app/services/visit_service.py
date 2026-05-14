@@ -885,6 +885,7 @@ def log_pending_visits_attendance(db: Session) -> int:
             # Out time = current script run time (now_utc)
             visit.checkin_time = visit.created_at
             visit.checkout_time = now_utc
+            visit.status = "auto_checked_out"
             
             updated_count += 1
         except Exception as e:
