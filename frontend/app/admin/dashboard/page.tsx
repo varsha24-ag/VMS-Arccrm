@@ -8,8 +8,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
 import { TodaysChecklistPanel, type VisitChecklistRow } from "@/components/dashboard/todays-checklist";
 import PhotoPreviewModal from "@/components/ui/photo-preview-modal";
-import { API_BASE_URL, apiFetch, resolveApiAssetUrl } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth";
+import { apiFetch, resolveApiAssetUrl } from "@/lib/api";
 
 type AdminDashboardSummary = {
   visitors_today: number;

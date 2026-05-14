@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardPageHeader } from "@/components/layout/DashboardPageHeader";
-import { Panel, SimpleTable, StatGrid, type StatItem } from "@/components/dashboard/panels";
+import { Panel, StatGrid, type StatItem } from "@/components/dashboard/panels";
 import { AccessPassForm, AccessPassResult } from "@/components/employee/access-pass-form";
 import FilterBar from "@/components/ui/filter-bar";
 import { useToast } from "@/components/ui/toast";
