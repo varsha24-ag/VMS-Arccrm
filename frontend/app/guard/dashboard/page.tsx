@@ -51,7 +51,7 @@ export default function ReceptionDashboard() {
       case "OUT":
         return "border-sky-500/50 bg-sky-500/20 text-sky-400 font-bold shadow-[0_0_10px_rgba(14,165,233,0.15)]";
       case "auto_checked_out":
-        return "border-green-600/60 bg-green-900/30 text-green-500 font-bold";
+        return "border-emerald-300/60 bg-emerald-500/15 text-emerald-400 font-bold";
       default:
         return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
     }
