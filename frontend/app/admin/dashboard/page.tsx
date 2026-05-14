@@ -42,6 +42,9 @@ function statusBadgeClass(status: string) {
     case "auto_checked_out":
       return "border-violet-500/50 bg-violet-500/20 text-violet-400 font-bold shadow-[0_0_10px_rgba(139,92,246,0.15)]";
     default:
+      if (status.toLowerCase().startsWith("auto")) {
+        return "border-violet-500/50 bg-violet-500/20 text-violet-400 font-bold shadow-[0_0_10px_rgba(139,92,246,0.15)]";
+      }
       return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
   }
 }
@@ -143,7 +146,7 @@ export default function AdminDashboard() {
       const statusLabel = 
         item.status === "checked_in" ? "IN" : 
         item.status === "checked_out" ? "OUT" : 
-        item.status === "auto_checked_out" ? "Auto-OUT" :
+        item.status === "auto_checked_out" || item.status.toLowerCase().startsWith("auto") ? "Auto-OUT" :
         item.status.replace("_", " ");
       return { name: item.visitor_name, visitTime, status: item.status, statusLabel, photo };
     });

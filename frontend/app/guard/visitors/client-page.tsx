@@ -172,6 +172,9 @@ function ReceptionVisitorsContent() {
       case "auto_checked_out":
         return "border-violet-500/50 bg-violet-500/20 text-violet-400 font-bold shadow-[0_0_10px_rgba(139,92,246,0.15)]";
       default:
+        if (status.toLowerCase().startsWith("auto")) {
+          return "border-violet-500/50 bg-violet-500/20 text-violet-400 font-bold shadow-[0_0_10px_rgba(139,92,246,0.15)]";
+        }
         return "border-[var(--border-1)] bg-[var(--surface-2)] text-[var(--text-2)]";
     }
   };
@@ -179,7 +182,7 @@ function ReceptionVisitorsContent() {
   const statusLabel = useCallback((status: string) => {
     if (status === "checked_in" || status === "IN") return "IN";
     if (status === "checked_out" || status === "OUT") return "OUT";
-    if (status === "auto_checked_out") return "Auto-OUT";
+    if (status === "auto_checked_out" || status.toLowerCase().startsWith("auto")) return "Auto-OUT";
     return status.replace(/_/g, " ");
   }, []);
 
