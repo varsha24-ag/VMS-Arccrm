@@ -855,75 +855,52 @@ def log_pending_visits_attendance(db: Session) -> int:
     except Exception:
         tz = timezone.utc
         
-    now_local = datetime.now(tz)
-    # Target check-out time is 6:00 PM today local time
-    log_checkout_time_local = now_local.replace(hour=18, minute=0, second=0, microsecond=0)
-    log_checkout_time_utc = log_checkout_time_local.astimezone(timezone.utc)
+    now_utc = datetime.now(timezone.utc)
+    now_local = now_utc.astimezone(tz)
     
-    # Define the window for today to check for duplicates
+    # Define today's window in UTC based on business timezone
     today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
     today_start_utc = today_start_local.astimezone(timezone.utc)
     today_end_utc = today_start_utc + timedelta(days=1)
 
-    # Fetch all visits that are currently Pending and are NOT logs themselves
-    # Additionally check that they don't have any check-in or check-out times yet
+    # Fetch all visits that are currently Pending and were created today
     pending_visits = (
         db.query(Visit)
         .filter(
             Visit.status == "pending",
             Visit.source != "attendance_log",
             Visit.checkin_time.is_(None),
-            Visit.checkout_time.is_(None)
+            Visit.checkout_time.is_(None),
+            Visit.created_at >= today_start_utc,
+            Visit.created_at < today_end_utc
         )
         .all()
     )
 
-    created_count = 0
+    updated_count = 0
     for visit in pending_visits:
         try:
-            # Prevent duplicate: check if a log already exists for this visitor today
-            exists = (
-                db.query(Visit)
-                .filter(
-                    Visit.visitor_id == visit.visitor_id,
-                    Visit.source == "attendance_log",
-                    Visit.checkin_time >= today_start_utc,
-                    Visit.checkin_time < today_end_utc
-                )
-                .first()
-            )
+            # Update the original visit directly instead of creating a new entry
+            # In time = notification sent time (created_at)
+            # Out time = current script run time (now_utc)
+            visit.checkin_time = visit.created_at
+            visit.checkout_time = now_utc
             
-            if exists:
-                continue
-                
-            # Create a new attendance log record
-            # Invitation sent time = visit.created_at
-            # Scheduler execution time = log_checkout_time_utc (6:00 PM)
-            new_log = Visit(
-                visitor_id=visit.visitor_id,
-                host_employee_id=visit.host_employee_id,
-                purpose=visit.purpose,
-                checkin_time=visit.created_at,
-                checkout_time=log_checkout_time_utc,
-                status="pending", # As per requirement: status must remain Pending
-                source="attendance_log"
-            )
-            db.add(new_log)
-            created_count += 1
+            updated_count += 1
         except Exception as e:
-            logger.error(f"Failed to create attendance log for visit {visit.id}: {e}")
+            logger.error(f"Failed to update attendance log for visit {visit.id}: {e}")
             continue
         
-    if created_count:
+    if updated_count:
         try:
             db.commit()
-            logger.info(f"Successfully created {created_count} pending attendance logs.")
+            logger.info(f"Successfully updated {updated_count} pending attendance records.")
         except Exception as e:
             db.rollback()
-            logger.error(f"Error while committing attendance logs: {e}")
+            logger.error(f"Error while committing attendance updates: {e}")
             return 0
             
-    return created_count
+    return updated_count
 
 
 def auto_checkout_expired_qr_invites(db: Session) -> int:
