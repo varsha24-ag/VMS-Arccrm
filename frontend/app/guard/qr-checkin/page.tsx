@@ -98,6 +98,7 @@ export default function ReceptionQrCheckinPage() {
         return "border-orange-500/50 bg-orange-500/20 text-orange-400 font-bold shadow-[0_0_10px_rgba(249,115,22,0.15)]";
       case "OUT":
         return "border-sky-500/50 bg-sky-500/20 text-sky-400 font-bold shadow-[0_0_10px_rgba(14,165,233,0.15)]";
+      case "Auto-out":
       case "auto_checked_out":
         return "border-violet-500/50 bg-violet-500/20 text-violet-400 font-bold shadow-[0_0_10px_rgba(139,92,246,0.15)]";
       default:
@@ -110,7 +111,7 @@ export default function ReceptionQrCheckinPage() {
   const statusLabel = useCallback((status: string) => {
     if (status === "checked_in" || status === "IN") return "IN";
     if (status === "checked_out" || status === "OUT") return "OUT";
-    if (status === "auto_checked_out" || status.toLowerCase().startsWith("auto")) return "Auto-OUT";
+    if (status === "auto_checked_out" || status === "Auto-out" || status.toLowerCase().startsWith("auto")) return "Auto-OUT";
     return status.replace(/_/g, " ");
   }, []);
   const statusOptions = useMemo(() => ["approved", "pending", "rejected", "IN", "OUT", "auto_checked_out"], []);

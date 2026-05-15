@@ -885,7 +885,7 @@ def log_pending_visits_attendance(db: Session) -> int:
             # Out time = current script run time (now_utc)
             visit.checkin_time = visit.created_at
             visit.checkout_time = now_utc
-            visit.status = "auto_checked_out"
+            visit.status = "Auto-out"
             
             updated_count += 1
         except Exception as e:
@@ -920,7 +920,7 @@ def auto_checkout_expired_qr_invites(db: Session) -> int:
     updated = 0
     for visit in visits:
         visit.checkout_time = visit.qr_expiry
-        visit.status = "auto_checked_out"
+        visit.status = "Auto-out"
         updated += 1
 
     if updated:

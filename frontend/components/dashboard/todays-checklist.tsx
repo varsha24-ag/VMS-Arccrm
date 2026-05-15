@@ -34,6 +34,7 @@ function statusBadgeClass(status: string) {
       return "border-orange-500/50 bg-orange-500/20 text-orange-400 font-bold shadow-[0_0_10px_rgba(249,115,22,0.15)]";
     case "OUT":
       return "border-sky-500/50 bg-sky-500/20 text-sky-400 font-bold shadow-[0_0_10px_rgba(14,165,233,0.15)]";
+    case "Auto-out":
     case "auto_checked_out":
       return "border-violet-500/50 bg-violet-500/20 text-violet-400 font-bold shadow-[0_0_10px_rgba(139,92,246,0.15)]";
     default:
@@ -184,7 +185,7 @@ export function TodaysChecklistPanel({ history, hostMap }: TodaysChecklistPanelP
                           </td>
                           <td className="py-4">
                             <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(item.status)}`}>
-                              {item.status === "checked_in" ? "IN" : item.status === "checked_out" ? "OUT" : (item.status === "auto_checked_out" || item.status.toLowerCase().startsWith("auto")) ? "Auto-OUT" : item.status.replace("_", " ")}
+                              {item.status === "checked_in" ? "IN" : item.status === "checked_out" ? "OUT" : (item.status === "auto_checked_out" || item.status === "Auto-out" || item.status.toLowerCase().startsWith("auto")) ? "Auto-OUT" : item.status.replace("_", " ")}
                             </span>
                           </td>
                         </tr>
