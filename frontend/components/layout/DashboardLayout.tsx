@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AuthUser, clearAuthSession } from "@/lib/auth";
 import { getAccessToken } from "@/lib/auth";
-import { API_BASE_URL } from "@/lib/api";
+import { getApiBaseUrl } from "@/lib/api";
 import { getModulesForRole } from "@/lib/modules";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { useToast } from "@/components/ui/toast";
@@ -130,7 +130,8 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
         source.close();
       }
 
-      source = new EventSource(`${API_BASE_URL}/events/visits?token=${encodeURIComponent(token)}`);
+      const apiBase = getApiBaseUrl();
+      source = new EventSource(`${apiBase}/events/visits?token=${encodeURIComponent(token)}`);
 
       source.onmessage = (event) => {
         try {

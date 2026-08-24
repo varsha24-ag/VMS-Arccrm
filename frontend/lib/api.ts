@@ -1,8 +1,17 @@
 import { clearAuthSession, getAccessToken } from "./auth";
 
+export function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== "undefined") {
+    return `${window.location.protocol}//${window.location.hostname}:8005`;
+  }
+  return process.env.INTERNAL_API_URL || "http://localhost:8005";
+}
+
 // For server-side fetches, use INTERNAL_API_URL to avoid self-signed SSL certificate issues.
-const serverSideApiUrl = typeof window === 'undefined' ? process.env.INTERNAL_API_URL : undefined;
-export const API_BASE_URL = serverSideApiUrl || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005";
+export const API_BASE_URL = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005";
 
 // For images/assets, always use the public URL so the browser can reach them.
 export const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005";
@@ -11,7 +20,7 @@ const DEFAULT_TIMEOUT_MS = 30000;
 export function resolveApiAssetUrl(value?: string | null): string | null {
   if (!value) return null;
 
-  const base = PUBLIC_API_URL.replace(/\/+$/, "");
+  const base = getApiBaseUrl().replace(/\/+$/, "");
 
   if (value.startsWith("http://") || value.startsWith("https://")) {
     try {
@@ -60,7 +69,8 @@ export interface LoginResponse {
 }
 
 export async function loginApi(payload: LoginRequest): Promise<LoginResponse> {
-  const response = await fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
+  const baseUrl = getApiBaseUrl();
+  const response = await fetchWithTimeout(`${baseUrl}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -82,10 +92,11 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
+  const baseUrl = getApiBaseUrl();
   let response: Response;
   try {
     response = await fetchWithTimeout(
-      `${API_BASE_URL}${path}`,
+      `${baseUrl}${path}`,
       {
         ...requestOptions,
         headers,
@@ -97,7 +108,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
       throw new Error(`Request timed out for ${path}. Please wait and try again.`);
     }
     if (error instanceof TypeError) {
-      throw new Error(`Unable to reach the server at ${API_BASE_URL}. Make sure the backend is running and reachable.`);
+      throw new Error(`Unable to reach the server at ${baseUrl}. Make sure the backend is running and reachable.`);
     }
     throw error;
   }
@@ -118,7 +129,8 @@ export async function uploadVisitorPhoto(file: File): Promise<{ photo_url: strin
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetchWithTimeout(`${API_BASE_URL}/visitor/photo`, {
+  const baseUrl = getApiBaseUrl();
+  const response = await fetchWithTimeout(`${baseUrl}/visitor/photo`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: formData,

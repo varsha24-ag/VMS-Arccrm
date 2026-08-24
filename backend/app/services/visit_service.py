@@ -923,7 +923,148 @@ def auto_checkout_expired_qr_invites(db: Session) -> int:
         visit.status = "Auto-out"
         updated += 1
 
-    if updated:
-        db.commit()
-
     return updated
+
+
+def self_register_interview_visitor(
+    db: Session,
+    name: str,
+    phone: str,
+    email: Optional[str] = None,
+    company: Optional[str] = None,
+    photo_url: Optional[str] = None,
+) -> VisitOut:
+    from zoneinfo import ZoneInfo
+    from app.core.config import settings
+
+    # Clean phone digits
+    clean_phone = "".join(filter(str.isdigit, phone or ""))
+    if len(clean_phone) != 10:
+        raise HTTPException(status_code=400, detail="Phone number must be exactly 10 digits")
+
+    # 1. Resolve or create host employee Manish Joshi (mmjoshi@arcgate.com)
+    host_email = "mmjoshi@arcgate.com"
+    host = db.query(Employee).filter(Employee.email.ilike(host_email)).first()
+    if not host:
+        host = Employee(
+            name="Manish Joshi",
+            email=host_email,
+            phone="9900000000",
+            role="employee",
+            department="HR",
+        )
+        db.add(host)
+        db.flush()
+
+    # 2. Find or create visitor
+    visitor = None
+    if clean_phone:
+        visitor = db.query(Visitor).filter(Visitor.phone == clean_phone).order_by(desc(Visitor.id)).first()
+    if not visitor and email:
+        visitor = db.query(Visitor).filter(Visitor.email.ilike(email)).order_by(desc(Visitor.id)).first()
+
+    if visitor:
+        visitor.name = name.strip()
+        if email:
+            visitor.email = email.strip()
+        if company:
+            visitor.company = company.strip()
+        if photo_url:
+            visitor.photo_url = photo_url
+        visitor.visitor_type = "interview"
+        visitor.status = "approved"
+    else:
+        visitor = Visitor(
+            name=name.strip(),
+            phone=clean_phone,
+            email=email.strip() if email else None,
+            company=company.strip() if company else None,
+            visitor_type="interview",
+            photo_url=photo_url,
+            status="approved",
+        )
+        db.add(visitor)
+        db.flush()
+
+    # 3. Same-day deduplication check (using business timezone)
+    try:
+        tz = ZoneInfo(settings.BUSINESS_TIMEZONE)
+    except Exception:
+        tz = timezone.utc
+
+    now_utc = datetime.now(timezone.utc)
+    now_local = now_utc.astimezone(tz)
+    today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start_utc = today_start_local.astimezone(timezone.utc)
+    today_end_utc = today_start_utc + timedelta(days=1)
+
+    existing_visit = (
+        db.query(Visit)
+        .filter(
+            Visit.visitor_id == visitor.id,
+            Visit.created_at >= today_start_utc,
+            Visit.created_at < today_end_utc,
+            Visit.source != "attendance_log",
+        )
+        .order_by(desc(Visit.id))
+        .first()
+    )
+
+    if existing_visit:
+        existing_visit.checkin_time = now_utc
+        existing_visit.checkout_time = None
+        existing_visit.status = "checked_in"
+        existing_visit.purpose = "interview"
+        existing_visit.host_employee_id = host.id
+        existing_visit.source = "wall_qr"
+        visit = existing_visit
+    else:
+        visit = Visit(
+            visitor_id=visitor.id,
+            host_employee_id=host.id,
+            purpose="interview",
+            checkin_time=now_utc,
+            checkout_time=None,
+            status="checked_in",
+            source="wall_qr",
+            policy_accepted=True,
+        )
+        db.add(visit)
+
+    db.commit()
+    db.refresh(visit)
+
+    # 4. Emit real-time WebSocket/SSE event for Guard & Admin Dashboards
+    try:
+        anyio.from_thread.run(
+            publish_event,
+            {
+                "type": "visit_status",
+                "visit_id": visit.id,
+                "status": visit.status,
+                "visitor_id": visit.visitor_id,
+                "visitor_name": visitor.name,
+                "host_employee_id": host.id,
+                "host_name": host.name,
+                "purpose": "interview",
+                "source": "wall_qr",
+            },
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to publish SSE event: {e}")
+
+    return VisitOut(
+        id=visit.id,
+        visitor_id=visit.visitor_id,
+        host_employee_id=visit.host_employee_id,
+        purpose=visit.purpose,
+        checkin_time=visit.checkin_time,
+        checkout_time=visit.checkout_time,
+        status=visit.status,
+        policy_accepted=visit.policy_accepted,
+        qr_code=visit.qr_code,
+        source=visit.source,
+        qr_expiry=visit.qr_expiry,
+    )
+

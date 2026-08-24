@@ -4,7 +4,7 @@ from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 from fastapi import status
-from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -47,6 +47,7 @@ from app.services.visit_service import (
     get_visit_history,
     qr_checkin,
     resend_host_notification,
+    self_register_interview_visitor,
 )
 from app.services.notification_service import send_visitor_access_pass
 
@@ -305,6 +306,36 @@ def upload_photo(
     with file_path.open("wb") as buffer:
         buffer.write(file.file.read())
     return PhotoUploadOut(photo_url=f"/uploads/visitors/{file_name}")
+
+
+@router.post("/visitor/self-register", response_model=VisitOut)
+def self_register_route(
+    name: str = Form(...),
+    phone: str = Form(...),
+    email: Optional[str] = Form(None),
+    company: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+):
+    photo_url = None
+    if file and file.filename:
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        ext = Path(file.filename or "").suffix or ".jpg"
+        file_name = f"visitor-{uuid4().hex}{ext}"
+        file_path = UPLOAD_DIR / file_name
+        with file_path.open("wb") as buffer:
+            buffer.write(file.file.read())
+        photo_url = f"/uploads/visitors/{file_name}"
+
+    return self_register_interview_visitor(
+        db=db,
+        name=name,
+        phone=phone,
+        email=email,
+        company=company,
+        photo_url=photo_url,
+    )
+
 
 
 

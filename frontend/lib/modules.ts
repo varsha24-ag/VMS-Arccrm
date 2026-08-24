@@ -14,6 +14,7 @@ export const MODULES: ModuleConfig[] = [
   { id: "users", label: "User Management", path: "/admin/users", role: ["admin", "superadmin"] },
   { id: "admin-visitors", label: "Visitors", path: "/guard/visitors", role: ["admin", "superadmin"] },
   { id: "admin-passes", label: "Visitor Access Pass", path: "/admin/passes", role: ["admin", "superadmin"] },
+  { id: "admin-wall-qr", label: "Wall QR Poster", path: "/admin/wall-qr", role: ["admin", "superadmin"] },
   { id: "settings", label: "System Settings", path: "/admin/settings", role: ["admin", "superadmin"] },
 
   // Receptionist Modules
@@ -25,6 +26,7 @@ export const MODULES: ModuleConfig[] = [
   { id: "reception-checkin", label: "IN", path: "/guard/qr-checkin", role: ["guard"] },
   { id: "reception-qr-scanner", label: "QR Scanner", path: "/guard/qr-scanner", role: ["guard"] },
   { id: "reception-qr-visitor", label: "QR Visitor", path: "/guard/qr-visitor", role: ["guard"] },
+  { id: "reception-wall-qr", label: "Wall QR Poster", path: "/guard/wall-qr", role: ["guard"] },
   { id: "reception-checkout", label: "OUT", path: "/guard/manual-checkout", role: ["guard"] },
   { id: "reception-history", label: "History", path: "/guard/history", role: ["guard"] },
 
