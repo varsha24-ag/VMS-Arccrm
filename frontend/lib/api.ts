@@ -5,7 +5,7 @@ export function getApiBaseUrl(): string {
     return process.env.NEXT_PUBLIC_API_URL;
   }
   if (typeof window !== "undefined") {
-    return `${window.location.protocol}//${window.location.hostname}:8005`;
+    return "/api";
   }
   return process.env.INTERNAL_API_URL || "http://localhost:8005";
 }
