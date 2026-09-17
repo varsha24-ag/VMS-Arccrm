@@ -100,6 +100,49 @@ def qr_image(code: str):
     return StreamingResponse(iter([qr_png]), media_type=qr_mime)
 
 
+@router.post("/visitor/photo", response_model=PhotoUploadOut)
+def upload_photo(
+    file: UploadFile = File(...),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    ext = Path(file.filename or "").suffix or ".jpg"
+    file_name = f"visitor-{uuid4().hex}{ext}"
+    file_path = UPLOAD_DIR / file_name
+    with file_path.open("wb") as buffer:
+        buffer.write(file.file.read())
+    return PhotoUploadOut(photo_url=f"/uploads/visitors/{file_name}")
+
+
+@router.post("/visitor/self-register", response_model=VisitOut)
+def self_register_route(
+    name: str = Form(...),
+    phone: str = Form(...),
+    email: Optional[str] = Form(None),
+    company: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+):
+    photo_url = None
+    if file and file.filename:
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        ext = Path(file.filename or "").suffix or ".jpg"
+        file_name = f"visitor-{uuid4().hex}{ext}"
+        file_path = UPLOAD_DIR / file_name
+        with file_path.open("wb") as buffer:
+            buffer.write(file.file.read())
+        photo_url = f"/uploads/visitors/{file_name}"
+
+    return self_register_interview_visitor(
+        db=db,
+        name=name,
+        phone=phone,
+        email=email,
+        company=company,
+        photo_url=photo_url,
+    )
+
+
 @router.get("/visitor/{visitor_id}", response_model=VisitorOut)
 def get_visitor_route(
     visitor_id: int,
@@ -285,6 +328,7 @@ def checkin_route(
     return checkin_visit(db, payload)
 
 
+
 @router.post("/visit/checkout", response_model=VisitOut)
 def checkout_route(
     payload: VisitCheckout,
@@ -293,48 +337,6 @@ def checkout_route(
 ):
     return checkout_visit(db, payload)
 
-
-@router.post("/visitor/photo", response_model=PhotoUploadOut)
-def upload_photo(
-    file: UploadFile = File(...),
-    current_user: Annotated[Employee, Depends(get_current_user)] = None,
-):
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    ext = Path(file.filename or "").suffix or ".jpg"
-    file_name = f"visitor-{uuid4().hex}{ext}"
-    file_path = UPLOAD_DIR / file_name
-    with file_path.open("wb") as buffer:
-        buffer.write(file.file.read())
-    return PhotoUploadOut(photo_url=f"/uploads/visitors/{file_name}")
-
-
-@router.post("/visitor/self-register", response_model=VisitOut)
-def self_register_route(
-    name: str = Form(...),
-    phone: str = Form(...),
-    email: Optional[str] = Form(None),
-    company: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db),
-):
-    photo_url = None
-    if file and file.filename:
-        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-        ext = Path(file.filename or "").suffix or ".jpg"
-        file_name = f"visitor-{uuid4().hex}{ext}"
-        file_path = UPLOAD_DIR / file_name
-        with file_path.open("wb") as buffer:
-            buffer.write(file.file.read())
-        photo_url = f"/uploads/visitors/{file_name}"
-
-    return self_register_interview_visitor(
-        db=db,
-        name=name,
-        phone=phone,
-        email=email,
-        company=company,
-        photo_url=photo_url,
-    )
 
 
 
