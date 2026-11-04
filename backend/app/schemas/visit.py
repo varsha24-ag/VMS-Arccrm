@@ -63,6 +63,7 @@ class VisitOut(BaseModel):
     id: int
     visitor_id: int
     host_employee_id: Optional[int] = None
+    host_name: Optional[str] = None
     purpose: Optional[str] = None
     checkin_time: Optional[datetime] = None
     checkout_time: Optional[datetime] = None

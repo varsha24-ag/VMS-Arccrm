@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import Pagination from "@/components/ui/pagination";
 import { Panel } from "@/components/dashboard/panels";
 
-export type ChecklistStatusKey = "pending" | "approved" | "checked_in" | "checked_out";
+export type ChecklistStatusKey = "pending" | "approved" | "checked_in" | "checked_out" | "auto_checked_out";
 
 export type VisitChecklistRow = {
   visit_id: number;
   visitor_name: string;
   visitor_phone?: string | null;
   host_employee_id?: number | null;
+  purpose?: string | null;
+  created_at?: string | null;
   checkin_time?: string | null;
   checkout_time?: string | null;
   status: string;
@@ -45,40 +47,116 @@ function statusBadgeClass(status: string) {
   }
 }
 
+const checklistTheme: Record<
+  ChecklistStatusKey,
+  { bullet: string; badge: string }
+> = {
+  pending: {
+    bullet: "bg-amber-400",
+    badge: "border-amber-500/40 bg-amber-500/15 text-amber-300",
+  },
+  approved: {
+    bullet: "bg-emerald-400",
+    badge: "border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
+  },
+  checked_in: {
+    bullet: "bg-orange-400",
+    badge: "border-orange-500/40 bg-orange-500/15 text-orange-300",
+  },
+  checked_out: {
+    bullet: "bg-sky-400",
+    badge: "border-sky-500/40 bg-sky-500/15 text-sky-300",
+  },
+  auto_checked_out: {
+    bullet: "bg-violet-400",
+    badge: "border-violet-500/40 bg-violet-500/15 text-violet-300",
+  },
+};
+
 export function TodaysChecklistPanel({ history, hostMap }: TodaysChecklistPanelProps) {
   const [modalKey, setModalKey] = useState<ChecklistStatusKey | null>(null);
   const [modalPage, setModalPage] = useState(1);
   const [modalPageSize, setModalPageSize] = useState(5);
 
+  const getTodayDateStr = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateStr);
+
+  const isAutoOutStatus = (status: string) => {
+    const s = String(status || "").toLowerCase().trim();
+    return s === "auto-out" || s === "auto_checked_out" || s === "auto_out" || s.startsWith("auto");
+  };
+
+  const isManualOutStatus = (status: string) => {
+    const s = String(status || "").toLowerCase().trim();
+    return (s === "out" || s === "checked_out") && !isAutoOutStatus(status);
+  };
+
+  const isSameDate = useCallback((dateStr?: string | null, targetDateYMD?: string) => {
+    if (!dateStr || !targetDateYMD) return false;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return false;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}` === targetDateYMD;
+  }, []);
+
   const checklistItems = useMemo(() => {
-    const pending = history.filter((item) => item.status === "pending").length;
-    const approved = history.filter((item) => item.status === "approved").length;
-    const checkedIn = history.filter((item) => item.status === "checked_in" || item.status === "IN").length;
-    const checkedOut = history.filter((item) => item.status === "checked_out" || item.status === "OUT").length;
+    const pending = history.filter((item) => item.status === "pending" && isSameDate(item.created_at, selectedDate)).length;
+    const approved = history.filter((item) => item.status === "approved" && isSameDate(item.created_at, selectedDate)).length;
+    const checkedIn = history.filter((item) => (item.status === "checked_in" || item.status === "IN") && isSameDate(item.checkin_time, selectedDate)).length;
+    const checkedOut = history.filter((item) => isManualOutStatus(item.status) && isSameDate(item.checkout_time || item.checkin_time, selectedDate)).length;
+    const autoCheckedOut = history.filter((item) => isAutoOutStatus(item.status) && isSameDate(item.checkout_time || item.checkin_time, selectedDate)).length;
+
     return [
       { key: "pending" as const, label: "Pending approvals", count: pending },
       { key: "approved" as const, label: "Approved arrivals waiting", count: approved },
       { key: "checked_in" as const, label: "Currently IN", count: checkedIn },
       { key: "checked_out" as const, label: "OUT", count: checkedOut },
+      { key: "auto_checked_out" as const, label: "Auto Check-out", count: autoCheckedOut },
     ];
-  }, [history]);
+  }, [history, selectedDate, isSameDate]);
 
   const modalTitle = useMemo(() => {
     if (modalKey === "pending") return "Pending Approvals";
     if (modalKey === "approved") return "Approved Visitors";
     if (modalKey === "checked_in") return "Currently IN";
     if (modalKey === "checked_out") return "OUT Visitors";
+    if (modalKey === "auto_checked_out") return "Auto Check-out Visitors";
     return "";
   }, [modalKey]);
 
   const modalRows = useMemo(() => {
-    const rows = history.filter((item) => {
-      if (modalKey === "checked_in") return item.status === "checked_in" || item.status === "IN";
-      if (modalKey === "checked_out") return item.status === "checked_out" || item.status === "OUT";
-      return item.status === modalKey;
-    });
-    return rows.sort((a, b) => b.visit_id - a.visit_id);
-  }, [history, modalKey]);
+    if (!modalKey) return [];
+
+    return history
+      .filter((item) => {
+        if (modalKey === "pending") {
+          return item.status === "pending" && isSameDate(item.created_at, selectedDate);
+        }
+        if (modalKey === "approved") {
+          return item.status === "approved" && isSameDate(item.created_at, selectedDate);
+        }
+        if (modalKey === "checked_in") {
+          return (item.status === "checked_in" || item.status === "IN") && isSameDate(item.checkin_time, selectedDate);
+        }
+        if (modalKey === "checked_out") {
+          return isManualOutStatus(item.status) && isSameDate(item.checkout_time || item.checkin_time, selectedDate);
+        }
+        if (modalKey === "auto_checked_out") {
+          return isAutoOutStatus(item.status) && isSameDate(item.checkout_time || item.checkin_time, selectedDate);
+        }
+        return false;
+      })
+      .sort((a, b) => b.visit_id - a.visit_id);
+  }, [history, modalKey, selectedDate, isSameDate]);
 
   const modalTotalPages = Math.max(1, Math.ceil(modalRows.length / modalPageSize));
   const modalPagedRows = useMemo(() => {
@@ -98,22 +176,53 @@ export function TodaysChecklistPanel({ history, hostMap }: TodaysChecklistPanelP
 
   return (
     <>
-      <Panel title="Today’s Checklist">
-        <ul className="space-y-3 text-sm text-[var(--text-2)]">
-          {checklistItems.map((item) => (
-            <li key={item.key}>
+      <Panel
+        title="Today’s Checklist"
+        action={
+          <div className="flex items-center gap-1.5">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="rounded-lg border border-[var(--border-1)] bg-[var(--surface-1)] px-2 py-1 text-xs text-[var(--text-1)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] cursor-pointer"
+              title="Filter by date"
+            />
+            {selectedDate !== getTodayDateStr() && (
               <button
                 type="button"
-                onClick={() => setModalKey(item.key)}
-                className="flex w-full items-center justify-between rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-left text-[var(--text-2)] transition hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
+                onClick={() => setSelectedDate(getTodayDateStr())}
+                className="rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-2 py-1 text-xs font-semibold text-[var(--accent)] hover:bg-[var(--surface-3)] transition cursor-pointer"
+                title="Reset to today"
               >
-                <span>{item.label}</span>
-                <span className="rounded-full border border-[var(--border-1)] bg-[var(--surface-1)] px-2.5 py-0.5 text-xs font-semibold text-[var(--text-1)]">
-                  {item.count}
-                </span>
+                Today
               </button>
-            </li>
-          ))}
+            )}
+          </div>
+        }
+      >
+        <ul className="space-y-3 text-sm text-[var(--text-2)]">
+          {checklistItems.map((item) => {
+            const theme = checklistTheme[item.key];
+            return (
+              <li key={item.key}>
+                <button
+                  type="button"
+                  onClick={() => setModalKey(item.key)}
+                  className="flex w-full items-center justify-between rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)] px-3 py-2 text-left text-[var(--text-2)] transition hover:-translate-y-0.5 hover:bg-[var(--surface-3)] hover:text-[var(--text-1)] cursor-pointer"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span className={`h-2 w-2 rounded-full ${theme.bullet} shrink-0`} />
+                    <span>{item.label}</span>
+                  </span>
+                  <span
+                    className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${theme.badge}`}
+                  >
+                    {item.count}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </Panel>
 
@@ -121,14 +230,36 @@ export function TodaysChecklistPanel({ history, hostMap }: TodaysChecklistPanelP
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--modal-overlay)] backdrop-blur-sm p-4">
           <div className="w-full max-w-4xl overflow-hidden rounded-3xl border border-[var(--border-1)] bg-[var(--surface-1)] shadow-[var(--shadow-1)]">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-1)] px-6 py-5">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">Today’s Checklist</p>
-                <h3 className="text-xl font-semibold text-[var(--text-1)]">{modalTitle}</h3>
+              <div className="flex flex-wrap items-center gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-3)]">
+                    Checklist &bull; {selectedDate === getTodayDateStr() ? "Today" : selectedDate}
+                  </p>
+                  <h3 className="text-xl font-semibold text-[var(--text-1)]">{modalTitle}</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-2.5 py-1 text-xs text-[var(--text-1)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] cursor-pointer"
+                    title="Change date"
+                  />
+                  {selectedDate !== getTodayDateStr() && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDate(getTodayDateStr())}
+                      className="rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-2 py-1 text-xs font-semibold text-[var(--accent)] hover:bg-[var(--surface-3)] transition cursor-pointer"
+                    >
+                      Today
+                    </button>
+                  )}
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setModalKey(null)}
-                className="rounded-full border border-[var(--border-1)] bg-[var(--surface-2)] p-2.5 text-[var(--text-2)] shadow-[var(--shadow-1)] transition hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
+                className="rounded-full border border-[var(--border-1)] bg-[var(--surface-2)] p-2.5 text-[var(--text-2)] shadow-[var(--shadow-1)] transition hover:bg-[var(--surface-3)] hover:text-[var(--text-1)] cursor-pointer"
                 aria-label="Close"
               >
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -161,8 +292,8 @@ export function TodaysChecklistPanel({ history, hostMap }: TodaysChecklistPanelP
                   <tbody className="text-[var(--text-1)]">
                     {modalPagedRows.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-6 text-[var(--text-3)]">
-                          No visitors found for this status.
+                        <td colSpan={5} className="py-8 text-center text-[var(--text-3)]">
+                          No visitors found for {modalTitle.toLowerCase()} on {selectedDate === getTodayDateStr() ? "today" : selectedDate}.
                         </td>
                       </tr>
                     ) : (
@@ -177,15 +308,39 @@ export function TodaysChecklistPanel({ history, hostMap }: TodaysChecklistPanelP
                             {item.host_employee_id ? hostMap[item.host_employee_id] ?? "Unknown" : "Unassigned"}
                           </td>
                           <td className="py-4 pr-4">
-                            {item.checkin_time
-                              ? new Date(item.checkin_time).toLocaleString()
-                              : item.checkout_time
-                                ? new Date(item.checkout_time).toLocaleString()
-                                : "—"}
+                            {modalKey === "auto_checked_out" || modalKey === "checked_out" ? (
+                              <div className="space-y-0.5">
+                                {item.checkin_time && (
+                                  <div className="text-xs text-[var(--text-2)]">
+                                    <span className="text-[var(--text-3)]">IN: </span>
+                                    {new Date(item.checkin_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                )}
+                                {item.checkout_time && (
+                                  <div className={`text-xs font-semibold ${modalKey === "auto_checked_out" ? "text-violet-400" : "text-sky-400"}`}>
+                                    <span className="text-[var(--text-3)] font-normal">OUT: </span>
+                                    {new Date(item.checkout_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                )}
+                                {!item.checkin_time && !item.checkout_time && "—"}
+                              </div>
+                            ) : item.checkin_time ? (
+                              new Date(item.checkin_time).toLocaleString()
+                            ) : item.checkout_time ? (
+                              new Date(item.checkout_time).toLocaleString()
+                            ) : (
+                              "—"
+                            )}
                           </td>
                           <td className="py-4">
                             <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(item.status)}`}>
-                              {item.status === "checked_in" ? "IN" : item.status === "checked_out" ? "OUT" : (item.status === "auto_checked_out" || item.status === "Auto-out" || item.status.toLowerCase().startsWith("auto")) ? "Auto-OUT" : item.status.replace("_", " ")}
+                              {item.status === "checked_in" || item.status === "IN"
+                                ? "IN"
+                                : item.status === "checked_out" || item.status === "OUT"
+                                ? "OUT"
+                                : isAutoOutStatus(item.status)
+                                ? "Auto-OUT"
+                                : item.status.replace("_", " ")}
                             </span>
                           </td>
                         </tr>

@@ -19,6 +19,7 @@ type ToastInput = Omit<ToastItem, "id" | "timeoutMs">;
 
 interface ToastContextValue {
   pushToast: (toast: ToastInput) => void;
+  dismissToast?: (id: string) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -26,24 +27,24 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 function ToastIcon({ variant }: { variant: ToastVariant }) {
   if (variant === "success") {
     return (
-      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500 shrink-0">
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-          <path d="M5 12l4 4 10-10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="M5 12l4 4 10-10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
         </svg>
       </div>
     );
   }
   if (variant === "error") {
     return (
-      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-500/15 text-rose-500">
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-500/15 text-rose-500 shrink-0">
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-          <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
         </svg>
       </div>
     );
   }
   return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500/15 text-sky-500">
+    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500/15 text-sky-500 shrink-0">
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
         <path d="M12 8h.01M11 12h1v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
@@ -55,16 +56,20 @@ function ToastIcon({ variant }: { variant: ToastVariant }) {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const pushToast = useCallback((toast: ToastInput) => {
-    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const duration = toast.durationMs ?? (toast.actionLabel ? 20000 : 20000);
-    setToasts((prev) => [...prev, { ...toast, id, timeoutMs: duration }]);
-    window.setTimeout(() => {
-      setToasts((prev) => prev.filter((item) => item.id !== id));
-    }, duration);
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
-  const value = useMemo(() => ({ pushToast }), [pushToast]);
+  const pushToast = useCallback((toast: ToastInput) => {
+    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const duration = toast.durationMs ?? (toast.actionLabel ? 10000 : 5000);
+    setToasts((prev) => [...prev, { ...toast, id, timeoutMs: duration }]);
+    window.setTimeout(() => {
+      removeToast(id);
+    }, duration);
+  }, [removeToast]);
+
+  const value = useMemo(() => ({ pushToast, dismissToast: removeToast }), [pushToast, removeToast]);
 
   return (
     <ToastContext.Provider value={value}>
@@ -83,26 +88,56 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className="pointer-events-auto w-[340px] overflow-hidden rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] shadow-[var(--shadow-1)] backdrop-blur"
+            className="pointer-events-auto relative w-[360px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[var(--border-1)] bg-[var(--surface-1)] shadow-xl backdrop-blur transition-all duration-200"
           >
-            <div className="flex gap-3 px-4 py-3">
-              <ToastIcon variant={toast.variant} />
-              <div className="text-[15px] text-[var(--text-2)]">
-                <p className="font-semibold text-[var(--text-1)]">{toast.title}</p>
-                {toast.description ? <p className="mt-1 text-sm text-[var(--text-3)]">{toast.description}</p> : null}
+            <div className="flex items-start gap-3 p-4">
+              {/* Clickable Toast Icon */}
+              <button
+                type="button"
+                onClick={() => removeToast(toast.id)}
+                title="Dismiss notification"
+                aria-label="Dismiss notification"
+                className="shrink-0 cursor-pointer transition hover:opacity-80 active:scale-95"
+              >
+                <ToastIcon variant={toast.variant} />
+              </button>
+
+              <div className="flex-1 min-w-0 pr-1">
+                <p className="text-sm font-semibold text-[var(--text-1)] leading-tight">{toast.title}</p>
+                {toast.description ? (
+                  <p className="mt-1 text-xs text-[var(--text-3)] leading-relaxed">{toast.description}</p>
+                ) : null}
                 {toast.actionLabel && toast.onAction ? (
                   <button
                     type="button"
                     onClick={() => {
                       toast.onAction?.();
                     }}
-                    className="mt-2 rounded-md border border-[var(--border-1)] bg-[var(--surface-2)] px-2 py-1 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)]"
+                    className="mt-2 rounded-lg border border-[var(--border-1)] bg-[var(--surface-2)] px-2.5 py-1 text-xs font-semibold text-[var(--text-1)] hover:bg-[var(--surface-3)] transition"
                   >
                     {toast.actionLabel}
                   </button>
                 ) : null}
               </div>
+
+              {/* Top-Right Cross (Close) Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeToast(toast.id);
+                }}
+                className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--text-3)] hover:bg-[var(--surface-2)] hover:text-[var(--text-1)] active:scale-95 transition cursor-pointer"
+                title="Close notification"
+                aria-label="Close notification"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M6 6l12 12M18 6l-12 12" />
+                </svg>
+              </button>
             </div>
+
+            {/* Timeout Progress Bar */}
             <div className="h-1 w-full bg-[var(--surface-2)]">
               <div
                 className={`h-full origin-left ${

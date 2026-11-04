@@ -6,7 +6,7 @@ from typing import Optional
 
 from app.core.db import Base, SessionLocal, engine
 from app.core.security import get_password_hash
-from app.models import Employee, Visitor, IdCard  # noqa: F401 - ensures table metadata is registered
+from app.models import Employee, Visitor, IdCard, SystemSetting  # noqa: F401 - ensures table metadata is registered
 
 
 def create_tables() -> None:
@@ -232,6 +232,35 @@ def repair_employee_schema() -> None:
             columns.add("shift")
 
 
+def init_system_settings(db: Session) -> None:
+    # 1. Resolve or seed Manish Joshi as default interview host
+    host_email = "mmjoshi@arcgate.com"
+    host = db.query(Employee).filter(Employee.email.ilike(host_email)).first()
+    if not host:
+        host = Employee(
+            name="Manish Joshi",
+            email=host_email,
+            phone="9900000000",
+            password_hash=get_password_hash("Arcgate@123"),
+            role="employee",
+            department="HR",
+        )
+        db.add(host)
+        db.flush()
+
+    # 2. Check for interview_default_host_id
+    setting = db.query(SystemSetting).filter(SystemSetting.key == "interview_default_host_id").first()
+    if not setting:
+        db.add(
+            SystemSetting(
+                key="interview_default_host_id",
+                value=str(host.id),
+                description="Employee ID of the host automatically assigned for interview visitors",
+            )
+        )
+        db.commit()
+
+
 def bootstrap_database() -> int:
     create_tables()
     repair_employee_schema()
@@ -241,6 +270,7 @@ def bootstrap_database() -> int:
     db = SessionLocal()
     try:
         create_admin_user(db)
+        init_system_settings(db)
         created_employees = seed_employees(db)
         created_cards = seed_id_cards(db)
         normalize_visitor_photo_urls(db)

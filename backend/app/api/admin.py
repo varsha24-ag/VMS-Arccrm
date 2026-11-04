@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from typing import Annotated, Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -104,3 +105,79 @@ def assign_role(
     emp.role = target_role
     db.commit()
     return {"status": "success", "message": f"{emp.name} is now assigned the '{target_role}' role"}
+
+
+class InterviewHostUpdate(BaseModel):
+    employee_id: int
+
+
+class InterviewHostOut(BaseModel):
+    id: int
+    name: str
+    email: Optional[str] = None
+    department: Optional[str] = None
+    phone: Optional[str] = None
+    role: Optional[str] = None
+
+
+@router.get("/settings/interview-host", response_model=InterviewHostOut)
+def get_interview_host(
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(require_roles("admin", "superadmin"))] = None,
+):
+    from app.models.system_setting import SystemSetting
+    setting = db.query(SystemSetting).filter(SystemSetting.key == "interview_default_host_id").first()
+    host = None
+    if setting and setting.value and setting.value.isdigit():
+        host = db.query(Employee).filter(Employee.id == int(setting.value)).first()
+
+    if not host:
+        host = db.query(Employee).filter(Employee.email.ilike("mmjoshi@arcgate.com")).first()
+
+    if not host:
+        raise HTTPException(status_code=404, detail="Default interview host not found")
+
+    return InterviewHostOut(
+        id=host.id,
+        name=host.name,
+        email=host.email,
+        department=host.department,
+        phone=host.phone,
+        role=host.role,
+    )
+
+
+@router.put("/settings/interview-host", response_model=InterviewHostOut)
+@router.post("/settings/interview-host", response_model=InterviewHostOut)
+def update_interview_host(
+    payload: InterviewHostUpdate,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(require_roles("admin", "superadmin"))] = None,
+):
+    from app.models.system_setting import SystemSetting
+    emp = db.query(Employee).filter(Employee.id == payload.employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    setting = db.query(SystemSetting).filter(SystemSetting.key == "interview_default_host_id").first()
+    if setting:
+        setting.value = str(emp.id)
+    else:
+        setting = SystemSetting(
+            key="interview_default_host_id",
+            value=str(emp.id),
+            description="Employee ID of the host automatically assigned for interview visitors",
+        )
+        db.add(setting)
+
+    db.commit()
+    db.refresh(setting)
+
+    return InterviewHostOut(
+        id=emp.id,
+        name=emp.name,
+        email=emp.email,
+        department=emp.department,
+        phone=emp.phone,
+        role=emp.role,
+    )

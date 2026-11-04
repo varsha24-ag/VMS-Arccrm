@@ -25,6 +25,7 @@ export default function SettingsPage() {
     
     // States
     const [employees, setEmployees] = useState<Employee[]>([]);
+    const [allHosts, setAllHosts] = useState<Employee[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,6 +33,12 @@ export default function SettingsPage() {
     const [error, setError] = useState<string | null>(null);
     const [selectedRole, setSelectedRole] = useState<"admin" | "guard">("admin");
     const isSuperAdmin = user?.role === "superadmin";
+
+    // Interview Host States
+    const [currentInterviewHost, setCurrentInterviewHost] = useState<Employee | null>(null);
+    const [selectedInterviewHostId, setSelectedInterviewHostId] = useState<number | string | null>(null);
+    const [interviewHostSearchTerm, setInterviewHostSearchTerm] = useState("");
+    const [isUpdatingInterviewHost, setIsUpdatingInterviewHost] = useState(false);
 
     // Revert role selection if non-superadmin somehow targets admin
     useEffect(() => {
@@ -63,11 +70,22 @@ export default function SettingsPage() {
         setIsLoading(true);
         setError(null);
         try {
-            // Use server-side filtering to exclude admins
+            // Load employees excluding admins for role assignment
             const data = await apiFetch<Employee[]>("/employees/hosts?exclude_role=admin", { timeoutMs: 60000 });
             setEmployees(data || []);
+
+            // Load all hosts for Interview Host selection
+            const hostsData = await apiFetch<Employee[]>("/employees/hosts", { timeoutMs: 60000 });
+            setAllHosts(hostsData || []);
+
+            // Load current designated interview host
+            const interviewHost = await apiFetch<Employee>("/admin/settings/interview-host");
+            if (interviewHost) {
+                setCurrentInterviewHost(interviewHost);
+                setSelectedInterviewHostId(interviewHost.id);
+            }
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Failed to load employee directory";
+            const msg = err instanceof Error ? err.message : "Failed to load directory";
             setError(msg);
             pushToast({ variant: "error", title: "Sync Error", description: msg });
         } finally {
@@ -85,6 +103,11 @@ export default function SettingsPage() {
         emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (emp.employee_code && emp.employee_code.toLowerCase().includes(searchTerm.toLowerCase()))
     ).slice(0, 50);
+
+    const filteredInterviewHosts = allHosts.filter(emp =>
+        emp.name.toLowerCase().includes(interviewHostSearchTerm.toLowerCase()) ||
+        (emp.department && emp.department.toLowerCase().includes(interviewHostSearchTerm.toLowerCase()))
+    ).slice(0, 30);
 
     const handleGiveAccess = async () => {
         if (!selectedEmployeeId) return;
@@ -105,6 +128,31 @@ export default function SettingsPage() {
         }
     };
 
+    const handleSaveInterviewHost = async () => {
+        if (!selectedInterviewHostId) return;
+        setIsUpdatingInterviewHost(true);
+        try {
+            const updated = await apiFetch<Employee>("/admin/settings/interview-host", {
+                method: "PUT",
+                body: JSON.stringify({ employee_id: Number(selectedInterviewHostId) }),
+            });
+            setCurrentInterviewHost(updated);
+            pushToast({
+                variant: "success",
+                title: "Interview Host Saved",
+                description: `${updated.name} will now be automatically assigned as the host for interview visitors.`
+            });
+        } catch (err: unknown) {
+            pushToast({
+                variant: "error",
+                title: "Update Failed",
+                description: err instanceof Error ? err.message : "Failed to update interview host."
+            });
+        } finally {
+            setIsUpdatingInterviewHost(false);
+        }
+    };
+
     return (
         <DashboardLayout user={user}>
             <DashboardPageHeader
@@ -113,6 +161,98 @@ export default function SettingsPage() {
             />
 
             <div className="max-w-4xl mx-auto space-y-6">
+                {/* Interview Host Configuration Card */}
+                <div className="bg-[var(--surface-1)] rounded-2xl border border-[var(--border-1)] shadow-[var(--shadow-1)] p-8 space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-xl font-bold text-[var(--text-1)]">Interview Default Host</h3>
+                            <p className="text-xs text-[var(--text-3)] mt-1">
+                                Designate which employee is automatically assigned when a visitor selects &ldquo;Interview&rdquo; via QR self-registration.
+                            </p>
+                        </div>
+                        <div className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
+                            Auto-Assignment
+                        </div>
+                    </div>
+
+                    {/* Current Assigned Host Banner */}
+                    <div className="p-4 rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)] flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold text-sm">
+                                {currentInterviewHost ? currentInterviewHost.name.charAt(0) : "M"}
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-[var(--text-3)] font-bold uppercase tracking-wider">Currently Assigned Host</p>
+                                <p className="text-sm font-bold text-[var(--text-1)]">
+                                    {currentInterviewHost ? currentInterviewHost.name : "Manish Joshi"}
+                                    <span className="ml-2 text-xs font-normal text-[var(--text-3)]">
+                                        ({currentInterviewHost?.email || "mmjoshi@arcgate.com"})
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-[var(--surface-1)] text-[var(--text-2)] border border-[var(--border-1)]">
+                            {currentInterviewHost?.department || "HR"}
+                        </span>
+                    </div>
+
+                    {/* Change Host Selector */}
+                    <div className="space-y-3">
+                        <label className="text-xs font-bold text-[var(--text-2)] uppercase tracking-wider">
+                            Select New Interview Host
+                        </label>
+                        <Input
+                            placeholder="Search employee by name or department..."
+                            value={interviewHostSearchTerm}
+                            onChange={(e) => setInterviewHostSearchTerm(e.target.value)}
+                            className="w-full"
+                        />
+
+                        <div className="max-h-56 overflow-y-auto rounded-xl border border-[var(--border-1)] bg-[var(--surface-2)]">
+                            {filteredInterviewHosts.length > 0 ? (
+                                filteredInterviewHosts.map((emp) => (
+                                    <div
+                                        key={emp.id}
+                                        onClick={() => setSelectedInterviewHostId(emp.id)}
+                                        className={`p-3.5 flex items-center justify-between cursor-pointer transition-all hover:bg-[var(--surface-3)] border-b border-[var(--border-1)] last:border-b-0 ${
+                                            Number(selectedInterviewHostId) === Number(emp.id) ? 'bg-[var(--accent-alpha)] border-l-4 border-l-[var(--accent)]' : ''
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-[var(--surface-3)] text-[var(--text-2)] flex items-center justify-center text-xs font-bold">
+                                                {emp.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-[var(--text-1)]">{emp.name}</p>
+                                                <p className="text-xs text-[var(--text-3)]">{emp.email} &bull; {emp.department || "General"}</p>
+                                            </div>
+                                        </div>
+                                        {Number(selectedInterviewHostId) === Number(emp.id) && (
+                                            <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center text-white">
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="p-6 text-center text-xs text-[var(--text-3)] italic">No matching employees found.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-[var(--border-1)] flex justify-end">
+                        <button
+                            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-emerald-600/20"
+                            onClick={handleSaveInterviewHost}
+                            disabled={!selectedInterviewHostId || isUpdatingInterviewHost || Number(selectedInterviewHostId) === Number(currentInterviewHost?.id)}
+                        >
+                            {isUpdatingInterviewHost ? "Saving..." : "Save Interview Host"}
+                        </button>
+                    </div>
+                </div>
+
                 <div className="bg-[var(--surface-1)] rounded-2xl border border-[var(--border-1)] shadow-[var(--shadow-1)] p-8 space-y-8">
                     <div className="space-y-6">
                         <div className="flex items-center justify-between">
