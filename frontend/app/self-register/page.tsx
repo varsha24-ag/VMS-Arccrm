@@ -9,6 +9,9 @@ export default function SelfRegisterPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
+  const [purpose, setPurpose] = useState("Interview");
+  const [customPurpose, setCustomPurpose] = useState("");
+  const [interviewHostName, setInterviewHostName] = useState("Manish Joshi");
   
   // Photo states
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
@@ -28,7 +31,28 @@ export default function SelfRegisterPage() {
     id: number;
     visitor_name: string;
     checkin_time: string;
+    purpose: string;
+    host_name?: string | null;
   } | null>(null);
+
+  // Fetch dynamic interview host configuration
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        const apiBase = getApiBaseUrl();
+        const res = await fetch(`${apiBase}/visitor/self-register/config`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.interview_host?.name) {
+            setInterviewHostName(data.interview_host.name);
+          }
+        }
+      } catch {
+        // Fall back to default
+      }
+    }
+    loadConfig();
+  }, []);
 
   // Clean camera stream on unmount or mode change
   useEffect(() => {
@@ -113,6 +137,14 @@ export default function SelfRegisterPage() {
     setErrorMessage(null);
 
     // Validation
+    if (!photoBlob) {
+      setErrorMessage("Visitor selfie photo is mandatory. Please open the camera or choose a photo before submitting.");
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      return;
+    }
+
     const cleanPhone = phone.replace(/\D/g, "");
     if (cleanPhone.length !== 10) {
       setErrorMessage("Please enter a valid 10-digit mobile number.");
@@ -124,12 +156,21 @@ export default function SelfRegisterPage() {
       return;
     }
 
+    if (purpose === "Others" && !customPurpose.trim()) {
+      setErrorMessage("Please specify your custom purpose.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const formData = new FormData();
       formData.append("name", name.trim());
       formData.append("phone", cleanPhone);
+      formData.append("purpose", purpose);
+      if (purpose === "Others" && customPurpose.trim()) {
+        formData.append("custom_purpose", customPurpose.trim());
+      }
       if (email.trim()) formData.append("email", email.trim());
       if (company.trim()) formData.append("company", company.trim());
       if (photoBlob) {
@@ -148,10 +189,13 @@ export default function SelfRegisterPage() {
       }
 
       const result = await res.json();
+      const finalPurpose = purpose === "Others" ? customPurpose.trim() : purpose;
       setSubmittedData({
         id: result.id,
         visitor_name: name.trim(),
         checkin_time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        purpose: finalPurpose,
+        host_name: result.host_name || (purpose === "Interview" ? interviewHostName : null),
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
@@ -166,6 +210,8 @@ export default function SelfRegisterPage() {
     setPhone("");
     setEmail("");
     setCompany("");
+    setPurpose("Interview");
+    setCustomPurpose("");
     setPhotoBlob(null);
     setPhotoPreview(null);
     setSubmittedData(null);
@@ -190,25 +236,19 @@ export default function SelfRegisterPage() {
             />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white mb-1">
-            Arcgate visitor&apos;s form
+            Arcgate Visitor Registration
           </h1>
           <p className="text-xs text-slate-400 font-medium">
             Walk-in Self Registration Portal
           </p>
 
-          {/* Locked Badge Info */}
+          {/* Badge Info */}
           <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
-              Interview
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              Host: Manish Joshi
+              Fast &amp; Secure Check-in
             </span>
           </div>
         </div>
@@ -229,9 +269,19 @@ export default function SelfRegisterPage() {
                 <p className="text-sm text-slate-300">
                   Welcome, <span className="font-semibold text-emerald-400">{submittedData.visitor_name}</span>!
                 </p>
-                <p className="text-xs text-slate-400">
-                  Checked in at <span className="text-slate-200 font-mono">{submittedData.checkin_time}</span>
-                </p>
+                <div className="flex items-center justify-center gap-2 flex-wrap pt-1 text-xs">
+                  <span className="px-2.5 py-1 rounded-lg bg-slate-700 text-slate-300 font-mono">
+                    Time: {submittedData.checkin_time}
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-orange-500/20 text-orange-300 border border-orange-500/30 font-medium">
+                    Purpose: {submittedData.purpose}
+                  </span>
+                  {submittedData.host_name && (
+                    <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 font-medium">
+                      Host: {submittedData.host_name}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-700/60 text-left text-xs text-slate-300 space-y-2">
@@ -243,8 +293,12 @@ export default function SelfRegisterPage() {
                 </div>
                 <ul className="list-disc list-inside space-y-1 text-slate-400">
                   <li>Please proceed to the reception waiting area.</li>
-                  <li>Our team will call your name for the interview shortly.</li>
-                  <li>Your visit will be auto-checked out at 6:00 PM today.</li>
+                  {submittedData.purpose.toLowerCase() === "interview" ? (
+                    <li>Our team will call your name for the interview shortly.</li>
+                  ) : (
+                    <li>Our reception desk will verify and assign your host shortly.</li>
+                  )}
+                  <li>Please show this confirmation to the security desk.</li>
                 </ul>
               </div>
 
@@ -269,9 +323,23 @@ export default function SelfRegisterPage() {
 
               {/* Universal Photo / Selfie Capture */}
               <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  Selfie Photo <span className="text-rose-400">*</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
+                    Selfie Photo <span className="text-rose-400">*</span>
+                  </label>
+                  {photoBlob ? (
+                    <span className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Photo Captured
+                    </span>
+                  ) : (
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                      Mandatory
+                    </span>
+                  )}
+                </div>
 
                 {/* Hidden native input with universal camera capture attribute */}
                 <input
@@ -283,7 +351,15 @@ export default function SelfRegisterPage() {
                   className="hidden"
                 />
 
-                <div className="relative rounded-2xl bg-slate-900 border-2 border-dashed border-slate-700 hover:border-slate-500 transition p-4 text-center overflow-hidden">
+                <div
+                  className={`relative rounded-2xl bg-slate-900 border-2 border-dashed ${
+                    !photoBlob && errorMessage && errorMessage.includes("photo")
+                      ? "border-rose-500/80 bg-rose-500/5 ring-2 ring-rose-500/20"
+                      : photoBlob
+                      ? "border-emerald-500/40 bg-emerald-500/5"
+                      : "border-slate-700 hover:border-slate-500"
+                  } transition p-4 text-center overflow-hidden`}
+                >
                   {photoPreview ? (
                     <div className="relative group">
                       {/* eslint-disable-next-html-next-image */}
@@ -390,6 +466,66 @@ export default function SelfRegisterPage() {
                 </div>
               </div>
 
+              {/* Purpose of Visit */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
+                  Purpose of Visit <span className="text-rose-400">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={purpose}
+                    onChange={(e) => {
+                      setPurpose(e.target.value);
+                      if (e.target.value !== "Others") {
+                        setCustomPurpose("");
+                      }
+                    }}
+                    className="w-full px-4 py-3 bg-slate-900/90 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition appearance-none cursor-pointer"
+                  >
+                    <option value="Interview" className="bg-slate-900 text-white">Interview</option>
+                    <option value="Meeting" className="bg-slate-900 text-white">Meeting</option>
+                    <option value="Delivery" className="bg-slate-900 text-white">Delivery</option>
+                    <option value="Maintenance" className="bg-slate-900 text-white">Maintenance</option>
+                    <option value="Vendor" className="bg-slate-900 text-white">Vendor</option>
+                    <option value="Others" className="bg-slate-900 text-white">Others (Specify)</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* If Interview: Show Host */}
+                {purpose === "Interview" && (
+                  <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl text-blue-300 text-xs flex items-center gap-2 mt-2">
+                    <svg className="w-4 h-4 shrink-0 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span>
+                      Host: <strong className="text-white font-semibold">{interviewHostName}</strong>
+                    </span>
+                  </div>
+                )}
+
+                {/* If Others: Show Custom Purpose text input */}
+                {purpose === "Others" && (
+                  <div className="pt-2 space-y-1">
+                    <label className="block text-[11px] font-medium text-slate-400">
+                      Specify Custom Purpose <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Document Verification / Personal"
+                      value={customPurpose}
+                      onChange={(e) => setCustomPurpose(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-slate-900/90 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition"
+                    />
+                  </div>
+                )}
+              </div>
+
               {/* Full Name */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
@@ -398,7 +534,7 @@ export default function SelfRegisterPage() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Rahul Sharma"
+                  placeholder="Full Name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-4 py-3 bg-slate-900/90 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition"

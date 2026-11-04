@@ -451,6 +451,12 @@ def checkout_visit(db: Session, payload: VisitCheckout) -> VisitOut:
 
 
 def get_visit_history(db: Session) -> List[VisitHistoryItem]:
+    # Check and perform auto-checkout for visits after 6:00 PM
+    try:
+        auto_checkout_evening_visits(db)
+    except Exception:
+        pass
+
     visits = (
         db.query(Visit, Visitor)
         .join(Visitor, Visitor.id == Visit.visitor_id)
@@ -843,12 +849,105 @@ def update_visit_status(db: Session, visit_id: int, status: str, host_id: int) -
     return True
 
 
+def auto_checkout_evening_visits(db: Session) -> int:
+    """
+    Auto check-out visitors who checked in (including through QR code self-registration,
+    with or without an assigned ID card) and have not checked out by 6:00 PM (18:00) IST.
+    """
+    import logging
+    from zoneinfo import ZoneInfo
+    from app.core.config import settings
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        tz = ZoneInfo(settings.BUSINESS_TIMEZONE)
+    except Exception:
+        tz = timezone.utc
+
+    now_utc = datetime.now(timezone.utc)
+    now_local = now_utc.astimezone(tz)
+
+    today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start_utc = today_start_local.astimezone(timezone.utc)
+
+    # 6:00 PM (18:00) cutoff for today in local business time
+    today_6pm_local = now_local.replace(hour=18, minute=0, second=0, microsecond=0)
+    today_6pm_utc = today_6pm_local.astimezone(timezone.utc)
+
+    if now_local.hour >= 18:
+        # Currently past 6:00 PM: any visit checked in at or before 6:00 PM today (or prior days)
+        overdue_filter = Visit.checkin_time <= today_6pm_utc
+        default_checkout_utc = today_6pm_utc
+    else:
+        # Before 6:00 PM today: only leftover check-ins from previous days
+        overdue_filter = Visit.checkin_time < today_start_utc
+        default_checkout_utc = today_start_utc
+
+    visits = (
+        db.query(Visit)
+        .filter(
+            Visit.status == "checked_in",
+            Visit.checkout_time.is_(None),
+            overdue_filter,
+            Visit.source != "attendance_log",
+        )
+        .all()
+    )
+
+    updated_count = 0
+    for visit in visits:
+        try:
+            visit.checkout_time = default_checkout_utc
+            visit.status = "Auto-out"
+
+            # If an ID card was attached, release it
+            visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
+            if visitor and visitor.id_number:
+                card = db.query(IdCard).filter(IdCard.id_number == visitor.id_number).first()
+                if card:
+                    card.status = "available"
+                visitor.id_number = None
+
+            updated_count += 1
+
+            try:
+                anyio.from_thread.run(
+                    publish_event,
+                    {
+                        "type": "visit_status",
+                        "visit_id": visit.id,
+                        "visitor_id": visit.visitor_id,
+                        "status": "Auto-out",
+                    },
+                )
+            except Exception:
+                pass
+        except Exception as e:
+            logger.error(f"Failed to auto-checkout visit {visit.id}: {e}")
+            continue
+
+    if updated_count:
+        try:
+            db.commit()
+            logger.info(f"Auto-checked out {updated_count} visits after 6:00 PM.")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error committing auto-checkout: {e}")
+            return 0
+
+    return updated_count
+
+
 def log_pending_visits_attendance(db: Session) -> int:
     import logging
     from zoneinfo import ZoneInfo
     from app.core.config import settings
 
     logger = logging.getLogger(__name__)
+
+    # Auto checkout any checked-in visitors after 6:00 PM
+    auto_checkout_evening_visits(db)
     
     try:
         tz = ZoneInfo(settings.BUSINESS_TIMEZONE)
@@ -905,6 +1004,9 @@ def log_pending_visits_attendance(db: Session) -> int:
 
 
 def auto_checkout_expired_qr_invites(db: Session) -> int:
+    # Also trigger 6:00 PM auto checkout if overdue
+    auto_checkout_evening_visits(db)
+
     now = datetime.now(timezone.utc)
     visits = (
         db.query(Visit)
@@ -926,12 +1028,14 @@ def auto_checkout_expired_qr_invites(db: Session) -> int:
     return updated
 
 
-def self_register_interview_visitor(
+def self_register_visitor(
     db: Session,
     name: str,
     phone: str,
     email: Optional[str] = None,
     company: Optional[str] = None,
+    purpose: Optional[str] = "Interview",
+    custom_purpose: Optional[str] = None,
     photo_url: Optional[str] = None,
 ) -> VisitOut:
     from zoneinfo import ZoneInfo
@@ -942,19 +1046,47 @@ def self_register_interview_visitor(
     if len(clean_phone) != 10:
         raise HTTPException(status_code=400, detail="Phone number must be exactly 10 digits")
 
-    # 1. Resolve or create host employee Manish Joshi (mmjoshi@arcgate.com)
-    host_email = "mmjoshi@arcgate.com"
-    host = db.query(Employee).filter(Employee.email.ilike(host_email)).first()
-    if not host:
-        host = Employee(
-            name="Manish Joshi",
-            email=host_email,
-            phone="9900000000",
-            role="employee",
-            department="HR",
-        )
-        db.add(host)
-        db.flush()
+    if not photo_url or not photo_url.strip():
+        raise HTTPException(status_code=400, detail="Visitor photo is mandatory for self-registration. Please provide a photo.")
+
+    normalized_purpose = (purpose or "Interview").strip()
+    is_interview = normalized_purpose.lower() == "interview"
+    is_others = normalized_purpose.lower() in ("others", "other", "custom")
+
+    if is_others:
+        final_purpose = (custom_purpose or "").strip() or "Others"
+    else:
+        final_purpose = normalized_purpose
+
+    # 1. Host resolution
+    host = None
+    if is_interview:
+        # Dynamically fetch the interview host configured by Admin from system_settings
+        from app.models.system_setting import SystemSetting
+        setting = db.query(SystemSetting).filter(SystemSetting.key == "interview_default_host_id").first()
+        if setting and setting.value and setting.value.isdigit():
+            host = db.query(Employee).filter(Employee.id == int(setting.value)).first()
+
+        # Fallback to Manish Joshi
+        if not host:
+            host_email = "mmjoshi@arcgate.com"
+            host = db.query(Employee).filter(Employee.email.ilike(host_email)).first()
+            if not host:
+                host = Employee(
+                    name="Manish Joshi",
+                    email=host_email,
+                    phone="9900000000",
+                    role="employee",
+                    department="HR",
+                )
+                db.add(host)
+                db.flush()
+    else:
+        # Option A: Non-interview visitors leave host as None on self-registration;
+        # Reception / Guard desk will assign host upon arrival.
+        host = None
+
+    visitor_type = "interview" if is_interview else "guest"
 
     # 2. Find or create visitor
     visitor = None
@@ -971,7 +1103,7 @@ def self_register_interview_visitor(
             visitor.company = company.strip()
         if photo_url:
             visitor.photo_url = photo_url
-        visitor.visitor_type = "interview"
+        visitor.visitor_type = visitor_type
         visitor.status = "approved"
     else:
         visitor = Visitor(
@@ -979,7 +1111,7 @@ def self_register_interview_visitor(
             phone=clean_phone,
             email=email.strip() if email else None,
             company=company.strip() if company else None,
-            visitor_type="interview",
+            visitor_type=visitor_type,
             photo_url=photo_url,
             status="approved",
         )
@@ -1010,19 +1142,21 @@ def self_register_interview_visitor(
         .first()
     )
 
+    host_id = host.id if host else None
+
     if existing_visit:
         existing_visit.checkin_time = now_utc
         existing_visit.checkout_time = None
         existing_visit.status = "checked_in"
-        existing_visit.purpose = "interview"
-        existing_visit.host_employee_id = host.id
+        existing_visit.purpose = final_purpose
+        existing_visit.host_employee_id = host_id
         existing_visit.source = "wall_qr"
         visit = existing_visit
     else:
         visit = Visit(
             visitor_id=visitor.id,
-            host_employee_id=host.id,
-            purpose="interview",
+            host_employee_id=host_id,
+            purpose=final_purpose,
             checkin_time=now_utc,
             checkout_time=None,
             status="checked_in",
@@ -1044,9 +1178,9 @@ def self_register_interview_visitor(
                 "status": visit.status,
                 "visitor_id": visit.visitor_id,
                 "visitor_name": visitor.name,
-                "host_employee_id": host.id,
-                "host_name": host.name,
-                "purpose": "interview",
+                "host_employee_id": host.id if host else None,
+                "host_name": host.name if host else "Unassigned",
+                "purpose": final_purpose,
                 "source": "wall_qr",
             },
         )
@@ -1058,6 +1192,7 @@ def self_register_interview_visitor(
         id=visit.id,
         visitor_id=visit.visitor_id,
         host_employee_id=visit.host_employee_id,
+        host_name=host.name if host else None,
         purpose=visit.purpose,
         checkin_time=visit.checkin_time,
         checkout_time=visit.checkout_time,
@@ -1067,4 +1202,8 @@ def self_register_interview_visitor(
         source=visit.source,
         qr_expiry=visit.qr_expiry,
     )
+
+
+# Alias for backward compatibility
+self_register_interview_visitor = self_register_visitor
 

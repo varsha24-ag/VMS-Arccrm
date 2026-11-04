@@ -3,15 +3,17 @@ from typing import Annotated, List, Optional
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
+import anyio
 from fastapi import status
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.security import get_current_user, get_user_from_token
-from app.core.realtime import event_stream
+from app.core.realtime import event_stream, publish_event
 from app.models.employee import Employee
 from app.models.visitor import Visitor
 from app.models.id_card import IdCard
@@ -37,6 +39,7 @@ from app.schemas.id_card import IdCardOut
 from app.schemas.visit_status import VisitStatusOut
 from app.services.notification_service import build_qr_png, get_frontend_qr_checkin_url
 from app.services.visit_service import (
+    assign_id_card,
     checkin_visit,
     checkout_visit,
     create_access_pass,
@@ -48,6 +51,7 @@ from app.services.visit_service import (
     qr_checkin,
     resend_host_notification,
     self_register_interview_visitor,
+    self_register_visitor,
 )
 from app.services.notification_service import send_visitor_access_pass
 
@@ -114,31 +118,66 @@ def upload_photo(
     return PhotoUploadOut(photo_url=f"/uploads/visitors/{file_name}")
 
 
+@router.get("/visitor/self-register/config")
+def get_self_register_config(db: Session = Depends(get_db)):
+    from app.models.system_setting import SystemSetting
+    setting = db.query(SystemSetting).filter(SystemSetting.key == "interview_default_host_id").first()
+    host = None
+    if setting and setting.value and setting.value.isdigit():
+        host = db.query(Employee).filter(Employee.id == int(setting.value)).first()
+    if not host:
+        host = db.query(Employee).filter(Employee.email.ilike("mmjoshi@arcgate.com")).first()
+
+    return {
+        "interview_host": {
+            "id": host.id if host else None,
+            "name": host.name if host else "Manish Joshi",
+            "department": host.department if host else "HR",
+        },
+        "purposes": ["Interview", "Meeting", "Delivery", "Maintenance", "Vendor", "Others"],
+    }
+
+
 @router.post("/visitor/self-register", response_model=VisitOut)
 def self_register_route(
     name: str = Form(...),
     phone: str = Form(...),
     email: Optional[str] = Form(None),
     company: Optional[str] = Form(None),
+    purpose: Optional[str] = Form("Interview"),
+    custom_purpose: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
-    photo_url = None
-    if file and file.filename:
-        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-        ext = Path(file.filename or "").suffix or ".jpg"
-        file_name = f"visitor-{uuid4().hex}{ext}"
-        file_path = UPLOAD_DIR / file_name
-        with file_path.open("wb") as buffer:
-            buffer.write(file.file.read())
-        photo_url = f"/uploads/visitors/{file_name}"
+    if not file or not file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail="Visitor selfie photo is mandatory for self-registration. Please snap or upload a photo.",
+        )
 
-    return self_register_interview_visitor(
+    content = file.file.read()
+    if not content or len(content) < 50:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded photo file is empty or corrupted. Please capture a clear selfie photo.",
+        )
+
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    ext = Path(file.filename or "").suffix or ".jpg"
+    file_name = f"visitor-{uuid4().hex}{ext}"
+    file_path = UPLOAD_DIR / file_name
+    with file_path.open("wb") as buffer:
+        buffer.write(content)
+    photo_url = f"/uploads/visitors/{file_name}"
+
+    return self_register_visitor(
         db=db,
         name=name,
         phone=phone,
         email=email,
         company=company,
+        purpose=purpose,
+        custom_purpose=custom_purpose,
         photo_url=photo_url,
     )
 
@@ -411,6 +450,124 @@ def available_id_cards(
         .all()
     )
     return [IdCardOut(id=card.id, id_number=card.id_number, status=card.status) for card in cards]
+
+
+class AssignHostPayload(BaseModel):
+    host_employee_id: int
+
+
+@router.post("/visits/{visit_id}/assign-host")
+def assign_visit_host(
+    visit_id: int,
+    payload: AssignHostPayload,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    visit = db.query(Visit).filter(Visit.id == visit_id).first()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    host = db.query(Employee).filter(Employee.id == payload.host_employee_id).first()
+    if not host:
+        raise HTTPException(status_code=404, detail="Host employee not found")
+
+    visit.host_employee_id = host.id
+    db.commit()
+    db.refresh(visit)
+
+    visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
+
+    # Emit real-time event for dashboards
+    try:
+        anyio.from_thread.run(
+            publish_event,
+            {
+                "type": "visit_status",
+                "visit_id": visit.id,
+                "status": visit.status,
+                "visitor_id": visit.visitor_id,
+                "visitor_name": visitor.name if visitor else "Visitor",
+                "host_employee_id": host.id,
+                "host_name": host.name,
+                "purpose": visit.purpose,
+                "source": visit.source,
+            },
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to publish SSE event: {e}")
+
+    return {
+        "status": "success",
+        "visit_id": visit.id,
+        "host_employee_id": host.id,
+        "host_name": host.name,
+    }
+
+
+class AssignIdCardPayload(BaseModel):
+    id_number: Optional[str] = None
+
+
+@router.post("/visits/{visit_id}/assign-id-card")
+def assign_visit_id_card(
+    visit_id: int,
+    payload: AssignIdCardPayload,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    visit = db.query(Visit).filter(Visit.id == visit_id).first()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    visitor = db.query(Visitor).filter(Visitor.id == visit.visitor_id).first()
+    if not visitor:
+        raise HTTPException(status_code=404, detail="Visitor not found")
+
+    new_id = (payload.id_number or "").strip()
+    if not new_id:
+        if visitor.id_number:
+            old_card = db.query(IdCard).filter(IdCard.id_number == visitor.id_number).first()
+            if old_card:
+                old_card.status = "available"
+            visitor.id_number = None
+    else:
+        assign_id_card(db, visitor, new_id)
+
+    db.commit()
+    db.refresh(visitor)
+
+    try:
+        anyio.from_thread.run(
+            publish_event,
+            {
+                "type": "visit_status",
+                "visit_id": visit.id,
+                "visitor_id": visit.visitor_id,
+                "status": visit.status,
+                "id_number": visitor.id_number,
+            },
+        )
+    except Exception:
+        pass
+
+    return {
+        "status": "success",
+        "visit_id": visit.id,
+        "id_number": visitor.id_number,
+    }
+
+
+@router.post("/visits/{visit_id}/checkout", response_model=VisitOut)
+def checkout_visit_by_id(
+    visit_id: int,
+    db: Session = Depends(get_db),
+    current_user: Annotated[Employee, Depends(get_current_user)] = None,
+):
+    from app.schemas.visit import VisitCheckout
+    return checkout_visit(db, VisitCheckout(visit_id=visit_id))
+
+
 @router.get("/events/visits")
 async def visit_events(
     token: Optional[str] = None,
